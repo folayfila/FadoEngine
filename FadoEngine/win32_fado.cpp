@@ -1,8 +1,8 @@
-#include "Win32Fado.h"
+#include "win32_fado.h"
 
-///////////////////////////////
-// Input //
-///////////////////////////////
+/********************************************************/
+/* Input */
+/********************************************************/
 internal bool32 Win32IsKeyDown(Win32Input* input, uint32 key)
 {
 	bool32 isDown = input->Keys[key];
@@ -70,7 +70,11 @@ LRESULT CALLBACK Win32WindowProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM
 	}
 	return result;
 }
-////////////////////////////////////////////////////////////////////
+/********************************************************/
+
+/********************************************************/
+/* Win32System */
+/********************************************************/
 
 internal void Win32SystemInitializeWindows(Win32System* win32System, int& screenWidth, int& screenHeight)
 {
@@ -150,8 +154,23 @@ internal void Win32SystemInitializeWindows(Win32System* win32System, int& screen
 
 	// Hide the mouse cursor.
 	ShowCursor(false);
+}
 
-	return;
+internal bool32 Win32Initialize(Win32System* win32System)
+{
+	bool32 result = true;
+
+	int32 screenWidth = 0;
+	int32 screenHeight = 0;
+	Win32SystemInitializeWindows(win32System, screenWidth, screenHeight);
+
+	result = InitializeDirect3D(&win32System->Application.Direct3D, screenWidth, screenHeight, VSYNC_ENABLED, win32System->Window, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR);
+	if (!result)
+	{
+		MessageBox(win32System->Window, L"Could not initialize Direct3D", L"Error", MB_OK);
+	}
+
+	return result;
 }
 
 internal void Win32SystemShutdownWindows(Win32System* win32System)
@@ -173,26 +192,15 @@ internal void Win32SystemShutdownWindows(Win32System* win32System)
 	UnregisterClass(win32System->ApplicationName, win32System->Instance);
 	win32System->Instance = 0;
 
+	ShutdownDirect3D(&win32System->Application.Direct3D);
+
 	// Release the pointer to this class.
 	ApplicationHandle = nullptr;
-
-	return;
-}
-
-internal bool32 Win32Initialize(Win32System* win32System)
-{
-	bool32 result = true;
-
-	int32 screenWidth = 0;
-	int32 screenHeight = 0;
-	Win32SystemInitializeWindows(win32System, screenWidth, screenHeight);
-
-	return result;
 }
 
 internal bool32 Win32Frame(Win32System* win32System)
 {
-	bool32 result = false;
+	bool32 result = true;
 
 	// // Check if the user pressed escape and wants to exit the application.
 	if (Win32IsKeyDown(&win32System->Input, VK_ESCAPE))
@@ -200,8 +208,12 @@ internal bool32 Win32Frame(Win32System* win32System)
 		return result;
 	}
 
-	// Do the frame processing for the application class object.
-	result = true;
+	// Draw the d3d scene.
+	fd3d* direct3D = &win32System->Application.Direct3D;
+	color_rgba color = { 1.0f, 0.0f, 0.3f, 1.0f };
+
+	BeginScene(direct3D, color);
+	EndScene(direct3D);
 
 	return result;
 }
@@ -241,9 +253,10 @@ int WINAPI wWinMain(
 	PWSTR pCmdLine,
 	int nCmdShow)
 {
-	Win32System System = {};
-	Win32Initialize(&System);
-	Win32Run(&System);
+	Win32System win32System = {};
+	Win32Initialize(&win32System);
+	Win32Run(&win32System);
+	Win32SystemShutdownWindows(&win32System);
 
 	return 0;
 }

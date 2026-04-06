@@ -127,12 +127,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="FadoEngine.cpp" />
-    <ClCompile Include="Win32Fado.cpp" />
+    <ClCompile Include="fado_d3d.cpp" />
+    <ClCompile Include="win32_fado.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="FadoTypes.h" />
-    <ClInclude Include="Win32Fado.h" />
+    <ClInclude Include="fado_types.h" />
+    <ClInclude Include="fado_d3d.h" />
+    <ClInclude Include="win32_fado.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

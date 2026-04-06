@@ -15,18 +15,21 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="FadoEngine.cpp">
+    <ClCompile Include="win32_fado.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Win32Fado.cpp">
+    <ClCompile Include="fado_d3d.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Win32Fado.h">
+    <ClInclude Include="win32_fado.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FadoTypes.h">
+    <ClInclude Include="fado_types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fado_d3d.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

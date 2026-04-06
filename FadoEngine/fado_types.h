@@ -17,17 +17,19 @@ typedef uint64_t uint64;
 
 typedef int32 bool32;
 
-struct color
+struct color_rgba
 {
-    float R;
-    float G;
-    float B;
+    float r;
+    float g;
+    float b;
+    float a;
 
-    void Set(float Red, float Green, float Blue)
+    void Set(float Red, float Green, float Blue, float alpha = 1.0f)
     {
-        R = Red;
-        G = Green;
-        B = Blue;
+        r = Red;
+        g = Green;
+        b = Blue;
+        a = alpha;
     }
 
 };

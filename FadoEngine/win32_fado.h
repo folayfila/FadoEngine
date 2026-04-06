@@ -5,16 +5,15 @@
 // PRE-PROCESSING DIRECTIVES //
 ///////////////////////////////
 #define WIN32_LEAN_AND_MEAN
-#define FULL_SCREEN 1
-#define VSYNC_ENABLED true;
-#define SCREEN_DEPTH 1000.0f;
-#define SCREEN_NEAR = 0.3f;
+#define FULL_SCREEN 0
+#define VSYNC_ENABLED true
+#define SCREEN_DEPTH 1000.0f
+#define SCREEN_NEAR 0.3f
 
 ///////////////////////////////
 // INCLUDES //
 ///////////////////////////////
-#include <Windows.h>
-#include "FadoTypes.h"
+#include "fado_d3d.h"
 
 // > TODO: Replace the input struct with an input API like DirectInput.
 struct Win32Input
@@ -24,6 +23,7 @@ struct Win32Input
 
 struct Win32Application
 {
+	fd3d Direct3D;
 };
 
 struct Win32System
