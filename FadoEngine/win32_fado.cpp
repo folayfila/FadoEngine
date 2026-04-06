@@ -25,6 +25,10 @@ internal void Win32HandleKeyboardInput(Win32Input* input, UINT msg, WPARAM wPara
 		} break;
 	}
 
+	if (input->Keys[VK_ESCAPE])
+	{
+		PostQuitMessage(0);
+	}
 }
 
 internal LRESULT CALLBACK Win32MainWindowCallback(Win32System* win32System, HWND window, UINT msg, WPARAM wParam, LPARAM lParam)
