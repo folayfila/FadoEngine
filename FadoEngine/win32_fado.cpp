@@ -168,7 +168,8 @@ internal bool32 Win32Initialize(Win32System* win32System)
 	int32 screenHeight = 0;
 	Win32SystemInitializeWindows(win32System, screenWidth, screenHeight);
 
-	result = InitializeDirect3D(&win32System->Application.Direct3D, screenWidth, screenHeight, VSYNC_ENABLED, win32System->Window, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR);
+	fd3d* direct3D = &win32System->Application.Direct3D;
+	result = direct3D->InitializeDirect3D(screenWidth, screenHeight, VSYNC_ENABLED, win32System->Window, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR);
 	if (!result)
 	{
 		MessageBox(win32System->Window, L"Could not initialize Direct3D", L"Error", MB_OK);
@@ -196,7 +197,8 @@ internal void Win32SystemShutdownWindows(Win32System* win32System)
 	UnregisterClass(win32System->ApplicationName, win32System->Instance);
 	win32System->Instance = 0;
 
-	ShutdownDirect3D(&win32System->Application.Direct3D);
+	fd3d* direct3D = &win32System->Application.Direct3D;
+	direct3D->ShutdownDirect3D();
 
 	// Release the pointer to this class.
 	ApplicationHandle = nullptr;
@@ -216,8 +218,8 @@ internal bool32 Win32Frame(Win32System* win32System)
 	fd3d* direct3D = &win32System->Application.Direct3D;
 	color_rgba color = { 1.0f, 0.0f, 0.3f, 1.0f };
 
-	BeginScene(direct3D, color);
-	EndScene(direct3D);
+	direct3D->BeginScene(color);
+	direct3D->EndScene();
 
 	return result;
 }

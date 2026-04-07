@@ -36,12 +36,16 @@ struct fd3d
 	DirectX::XMMATRIX WorldMatrix;
 	DirectX::XMMATRIX OrthoMatrix;
 	D3D11_VIEWPORT Viewport;
+
+
+	bool32 InitializeDirect3D(int32 screenWidth, int32 screenHeight, bool32 vsync,
+		HWND Window, bool32 fullScreen, float screenDepth, float screenNear);
+	void ShutdownDirect3D();
+	void BeginScene(color_rgba color);
+	void EndScene();
+	void SetBackBufferRenderTarget();
+	void ResetViewport();
 };
 
-bool32 InitializeDirect3D(fd3d* direct3D, int32 screenWidth, int32 screenHeight, bool32 vsync,
-	HWND Window, bool32 fullScreen, float screenDepth, float screenNear);
-void ShutdownDirect3D(fd3d* direct3D);
-void BeginScene(fd3d* direct3D, color_rgba color);
-void EndScene(fd3d* direct3D);
 
 #endif	// FADO_D3D_H

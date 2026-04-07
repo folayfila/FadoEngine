@@ -5,7 +5,7 @@
 // PRE-PROCESSING DIRECTIVES //
 ///////////////////////////////
 #define WIN32_LEAN_AND_MEAN
-#define FULL_SCREEN 0
+#define FULL_SCREEN false
 #define VSYNC_ENABLED true
 #define SCREEN_DEPTH 1000.0f
 #define SCREEN_NEAR 0.3f
