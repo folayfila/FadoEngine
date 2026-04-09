@@ -117,7 +117,7 @@ struct FApplication
 ////////////////////////////////////
 /// Global Functions
 ////////////////////////////////////
-bool32 Render(FApplication *application);
 bool32 Initialize(FApplication *application, int32 screenWidth, int32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, float screenDepth, float screenNear);
+bool32 Render(FApplication *application);
 
 #endif	// FADO_D3D_H

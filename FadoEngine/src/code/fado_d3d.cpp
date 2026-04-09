@@ -553,7 +553,7 @@ internal bool32 InitializeModel(FModelD3D *model, ID3D11Device* device)
 	// First create two temporary arrays to hold the vertex and index data that we will use later to populate the final buffers with.
 
 	// Set the number of vertices in the vertex array and create it.
-	model->vertexCount = 3;
+	model->vertexCount = 4;
 	vertices = new FVertex[model->vertexCount];
 	if (!vertices)
 	{
@@ -561,7 +561,7 @@ internal bool32 InitializeModel(FModelD3D *model, ID3D11Device* device)
 	}
 
 	// Set the number of indices in the index array and create it.
-	model->indexCount = 3;
+	model->indexCount = 6;
 	indices = new uint32[model->indexCount];
 	if (!indices)
 	{
@@ -569,20 +569,17 @@ internal bool32 InitializeModel(FModelD3D *model, ID3D11Device* device)
 	}
 
 	// Fill both the vertex and index array with the three points of the triangle as well as the index to each of the points in clockwise order of drawing.
-	// >> Drawing an RGB Triangle:
-	vertices[0].position = DirectX::XMFLOAT3(-1.0f, -1.0f, 0.0f);   // Bottom left.
-	vertices[0].color = DirectX::XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);	// Blue
+	vertices[0].position = DirectX::XMFLOAT3(-1.0f, 1.0f, 0.0f);  // Top left
+	vertices[0].color = DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+	vertices[1].position = DirectX::XMFLOAT3(1.0f, 1.0f, 0.0f);  // Top right
+	vertices[1].color = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+	vertices[2].position = DirectX::XMFLOAT3(-1.0f, -1.0f, 0.0f);  // Bottom left
+	vertices[2].color = DirectX::XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	vertices[3].position = DirectX::XMFLOAT3(1.0f, -1.0f, 0.0f);  // Bottom right
+	vertices[3].color = DirectX::XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
 
-	vertices[1].position = DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f);		// Top middle.
-	vertices[1].color = DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);	// Red
-
-	vertices[2].position = DirectX::XMFLOAT3(1.0f, -1.0f, 0.0f);	// Bottom right.
-	vertices[2].color = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);	// Green
-
-	// Load the index array with data.
-	indices[0] = 0;  // Bottom left.
-	indices[1] = 1;  // Top middle.
-	indices[2] = 2;  // Bottom right.
+	indices[0] = 0; indices[1] = 1; indices[2] = 2;  // Triangle 1
+	indices[3] = 2; indices[4] = 1; indices[5] = 3;  // Triangle 2
 
 	// Set up the description of the static vertex buffer.
 	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -712,6 +709,37 @@ internal void RenderCamera(FCameraD3D* camera)
 ////////////////////////////////////
 /// Global Functions
 ////////////////////////////////////
+bool32 Initialize(FApplication* application, int32 screenWidth, int32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, float screenDepth, float screenNear)
+{
+	bool32 result = true;
+
+	FD3D* fdirect3D = &application->direct3D;
+	result = InitializeFD3D(fdirect3D, screenWidth, screenHeight, vsync, window, fullScreen, screenDepth, screenNear);
+	if (!result)
+	{
+		MessageBox(window, L"Could not initialize Direct3D", L"Error", MB_OK);
+		return result;
+	}
+
+	application->camera.position = { 0.0f, 0.0f, -5.0f };
+
+	result = InitializeModel(&application->model, fdirect3D->device);
+	if (!result)
+	{
+		MessageBox(window, L"Could not initialize the model object.", L"Error", MB_OK);
+		return result;
+	}
+
+	result = InitializeColorShader(&application->colorShader, fdirect3D->device, window);
+	if (!result)
+	{
+		MessageBox(window, L"Could not initialize the color shader object.", L"Error", MB_OK);
+		return result;
+	}
+
+	return result;
+}
+
 bool32 Render(FApplication* application)
 {
 	bool32 result = true;
@@ -742,37 +770,6 @@ bool32 Render(FApplication* application)
 
 	// Present the rendered scene to the screen.
 	EndScene(fdirect3D);
-
-	return result;
-}
-
-bool32 Initialize(FApplication* application, int32 screenWidth, int32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, float screenDepth, float screenNear)
-{
-	bool32 result = true;
-
-	FD3D* fdirect3D = &application->direct3D;
-	result = InitializeFD3D(fdirect3D, screenWidth, screenHeight, vsync, window, fullScreen, screenDepth, screenNear);
-	if (!result)
-	{
-		MessageBox(window, L"Could not initialize Direct3D", L"Error", MB_OK);
-		return result;
-	}
-
-	application->camera.position = { 0.0f, 0.0f, -5.0f };
-
-	result = InitializeModel(&application->model, fdirect3D->device);
-	if (!result)
-	{
-		MessageBox(window, L"Could not initialize the model object.", L"Error", MB_OK);
-		return result;
-	}
-
-	result = InitializeColorShader(&application->colorShader, fdirect3D->device, window);
-	if (!result)
-	{
-		MessageBox(window, L"Could not initialize the color shader object.", L"Error", MB_OK);
-		return result;
-	}
 
 	return result;
 }
