@@ -18,27 +18,22 @@
 // > TODO: Replace the input struct with an input API like DirectInput.
 struct Win32Input
 {
-	bool32 Keys[256];
-};
-
-struct Win32Application
-{
-	fd3d Direct3D;
+	bool32 keys[256];
 };
 
 struct Win32System
 {
-	LPCWSTR ApplicationName;
-	HINSTANCE Instance;
-	HWND Window;
+	LPCWSTR applicationName;
+	HINSTANCE instance;
+	HWND window;
 
-	Win32Input Input;
-	Win32Application Application;
+	Win32Input input;
+	FApplication application;
 };
 
 ///////////////////////////////
 // Globals //
 ///////////////////////////////
-global_variable Win32System* ApplicationHandle;
+global_variable Win32System* GlobalApplicationHandle;
 
 #endif // WIN32_FADO_H

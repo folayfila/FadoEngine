@@ -13,24 +13,33 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{918fa7bd-55d0-46ef-8c93-8ae60badca02}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="win32_fado.cpp">
+    <ClCompile Include="src\code\fado_d3d.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="fado_d3d.cpp">
+    <ClCompile Include="src\code\win32_fado.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="win32_fado.h">
+    <ClInclude Include="src\code\fado_d3d.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="fado_types.h">
+    <ClInclude Include="src\code\fado_types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="fado_d3d.h">
+    <ClInclude Include="src\code\win32_fado.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\shaders\color.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

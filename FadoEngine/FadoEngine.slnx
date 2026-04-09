@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="FadoEngine.vcxproj" />
+  <Project Path="FadoEngine.vcxproj" Id="128e5db6-42b3-4668-b2aa-a9d531d33ad0" />
 </Solution>

@@ -127,13 +127,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="fado_d3d.cpp" />
-    <ClCompile Include="win32_fado.cpp" />
+    <ClCompile Include="src\code\fado_d3d.cpp" />
+    <ClCompile Include="src\code\win32_fado.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="fado_types.h" />
-    <ClInclude Include="fado_d3d.h" />
-    <ClInclude Include="win32_fado.h" />
+    <ClInclude Include="src\code\fado_d3d.h" />
+    <ClInclude Include="src\code\fado_types.h" />
+    <ClInclude Include="src\code\win32_fado.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
+    <None Include="src\shaders\color.hlsl">
+      <FileType>Document</FileType>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

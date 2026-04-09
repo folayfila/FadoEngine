@@ -17,6 +17,16 @@ typedef uint64_t uint64;
 
 typedef int32 bool32;
 
+struct vec2
+{
+    float x, y;
+};
+
+struct vec3
+{
+    float x, y, z;
+};
+
 struct color_rgba
 {
     float r;
