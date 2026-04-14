@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Filename: color.vs
+// Filename: color.hlsl
 ////////////////////////////////////////////////////////////////////////////////
 
 /////////////
@@ -57,6 +57,11 @@ float4 ColorPixelShader(PixelInputType input) : SV_TARGET
     float4 color = input.color;
     return color;
 }
+
+/* Note to future me:
+** To fix 1>FXC : error X3501: 'main': entrypoint not found
+** Right click the shader file-> select properties-> Does not participate input builds in builds.
+*/
 
 /*
 * To have them both input one file instead of .vs and .ps:

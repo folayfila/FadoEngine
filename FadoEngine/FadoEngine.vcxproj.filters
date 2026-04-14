@@ -41,5 +41,8 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="cpp.hint" />
+    <None Include="src\shaders\texture.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

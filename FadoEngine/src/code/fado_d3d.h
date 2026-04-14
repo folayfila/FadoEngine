@@ -71,15 +71,50 @@ struct FColorShaderD3D
 	ID3D11Buffer* matrixBuffer;
 };
 
+////////////////////////////////////
+/// FTextureShader
+////////////////////////////////////
+struct FTextureShaderD3D
+{
+	ID3D11VertexShader* vertexShader;
+	ID3D11PixelShader* pixelShader;
+	ID3D11InputLayout* layout;
+	ID3D11Buffer* matrixBuffer;
+	ID3D11SamplerState* sampleState;	// This pointer will be used to interface with the texture shader.
+};
+
+struct FTargaHeader
+{
+	uint8 data1[12];
+	uint16 width;
+	uint16 height;
+	uint8 bpp;
+	uint8 data2;
+};
+
+struct FTexture
+{
+	uint8* targaData;
+	ID3D11Texture2D* texture;
+	ID3D11ShaderResourceView* textureView;
+	int32 width;
+	int32 height;
+};
 
 ////////////////////////////////////
 /// FModelD3D
 /// the Model struct is responsible for encapsulating the geometry for 3D models.
 ////////////////////////////////////
-struct FVertex
+struct FColorVertex
 {
 	DirectX::XMFLOAT3 position;
 	DirectX::XMFLOAT4 color;
+};
+
+struct FTextureVertex
+{
+	DirectX::XMFLOAT3 position;
+	DirectX::XMFLOAT2 texture;
 };
 
 struct FModelD3D
@@ -88,6 +123,7 @@ struct FModelD3D
 	ID3D11Buffer* indexBuffer;
 	int32 vertexCount;
 	int32 indexCount;
+	FTexture texture;
 };
 
 ////////////////////////////////////
@@ -111,7 +147,8 @@ struct FApplication
 	FD3D direct3D;
 	FCameraD3D camera;
 	FModelD3D model;
-	FColorShaderD3D colorShader;
+	//FColorShaderD3D colorShader;
+	FTextureShaderD3D textureShader;
 };
 
 ////////////////////////////////////

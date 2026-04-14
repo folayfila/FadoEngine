@@ -366,12 +366,12 @@ internal void ResetViewport(FD3D *fdirect3D)
 internal bool32 InitializeColorShader(FColorShaderD3D *colorShader, ID3D11Device* device, HWND window)
 {
 	bool32 result;
-	wchar_t hlslFileName[128];
+	wchar hlslFileName[128];
 	int32 error;
 
 	// > TODO: Write a good relative path loader or sth.
 	// Set the filename of the hlsl shader.
-	error = wcscpy_s(hlslFileName, 128, L"D:\\Dev\\Git\\FadoEngine\\FadoEngine\\src\\shaders\\color.hlsl");
+	error = wcscpy_s(hlslFileName, 128, L"src\\shaders\\color.hlsl");
 	if (error != 0)
 	{
 		return false;
@@ -479,7 +479,7 @@ internal bool32 InitializeColorShader(FColorShaderD3D *colorShader, ID3D11Device
 	return true;
 }
 
-internal bool SetShaderParameters(FColorShaderD3D* colorShader, ID3D11DeviceContext* deviceContext, DirectX::XMMATRIX worldMatrix, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix)
+internal bool32 SetColorShaderParameters(FColorShaderD3D* colorShader, ID3D11DeviceContext* deviceContext, DirectX::XMMATRIX worldMatrix, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix)
 {
 	HRESULT result;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -521,7 +521,7 @@ internal bool SetShaderParameters(FColorShaderD3D* colorShader, ID3D11DeviceCont
 internal bool32 RenderColorShader(FColorShaderD3D* colorShader, ID3D11DeviceContext* deviceContext, int32 indexCount, DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection)
 {
 	// Set the shader parameters that it will use for rendering.
-	if (!SetShaderParameters(colorShader, deviceContext, world, view, projection))
+	if (!SetColorShaderParameters(colorShader, deviceContext, world, view, projection))
 	{
 		return false;
 	}
@@ -539,12 +539,385 @@ internal bool32 RenderColorShader(FColorShaderD3D* colorShader, ID3D11DeviceCont
 
 	return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// FTextureShaderD3D / FTexture
+////////////////////////////////////////////////////////////////////////////////
+internal bool32 InitializeTextureShader(FTextureShaderD3D* textureShader, ID3D11Device* device, HWND window)
+{
+	bool32 result;
+	wchar hlslFileName[128];
+	int32 error;
+
+	// > TODO: Write a good relative path loader or sth.
+	// Set the filename of the hlsl shader.
+	error = wcscpy_s(hlslFileName, 128, L"src\\shaders\\texture.hlsl");
+	if (error != 0)
+	{
+		return false;
+	}
+
+	if (GetFileAttributes(hlslFileName) == INVALID_FILE_ATTRIBUTES)
+	{
+		MessageBox(NULL, L"File not found!", hlslFileName, MB_OK);
+	}
+
+	const char* vsEntryFuncName = "TextureVertexShader";
+	const char* psEntryFuncName = "TexturePixelShader";
+
+	// Initialize the vertex and pixel (hlsl) shaders.
+	ID3D10Blob* errorMessage;
+	ID3D10Blob* vertexShaderBuffer;
+	ID3D10Blob* pixelShaderBuffer;
+	D3D11_INPUT_ELEMENT_DESC polygonLayout[2];
+	uint32 numElements;
+	D3D11_BUFFER_DESC matrixBufferDesc;
+	D3D11_SAMPLER_DESC samplerDesc;
+
+	// Compile the vertex shader code.
+	result = D3DCompileFromFile(hlslFileName, NULL, NULL, vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
+		&vertexShaderBuffer, &errorMessage);
+	if (FAILED(result))
+	{
+		MessageBox(window, hlslFileName, L"Missing Shader File", MB_OK);
+		return false;
+	}
+
+	// Compile the pixel shader code.
+	result = D3DCompileFromFile(hlslFileName, NULL, NULL, psEntryFuncName, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
+		&pixelShaderBuffer, &errorMessage);
+	if (FAILED(result))
+	{
+		MessageBox(window, hlslFileName, L"Missing Shader File", MB_OK);
+		return false;
+	}
+
+	// Create the vertex shader from the buffer.
+	result = device->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &textureShader->vertexShader);
+	if (FAILED(result))
+	{
+		return false;
+	}
+
+	// Create the pixel shader from the buffer.
+	result = device->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &textureShader->pixelShader);
+	if (FAILED(result))
+	{
+		return false;
+	}
+
+	// Create the vertex input layout description.
+	// This setup needs to match the VertexType stucture in the ModelClass and in the shader.
+	polygonLayout[0].SemanticName = "POSITION";
+	polygonLayout[0].SemanticIndex = 0;
+	polygonLayout[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	polygonLayout[0].InputSlot = 0;
+	polygonLayout[0].AlignedByteOffset = 0;
+	polygonLayout[0].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+	polygonLayout[0].InstanceDataStepRate = 0;
+
+	polygonLayout[1].SemanticName = "TEXCOORD";
+	polygonLayout[1].SemanticIndex = 0;
+	polygonLayout[1].Format = DXGI_FORMAT_R32G32_FLOAT;
+	polygonLayout[1].InputSlot = 0;
+	polygonLayout[1].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
+	polygonLayout[1].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+	polygonLayout[1].InstanceDataStepRate = 0;
+
+	// Get a count of the elements in the layout.
+	numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
+
+	// Create the vertex input layout.
+	result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
+		vertexShaderBuffer->GetBufferSize(), &textureShader->layout);
+	if (FAILED(result))
+	{
+		return false;
+	}
+
+	// Release the vertex shader buffer and pixel shader buffer since they are no longer needed.
+	vertexShaderBuffer->Release();
+	vertexShaderBuffer = 0;
+
+	pixelShaderBuffer->Release();
+	pixelShaderBuffer = 0;
+
+	// Setup the description of the dynamic matrix constant buffer that is in the vertex shader.
+	matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	matrixBufferDesc.ByteWidth = sizeof(FMatrixBuffer);
+	matrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	matrixBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	matrixBufferDesc.MiscFlags = 0;
+	matrixBufferDesc.StructureByteStride = 0;
+
+	// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
+	result = device->CreateBuffer(&matrixBufferDesc, NULL, &textureShader->matrixBuffer);
+	if (FAILED(result))
+	{
+		return false;
+	}
+
+	// Create a texture sampler state description.
+	samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.MipLODBias = 0.0f;
+	samplerDesc.MaxAnisotropy = 1;
+	samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	samplerDesc.BorderColor[0] = 0;
+	samplerDesc.BorderColor[1] = 0;
+	samplerDesc.BorderColor[2] = 0;
+	samplerDesc.BorderColor[3] = 0;
+	samplerDesc.MinLOD = 0;
+	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	// Create the texture sampler state.
+	result = device->CreateSamplerState(&samplerDesc, &textureShader->sampleState);
+	if (FAILED(result))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+internal bool32 SetTextureShaderParameters(FTextureShaderD3D* textureShader, ID3D11DeviceContext* deviceContext, DirectX::XMMATRIX worldMatrix, DirectX::XMMATRIX viewMatrix,
+	DirectX::XMMATRIX projectionMatrix, ID3D11ShaderResourceView* texture)
+{
+	HRESULT result;
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	FMatrixBuffer* dataPtr;
+	uint32 bufferNumber;
+
+	// Transpose the matrices to prepare them for the shader.
+	worldMatrix = XMMatrixTranspose(worldMatrix);
+	viewMatrix = XMMatrixTranspose(viewMatrix);
+	projectionMatrix = XMMatrixTranspose(projectionMatrix);
+
+	// Lock the constant buffer so it can be written to.
+	result = deviceContext->Map(textureShader->matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (FAILED(result))
+	{
+		return false;
+	}
+
+	// Get a pointer to the data in the constant buffer.
+	dataPtr = (FMatrixBuffer*)mappedResource.pData;
+
+	// Copy the matrices into the constant buffer.
+	dataPtr->world = worldMatrix;
+	dataPtr->view = viewMatrix;
+	dataPtr->projection = projectionMatrix;
+
+	// Unlock the constant buffer.
+	deviceContext->Unmap(textureShader->matrixBuffer, 0);
+
+	// Set the position of the constant buffer in the vertex shader.
+	bufferNumber = 0;
+
+	// Finanly set the constant buffer in the vertex shader with the updated values.
+	deviceContext->VSSetConstantBuffers(bufferNumber, 1, &textureShader->matrixBuffer);
+
+	// Set shader texture resource in the pixel shader.
+	deviceContext->PSSetShaderResources(0, 1, &texture);
+
+	return true;
+}
+
+internal bool32 RenderTextureShader(FTextureShaderD3D* textureShader, ID3D11DeviceContext* deviceContext, int32 indexCount,
+	DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection, ID3D11ShaderResourceView* texture)
+{
+	// Set the shader parameters that it will use for rendering.
+	if (!SetTextureShaderParameters(textureShader, deviceContext, world, view, projection, texture))
+	{
+		return false;
+	}
+
+	// Set the vertex input layout.
+	deviceContext->IASetInputLayout(textureShader->layout);
+
+	// Set the vertex and pixel shaders that will be used to render this triangle.
+	deviceContext->VSSetShader(textureShader->vertexShader, NULL, 0);
+	deviceContext->PSSetShader(textureShader->pixelShader, NULL, 0);
+
+	// Set the sampler state in the pixel shader.
+	deviceContext->PSSetSamplers(0, 1, &textureShader->sampleState);
+
+	// Render.
+	deviceContext->DrawIndexed(indexCount, 0, 0);
+
+	return true;
+}
+
+bool32 LoadTarga32BitIntoTexture(const char* filename, FTexture* tex)
+{
+	int32 error, bpp, imageSize;
+	FILE* filePtr;
+	uint32 count;
+	FTargaHeader targaFileHeader;
+	uint8* targaImage;
+
+	// Open the targa file for reading in binary.
+	error = fopen_s(&filePtr, filename, "rb");
+	if (error != 0)
+	{
+		return false;
+	}
+
+	// Read in the file header.
+	count = (uint32)fread(&targaFileHeader, sizeof(FTargaHeader), 1, filePtr);
+	if (count != 1)
+	{
+		return false;
+	}
+
+	// Get the important information from the header.
+	tex->height = (int32)targaFileHeader.height;
+	tex->width = (int32)targaFileHeader.width;
+	bpp = (int32)targaFileHeader.bpp;
+
+	// Allow both 24 and 32 bit. 24 will have a 255 value for alpha.
+	if (bpp != 24 && bpp != 32)
+	{
+		return false;
+	}
+
+	// Calculate the size of the 32 bit image data.
+	int32 bytesPerPixel = bpp / 8;;
+	imageSize = tex->width * tex->height * bytesPerPixel;
+
+	// Allocate memory for the targa image data.
+	targaImage = new uint8[imageSize];
+
+	// Read in the targa image data.
+	count = (uint32)fread(targaImage, 1, imageSize, filePtr);
+	if (count != imageSize)
+	{
+		delete[] targaImage;
+		return false;
+	}
+
+	// Close the file.
+	error = fclose(filePtr);
+	if (error != 0)
+	{
+		delete[] targaImage;
+		return false;
+	}
+
+	// Allocate memory for the targa destination data.
+	tex->targaData = new uint8[tex->width * tex->height * 4];
+
+	// Initialize the index into the targa destination data array.
+	uint32 index = 0;
+
+	// Initialize the index into the targa image data.
+	uint32 k = (tex->width * tex->height * bytesPerPixel) - (tex->width * bytesPerPixel);
+
+	// Now copy the targa image data into the targa destination array in the correct order since the targa format is stored upside down and also is not in RGBA order.
+	for (int32 v = 0; v < tex->height; v++)
+	{
+		for (int32 u = 0; u < tex->width; u++)
+		{
+			tex->targaData[index + 0] = targaImage[k + 2];  // Red.
+			tex->targaData[index + 1] = targaImage[k + 1];  // Green.
+			tex->targaData[index + 2] = targaImage[k + 0];  // Blue
+			// Alpha
+			if (bytesPerPixel == 4)
+			{
+				tex->targaData[index + 3] = targaImage[k + 3];
+			}
+			else
+			{
+				tex->targaData[index + 3] = 255; // add alpha
+			}
+
+			// Increment the indexes into the targa data.
+			k += bytesPerPixel;
+			index += 4;
+		}
+
+		// Set the targa image data index back to the preceding row at the beginning of the column since its reading it in upside down.
+		k -= (tex->width * bytesPerPixel * 2);
+	}
+
+	// Release the targa image data now that it was copied into the destination array.
+	delete[] targaImage;
+	targaImage = 0;
+
+	return true;
+}
+
+bool32 InitializeTexture(FTexture* tex, ID3D11Device* device, ID3D11DeviceContext* deviceContext, const char* filename)
+{
+	bool32 result;
+	D3D11_TEXTURE2D_DESC textureDesc;
+	HRESULT hResult;
+	uint32 rowPitch;
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+
+	// Load the targa image data into memory.
+	result = LoadTarga32BitIntoTexture(filename, tex);
+	if (!result)
+	{
+		return false;
+	}
+
+	// Setup the description of the texture.
+	textureDesc.Height = tex->height;
+	textureDesc.Width = tex->width;
+	textureDesc.MipLevels = 0;
+	textureDesc.ArraySize = 1;
+	textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	textureDesc.SampleDesc.Count = 1;
+	textureDesc.SampleDesc.Quality = 0;
+	textureDesc.Usage = D3D11_USAGE_DEFAULT;
+	textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+	textureDesc.CPUAccessFlags = 0;
+	textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+
+	// Create the empty texture.
+	hResult = device->CreateTexture2D(&textureDesc, NULL, &tex->texture);
+	if (FAILED(hResult))
+	{
+		return false;
+	}
+
+	// Set the row pitch of the targa image data.
+	rowPitch = (tex->width * 4/*bytesPerPixel*/) * sizeof(unsigned char);
+
+	// Copy the targa image data into the texture.
+	deviceContext->UpdateSubresource(tex->texture, 0, NULL, tex->targaData, rowPitch, 0);
+
+	// Setup the shader resource view description.
+	srvDesc.Format = textureDesc.Format;
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.MipLevels = -1;
+
+	// Create the shader resource view for the texture.
+	hResult = device->CreateShaderResourceView(tex->texture, &srvDesc, &tex->textureView);
+	if (FAILED(hResult))
+	{
+		return false;
+	}
+
+	// Generate mipmaps for this texture.
+	deviceContext->GenerateMips(tex->textureView);
+
+	// Release the targa image data now that the image data has been loaded into the texture.
+	delete[] tex->targaData;
+	tex->targaData = 0;
+
+	return true;
+}
 ////////////////////////////////////////////////////////////////////////////////
 // FModelD3D
 ////////////////////////////////////////////////////////////////////////////////
 internal bool32 InitializeModel(FModelD3D *model, ID3D11Device* device)
 {
-	FVertex* vertices;
+	FTextureVertex* vertices;
 	uint32* indices;
 	D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
 	D3D11_SUBRESOURCE_DATA vertexData, indexData;
@@ -554,7 +927,7 @@ internal bool32 InitializeModel(FModelD3D *model, ID3D11Device* device)
 
 	// Set the number of vertices in the vertex array and create it.
 	model->vertexCount = 4;
-	vertices = new FVertex[model->vertexCount];
+	vertices = new FTextureVertex[model->vertexCount];
 	if (!vertices)
 	{
 		return false;
@@ -568,22 +941,50 @@ internal bool32 InitializeModel(FModelD3D *model, ID3D11Device* device)
 		return false;
 	}
 
-	// Fill both the vertex and index array with the three points of the triangle as well as the index to each of the points in clockwise order of drawing.
-	vertices[0].position = DirectX::XMFLOAT3(-1.0f, 1.0f, 0.0f);  // Top left
-	vertices[0].color = DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-	vertices[1].position = DirectX::XMFLOAT3(1.0f, 1.0f, 0.0f);  // Top right
-	vertices[1].color = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-	vertices[2].position = DirectX::XMFLOAT3(-1.0f, -1.0f, 0.0f);  // Bottom left
-	vertices[2].color = DirectX::XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-	vertices[3].position = DirectX::XMFLOAT3(1.0f, -1.0f, 0.0f);  // Bottom right
-	vertices[3].color = DirectX::XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
+	// Triangle
+	{
+		//// Load the vertex array with data.
+		//vertices[0].position = DirectX::XMFLOAT3(-1.0f, -1.0f, 0.0f);  // Bottom left.
+		//vertices[0].texture = DirectX::XMFLOAT2(0.0f, 1.0f);
 
-	indices[0] = 0; indices[1] = 1; indices[2] = 2;  // Triangle 1
-	indices[3] = 2; indices[4] = 1; indices[5] = 3;  // Triangle 2
+		//vertices[1].position = DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f);  // Top middle.
+		//vertices[1].texture = DirectX::XMFLOAT2(0.5f, 0.0f);
+
+		//vertices[2].position = DirectX::XMFLOAT3(1.0f, -1.0f, 0.0f);  // Bottom right.
+		//vertices[2].texture = DirectX::XMFLOAT2(1.0f, 1.0f);
+
+		//// Load the index array with data.
+		//indices[0] = 0;  // Bottom left.
+		//indices[1] = 1;  // Top middle.
+		//indices[2] = 2;  // Bottom right.
+	}
+
+	// Square
+	{
+		// Fill both the vertex and index array with the three points of the triangle as well as the index to each of the points in clockwise order of drawing.
+		vertices[0].position = DirectX::XMFLOAT3(-1.0f, 1.0f, 0.0f);  // Top left
+		vertices[0].texture = DirectX::XMFLOAT2(0.0f, 0.0f);	      // Top left
+		//vertices[0].color = DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+
+		vertices[1].position = DirectX::XMFLOAT3(1.0f, 1.0f, 0.0f);  // Top right
+		vertices[1].texture = DirectX::XMFLOAT2(1.0f, 0.0f);		 // Top right
+		//vertices[1].color = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+
+		vertices[2].position = DirectX::XMFLOAT3(-1.0f, -1.0f, 0.0f);  // Bottom left
+		vertices[2].texture = DirectX::XMFLOAT2(0.0f, 1.0f);		   // Bottom left
+		//vertices[2].color = DirectX::XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+
+		vertices[3].position = DirectX::XMFLOAT3(1.0f, -1.0f, 0.0f);  // Bottom right
+		vertices[3].texture = DirectX::XMFLOAT2(1.0f, 1.0f);		  // Bottom right
+		//vertices[3].color = DirectX::XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
+
+		indices[0] = 0; indices[1] = 1; indices[2] = 2;  // Triangle 1
+		indices[3] = 2; indices[4] = 1; indices[5] = 3;  // Triangle 2
+	}
 
 	// Set up the description of the static vertex buffer.
 	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	vertexBufferDesc.ByteWidth = sizeof(FVertex) * model->vertexCount;
+	vertexBufferDesc.ByteWidth = sizeof(FTextureVertex) * model->vertexCount;
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	vertexBufferDesc.CPUAccessFlags = 0;
 	vertexBufferDesc.MiscFlags = 0;
@@ -637,7 +1038,7 @@ internal void RenderModel(FModelD3D* model, ID3D11DeviceContext* deviceContext)
 	uint32 offset;
 
 	// Set vertex buffer stride and offset.
-	stride = sizeof(FVertex);
+	stride = sizeof(FTextureVertex);
 	offset = 0;
 
 	// Set the vertex buffer to active in the input assembler so it can be rendered.
@@ -650,6 +1051,18 @@ internal void RenderModel(FModelD3D* model, ID3D11DeviceContext* deviceContext)
 	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
+internal bool32 LoadModelTexture(FModelD3D* model, ID3D11Device* device, ID3D11DeviceContext* deviceContext, const char* filename)
+{
+	bool32 result;
+
+	result = InitializeTexture(&model->texture, device, deviceContext, filename);
+	if (!result)
+	{
+		return false;
+	}
+
+	return true;
+}
 ////////////////////////////////////////////////////////////////////////////////
 // FCameraD3D
 ////////////////////////////////////////////////////////////////////////////////
@@ -721,7 +1134,7 @@ bool32 Initialize(FApplication* application, int32 screenWidth, int32 screenHeig
 		return result;
 	}
 
-	application->camera.position = { 0.0f, 0.0f, -5.0f };
+	application->camera.position = { 0.0f, 0.0f, -2.5f };
 
 	result = InitializeModel(&application->model, fdirect3D->device);
 	if (!result)
@@ -729,11 +1142,13 @@ bool32 Initialize(FApplication* application, int32 screenWidth, int32 screenHeig
 		MessageBox(window, L"Could not initialize the model object.", L"Error", MB_OK);
 		return result;
 	}
+	const char* textureFileName = "src\\textures\\mosaic_diffuseoriginal.tga";
+	LoadModelTexture(&application->model, fdirect3D->device, fdirect3D->deviceContext, textureFileName);
 
-	result = InitializeColorShader(&application->colorShader, fdirect3D->device, window);
+	result = InitializeTextureShader(&application->textureShader, fdirect3D->device, window);
 	if (!result)
 	{
-		MessageBox(window, L"Could not initialize the color shader object.", L"Error", MB_OK);
+		MessageBox(window, L"Could not initialize the texture shader.", L"Error", MB_OK);
 		return result;
 	}
 
@@ -747,7 +1162,7 @@ bool32 Render(FApplication* application)
 	FD3D* fdirect3D = &application->direct3D;
 
 	// Clear the buffers to begin the scene.
-	BeginScene(fdirect3D, color_rgba{ 0.0f, 0.0f, 0.0f, 1.0f });
+	BeginScene(fdirect3D, color_rgba{ 0.0f, 0.0f, 0.0f, 3.0f });
 
 	// Generate the view matrix based on the camera's position.
 	RenderCamera(&application->camera);
@@ -762,7 +1177,8 @@ bool32 Render(FApplication* application)
 	RenderModel(&application->model, fdirect3D->deviceContext);
 
 	// Render the model using the color shader.
-	result = RenderColorShader(&application->colorShader, fdirect3D->deviceContext, application->model.indexCount, worldMatrix, viewMatrix, projectionMatrix);
+	result = RenderTextureShader(&application->textureShader, fdirect3D->deviceContext, application->model.indexCount,
+		worldMatrix, viewMatrix, projectionMatrix, application->model.texture.textureView);
 	if (!result)
 	{
 		return false;
