@@ -137,6 +137,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\fado_d3d.h" />
+    <ClInclude Include="src\code\fado_d3d_types.h" />
     <ClInclude Include="src\code\fado_types.h" />
     <ClInclude Include="src\code\win32_fado.h" />
   </ItemGroup>

@@ -28,7 +28,7 @@ struct Win32System
 	HWND window;
 
 	Win32Input input;
-	FApplication application;
+	FRenderWorld world;
 };
 
 ///////////////////////////////

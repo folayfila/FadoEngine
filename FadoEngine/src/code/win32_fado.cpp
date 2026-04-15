@@ -166,7 +166,7 @@ internal bool32 Win32Initialize(Win32System* win32System)
 	int32 screenHeight = 0;
 	Win32SystemInitializeWindows(win32System, screenWidth, screenHeight);
 
-	result = Initialize(&win32System->application, screenWidth, screenHeight, VSYNC_ENABLED, win32System->window, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR);
+	result = Initialize(&win32System->world, screenWidth, screenHeight, VSYNC_ENABLED, win32System->window, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR);
 
 	return result;
 }
@@ -180,7 +180,7 @@ internal bool32 Win32Frame(Win32System* win32System)
 	{
 		return result;
 	}
-	result = Render(&win32System->application);
+	result = Render(&win32System->world);
 
 	return result;
 }

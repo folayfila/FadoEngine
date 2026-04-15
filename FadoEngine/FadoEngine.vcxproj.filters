@@ -35,6 +35,9 @@
     <ClInclude Include="src\code\win32_fado.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\code\fado_d3d_types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\shaders\color.hlsl">

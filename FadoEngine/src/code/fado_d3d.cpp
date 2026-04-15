@@ -363,7 +363,7 @@ internal void ResetViewport(FD3D *fdirect3D)
 ////////////////////////////////////////////////////////////////////////////////
 // FColorShaderD3D
 ////////////////////////////////////////////////////////////////////////////////
-internal bool32 InitializeColorShader(FColorShaderD3D *colorShader, ID3D11Device* device, HWND window)
+internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* device, HWND window)
 {
 	bool32 result;
 	wchar hlslFileName[128];
@@ -479,7 +479,7 @@ internal bool32 InitializeColorShader(FColorShaderD3D *colorShader, ID3D11Device
 	return true;
 }
 
-internal bool32 SetColorShaderParameters(FColorShaderD3D* colorShader, ID3D11DeviceContext* deviceContext, DirectX::XMMATRIX worldMatrix, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix)
+internal bool32 SetColorShaderParameters(FColorShader* colorShader, ID3D11DeviceContext* deviceContext, DirectX::XMMATRIX worldMatrix, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix)
 {
 	HRESULT result;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -518,7 +518,7 @@ internal bool32 SetColorShaderParameters(FColorShaderD3D* colorShader, ID3D11Dev
 	return true;
 }
 
-internal bool32 RenderColorShader(FColorShaderD3D* colorShader, ID3D11DeviceContext* deviceContext, int32 indexCount, DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection)
+internal bool32 RenderColorShader(FColorShader* colorShader, ID3D11DeviceContext* deviceContext, int32 indexCount, DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection)
 {
 	// Set the shader parameters that it will use for rendering.
 	if (!SetColorShaderParameters(colorShader, deviceContext, world, view, projection))
@@ -541,9 +541,9 @@ internal bool32 RenderColorShader(FColorShaderD3D* colorShader, ID3D11DeviceCont
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// FTextureShaderD3D / FTexture
+// FTextureShaderD3D
 ////////////////////////////////////////////////////////////////////////////////
-internal bool32 InitializeTextureShader(FTextureShaderD3D* textureShader, ID3D11Device* device, HWND window)
+internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Device* device, HWND window)
 {
 	bool32 result;
 	wchar hlslFileName[128];
@@ -572,7 +572,6 @@ internal bool32 InitializeTextureShader(FTextureShaderD3D* textureShader, ID3D11
 	D3D11_INPUT_ELEMENT_DESC polygonLayout[2];
 	uint32 numElements;
 	D3D11_BUFFER_DESC matrixBufferDesc;
-	D3D11_SAMPLER_DESC samplerDesc;
 
 	// Compile the vertex shader code.
 	result = D3DCompileFromFile(hlslFileName, NULL, NULL, vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
@@ -658,6 +657,7 @@ internal bool32 InitializeTextureShader(FTextureShaderD3D* textureShader, ID3D11
 	}
 
 	// Create a texture sampler state description.
+	D3D11_SAMPLER_DESC samplerDesc;
 	samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -682,7 +682,7 @@ internal bool32 InitializeTextureShader(FTextureShaderD3D* textureShader, ID3D11
 	return true;
 }
 
-internal bool32 SetTextureShaderParameters(FTextureShaderD3D* textureShader, ID3D11DeviceContext* deviceContext, DirectX::XMMATRIX worldMatrix, DirectX::XMMATRIX viewMatrix,
+internal bool32 SetTextureShaderParameters(FTextureShader* textureShader, ID3D11DeviceContext* deviceContext, DirectX::XMMATRIX worldMatrix, DirectX::XMMATRIX viewMatrix,
 	DirectX::XMMATRIX projectionMatrix, ID3D11ShaderResourceView* texture)
 {
 	HRESULT result;
@@ -725,7 +725,7 @@ internal bool32 SetTextureShaderParameters(FTextureShaderD3D* textureShader, ID3
 	return true;
 }
 
-internal bool32 RenderTextureShader(FTextureShaderD3D* textureShader, ID3D11DeviceContext* deviceContext, int32 indexCount,
+internal bool32 RenderTextureShader(FTextureShader* textureShader, ID3D11DeviceContext* deviceContext, int32 indexCount,
 	DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection, ID3D11ShaderResourceView* texture)
 {
 	// Set the shader parameters that it will use for rendering.
@@ -749,6 +749,10 @@ internal bool32 RenderTextureShader(FTextureShaderD3D* textureShader, ID3D11Devi
 
 	return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// FTexture
+////////////////////////////////////////////////////////////////////////////////
 
 bool32 LoadTarga32BitIntoTexture(const char* filename, FTexture* tex)
 {
@@ -912,79 +916,63 @@ bool32 InitializeTexture(FTexture* tex, ID3D11Device* device, ID3D11DeviceContex
 
 	return true;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
-// FModelD3D
+// Model
 ////////////////////////////////////////////////////////////////////////////////
-internal bool32 InitializeModel(FModelD3D *model, ID3D11Device* device)
+internal void MakeTriangle(FTextureVertex* vertices, uint32* indices)
 {
-	FTextureVertex* vertices;
-	uint32* indices;
+	// Load the vertex array with data.
+	vertices[0].position = DirectX::XMFLOAT3(-1.0f, -1.0f, 0.0f);  // Bottom left.
+	vertices[0].texture = DirectX::XMFLOAT2(0.0f, 1.0f);
+
+	vertices[1].position = DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f);  // Top middle.
+	vertices[1].texture = DirectX::XMFLOAT2(0.5f, 0.0f);
+
+	vertices[2].position = DirectX::XMFLOAT3(1.0f, -1.0f, 0.0f);  // Bottom right.
+	vertices[2].texture = DirectX::XMFLOAT2(1.0f, 1.0f);
+
+	// Load the index array with data.
+	indices[0] = 0;  // Bottom left.
+	indices[1] = 1;  // Top middle.
+	indices[2] = 2;  // Bottom right.
+}
+
+internal void MakeQuad(FTextureVertex* vertices, uint32* indices)
+{
+	// Fill both the vertex and index array with the three points of the triangle as well as the index to each of the points in clockwise order of drawing.
+	vertices[0].position = DirectX::XMFLOAT3(-1.0f, 1.0f, 0.0f);  // Top left
+	vertices[0].texture = DirectX::XMFLOAT2(0.0f, 0.0f);
+	//vertices[0].color = DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+
+	vertices[1].position = DirectX::XMFLOAT3(1.0f, 1.0f, 0.0f);  // Top right
+	vertices[1].texture = DirectX::XMFLOAT2(1.0f, 0.0f);
+	//vertices[1].color = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+
+	vertices[2].position = DirectX::XMFLOAT3(-1.0f, -1.0f, 0.0f);  // Bottom left
+	vertices[2].texture = DirectX::XMFLOAT2(0.0f, 1.0f);
+	//vertices[2].color = DirectX::XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+
+	vertices[3].position = DirectX::XMFLOAT3(1.0f, -1.0f, 0.0f);  // Bottom right
+	vertices[3].texture = DirectX::XMFLOAT2(1.0f, 1.0f);
+	//vertices[3].color = DirectX::XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
+
+	indices[0] = 0; indices[1] = 1; indices[2] = 2;  // Triangle 1
+	indices[3] = 2; indices[4] = 1; indices[5] = 3;  // Triangle 2
+}
+
+internal bool32 UploadMesh(FMeshBuffer *mesh, ID3D11Device* device, FTextureVertex* vertices, uint32 vCount, uint32* indices, uint32 iCount)
+{
 	D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
 	D3D11_SUBRESOURCE_DATA vertexData, indexData;
 	HRESULT result;
 
-	// First create two temporary arrays to hold the vertex and index data that we will use later to populate the final buffers with.
-
-	// Set the number of vertices in the vertex array and create it.
-	model->vertexCount = 4;
-	vertices = new FTextureVertex[model->vertexCount];
-	if (!vertices)
-	{
-		return false;
-	}
-
-	// Set the number of indices in the index array and create it.
-	model->indexCount = 6;
-	indices = new uint32[model->indexCount];
-	if (!indices)
-	{
-		return false;
-	}
-
-	// Triangle
-	{
-		//// Load the vertex array with data.
-		//vertices[0].position = DirectX::XMFLOAT3(-1.0f, -1.0f, 0.0f);  // Bottom left.
-		//vertices[0].texture = DirectX::XMFLOAT2(0.0f, 1.0f);
-
-		//vertices[1].position = DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f);  // Top middle.
-		//vertices[1].texture = DirectX::XMFLOAT2(0.5f, 0.0f);
-
-		//vertices[2].position = DirectX::XMFLOAT3(1.0f, -1.0f, 0.0f);  // Bottom right.
-		//vertices[2].texture = DirectX::XMFLOAT2(1.0f, 1.0f);
-
-		//// Load the index array with data.
-		//indices[0] = 0;  // Bottom left.
-		//indices[1] = 1;  // Top middle.
-		//indices[2] = 2;  // Bottom right.
-	}
-
-	// Square
-	{
-		// Fill both the vertex and index array with the three points of the triangle as well as the index to each of the points in clockwise order of drawing.
-		vertices[0].position = DirectX::XMFLOAT3(-1.0f, 1.0f, 0.0f);  // Top left
-		vertices[0].texture = DirectX::XMFLOAT2(0.0f, 0.0f);	      // Top left
-		//vertices[0].color = DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-
-		vertices[1].position = DirectX::XMFLOAT3(1.0f, 1.0f, 0.0f);  // Top right
-		vertices[1].texture = DirectX::XMFLOAT2(1.0f, 0.0f);		 // Top right
-		//vertices[1].color = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-
-		vertices[2].position = DirectX::XMFLOAT3(-1.0f, -1.0f, 0.0f);  // Bottom left
-		vertices[2].texture = DirectX::XMFLOAT2(0.0f, 1.0f);		   // Bottom left
-		//vertices[2].color = DirectX::XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-
-		vertices[3].position = DirectX::XMFLOAT3(1.0f, -1.0f, 0.0f);  // Bottom right
-		vertices[3].texture = DirectX::XMFLOAT2(1.0f, 1.0f);		  // Bottom right
-		//vertices[3].color = DirectX::XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
-
-		indices[0] = 0; indices[1] = 1; indices[2] = 2;  // Triangle 1
-		indices[3] = 2; indices[4] = 1; indices[5] = 3;  // Triangle 2
-	}
+	mesh->vertexCount = vCount;
+	mesh->indexCount = iCount;
 
 	// Set up the description of the static vertex buffer.
 	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	vertexBufferDesc.ByteWidth = sizeof(FTextureVertex) * model->vertexCount;
+	vertexBufferDesc.ByteWidth = sizeof(FTextureVertex) * vCount;
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	vertexBufferDesc.CPUAccessFlags = 0;
 	vertexBufferDesc.MiscFlags = 0;
@@ -996,7 +984,7 @@ internal bool32 InitializeModel(FModelD3D *model, ID3D11Device* device)
 	vertexData.SysMemSlicePitch = 0;
 
 	// Now create the vertex buffer.
-	result = device->CreateBuffer(&vertexBufferDesc, &vertexData, &model->vertexBuffer);
+	result = device->CreateBuffer(&vertexBufferDesc, &vertexData, &mesh->vertexBuffer);
 	if (FAILED(result))
 	{
 		return false;
@@ -1004,7 +992,7 @@ internal bool32 InitializeModel(FModelD3D *model, ID3D11Device* device)
 
 	// Set up the description of the static index buffer.
 	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	indexBufferDesc.ByteWidth = sizeof(uint32) * model->indexCount;
+	indexBufferDesc.ByteWidth = sizeof(uint32) * iCount;
 	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	indexBufferDesc.CPUAccessFlags = 0;
 	indexBufferDesc.MiscFlags = 0;
@@ -1016,23 +1004,30 @@ internal bool32 InitializeModel(FModelD3D *model, ID3D11Device* device)
 	indexData.SysMemSlicePitch = 0;
 
 	// Create the index buffer.
-	result = device->CreateBuffer(&indexBufferDesc, &indexData, &model->indexBuffer);
+	result = device->CreateBuffer(&indexBufferDesc, &indexData, &mesh->indexBuffer);
 	if (FAILED(result))
 	{
 		return false;
 	}
 
-	// Release the arrays now that the vertex and index buffers have been created and loaded.
-	delete[] vertices;
-	vertices = 0;
-
-	delete[] indices;
-	indices = 0;
-
 	return true;
 }
 
-internal void RenderModel(FModelD3D* model, ID3D11DeviceContext* deviceContext)
+internal HMesh LoadMesh(FRenderWorld* world, ID3D11Device* device, FTextureVertex* verts, uint32 vCount, uint32* indices, uint32 iCount)
+{
+	HMesh handle = world->meshCount++;
+	UploadMesh(&world->meshes[handle], device, verts, vCount, indices, iCount);
+	return handle;
+}
+
+internal HTexture LoadTexture(FRenderWorld* world, ID3D11Device* device, ID3D11DeviceContext* context, const char* fileName)
+{
+	HTexture handle = world->texturesCount++;
+	InitializeTexture(&world->textures[handle], device, context, fileName);
+	return handle;
+}
+
+internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 {
 	uint32 stride;
 	uint32 offset;
@@ -1042,31 +1037,19 @@ internal void RenderModel(FModelD3D* model, ID3D11DeviceContext* deviceContext)
 	offset = 0;
 
 	// Set the vertex buffer to active in the input assembler so it can be rendered.
-	deviceContext->IASetVertexBuffers(0, 1, &model->vertexBuffer, &stride, &offset);
+	deviceContext->IASetVertexBuffers(0, 1, &mesh->vertexBuffer, &stride, &offset);
 
 	// Set the index buffer to active in the input assembler so it can be rendered.
-	deviceContext->IASetIndexBuffer(model->indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+	deviceContext->IASetIndexBuffer(mesh->indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
 	// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
 	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
-internal bool32 LoadModelTexture(FModelD3D* model, ID3D11Device* device, ID3D11DeviceContext* deviceContext, const char* filename)
-{
-	bool32 result;
-
-	result = InitializeTexture(&model->texture, device, deviceContext, filename);
-	if (!result)
-	{
-		return false;
-	}
-
-	return true;
-}
 ////////////////////////////////////////////////////////////////////////////////
 // FCameraD3D
 ////////////////////////////////////////////////////////////////////////////////
-internal void RenderCamera(FCameraD3D* camera)
+internal void RenderCamera(FCamera* camera)
 {
 	DirectX::XMFLOAT3 up, pos, lookAt;
 	DirectX::XMVECTOR upVector, positionVector, lookAtVector;
@@ -1122,30 +1105,45 @@ internal void RenderCamera(FCameraD3D* camera)
 ////////////////////////////////////
 /// Global Functions
 ////////////////////////////////////
-bool32 Initialize(FApplication* application, int32 screenWidth, int32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, float screenDepth, float screenNear)
+bool32 Initialize(FRenderWorld* world, int32 screenWidth, int32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, float screenDepth, float screenNear)
 {
 	bool32 result = true;
 
-	FD3D* fdirect3D = &application->direct3D;
-	result = InitializeFD3D(fdirect3D, screenWidth, screenHeight, vsync, window, fullScreen, screenDepth, screenNear);
+	FD3D* d3d = &world->d3d;
+	result = InitializeFD3D(d3d, screenWidth, screenHeight, vsync, window, fullScreen, screenDepth, screenNear);
 	if (!result)
 	{
 		MessageBox(window, L"Could not initialize Direct3D", L"Error", MB_OK);
 		return result;
 	}
 
-	application->camera.position = { 0.0f, 0.0f, -2.5f };
+	world->camera.position = { 0.0f, 0.0f, -2.5f };
 
-	result = InitializeModel(&application->model, fdirect3D->device);
-	if (!result)
-	{
-		MessageBox(window, L"Could not initialize the model object.", L"Error", MB_OK);
-		return result;
-	}
+	// > Note: Geometry stays here for now until we load from files.
+#define DRAW_TRIANGLE 1
+#if DRAW_TRIANGLE
+#define VCOUNT 3
+#define ICOUNT 3
+#else
+#define VCOUNT 4
+#define ICOUNT 6
+#endif
+
+	FTextureVertex vertices[VCOUNT] = {};
+	uint32 indices[ICOUNT] = {};
+
+#if DRAW_TRIANGLE
+	MakeTriangle(vertices, indices);
+#else
+	MakeQuad(vertices, indices);
+#endif
+
+	HMesh quad = LoadMesh(world, d3d->device, vertices, VCOUNT, indices, ICOUNT);
+
 	const char* textureFileName = "src\\textures\\mosaic_diffuseoriginal.tga";
-	LoadModelTexture(&application->model, fdirect3D->device, fdirect3D->deviceContext, textureFileName);
+	HTexture tex = LoadTexture(world, d3d->device, d3d->deviceContext, textureFileName);
 
-	result = InitializeTextureShader(&application->textureShader, fdirect3D->device, window);
+	result = InitializeTextureShader(&world->textureShader, d3d->device, window);
 	if (!result)
 	{
 		MessageBox(window, L"Could not initialize the texture shader.", L"Error", MB_OK);
@@ -1155,37 +1153,35 @@ bool32 Initialize(FApplication* application, int32 screenWidth, int32 screenHeig
 	return result;
 }
 
-bool32 Render(FApplication* application)
+bool32 Render(FRenderWorld* world)
 {
 	bool32 result = true;
 
-	FD3D* fdirect3D = &application->direct3D;
+	FD3D* d3d = &world->d3d;
 
 	// Clear the buffers to begin the scene.
-	BeginScene(fdirect3D, color_rgba{ 0.0f, 0.0f, 0.0f, 3.0f });
+	BeginScene(d3d, color_rgba{ 0.0f, 0.0f, 0.0f, 3.0f });
 
 	// Generate the view matrix based on the camera's position.
-	RenderCamera(&application->camera);
+	RenderCamera(&world->camera);
 
-	// Get the world, view, and projection matrices from the camera and d3d objects.
-	DirectX::XMMATRIX worldMatrix, viewMatrix, projectionMatrix;
-	worldMatrix = fdirect3D->worldMatrix;
-	viewMatrix = application->camera.viewMatrix;
-	projectionMatrix = fdirect3D->projectionMatrix;
+	FMeshBuffer* mesh = &world->meshes[0];
+	FTexture* tex = &world->textures[0];
 
 	// Put the model vertex and index buffers on the graphics pipeline to prepare them for drawing.
-	RenderModel(&application->model, fdirect3D->deviceContext);
+	RenderMesh(mesh, d3d->deviceContext);
 
 	// Render the model using the color shader.
-	result = RenderTextureShader(&application->textureShader, fdirect3D->deviceContext, application->model.indexCount,
-		worldMatrix, viewMatrix, projectionMatrix, application->model.texture.textureView);
+	result = RenderTextureShader(&world->textureShader, d3d->deviceContext, mesh->indexCount,
+		d3d->worldMatrix, world->camera.viewMatrix, d3d->projectionMatrix, tex->textureView);
+
 	if (!result)
 	{
 		return false;
 	}
 
 	// Present the rendered scene to the screen.
-	EndScene(fdirect3D);
+	EndScene(d3d);
 
 	return result;
 }
