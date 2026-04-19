@@ -47,5 +47,8 @@
     <None Include="src\shaders\texture.hlsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="src\shaders\light.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

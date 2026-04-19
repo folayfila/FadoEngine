@@ -87,6 +87,35 @@ struct FTextureVertex
 	DirectX::XMFLOAT2 texture;
 };
 
+///////////////
+// Textured Lit Shader (texture shader that also calcules light)
+///////////////
+struct FTextureLightShader
+{
+	ID3D11VertexShader* vertexShader;
+	ID3D11PixelShader* pixelShader;
+	ID3D11InputLayout* layout;
+	ID3D11SamplerState* sampleState;
+	ID3D11Buffer* matrixBuffer;
+	ID3D11Buffer* lightBuffer;
+	DirectX::XMFLOAT4 diffuseColor;
+	DirectX::XMFLOAT3 lightDirection;
+};
+
+struct FTextureLightVertex
+{
+	DirectX::XMFLOAT3 position;
+	DirectX::XMFLOAT2 texture;
+	DirectX::XMFLOAT3 normal;
+};
+
+struct FLightBuffer
+{
+	DirectX::XMFLOAT4 diffuseColor;
+	DirectX::XMFLOAT3 lightDirection;
+	float padding;  // Added extra padding so structure is a multiple of 16 for CreateBuffer function requirements.
+};
+
 struct FTexture
 {
 	uint8* targaData;
@@ -143,7 +172,7 @@ struct FRenderWorld
 {
 	FD3D d3d;
 	FCamera camera;
-	FTextureShader textureShader;
+	FTextureLightShader texLightShader;
 
 	FMeshBuffer meshes[MAX_MESHES];		// models
 	FTexture textures[MAX_TEXTURES];	

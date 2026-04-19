@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Filename: texture.hlsl
+// Filename: light.hlsl
 ////////////////////////////////////////////////////////////////////////////////
 
 /////////////
@@ -10,6 +10,13 @@ cbuffer MatrixBuffer
     matrix worldMatrix;
     matrix viewMatrix;
     matrix projectionMatrix;
+};
+
+cbuffer LightBuffer
+{
+    float4 diffuseColor;
+    float3 lightDirection;
+    float padding;
 };
 
 // t0, s0 are GPU binding slots. They connect shader variables to actual GPU resources.
@@ -27,12 +34,14 @@ struct VertexInputType
 {
     float4 position : POSITION;
     float2 tex : TEXCOORD0;
+    float3 normal : NORMAL;
 };
 
 struct PixelInputType
 {
     float4 position : SV_POSITION; // SV = System Value
     float2 tex : TEXCOORD0;
+    float3 normal : NORMAL;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,6 +63,13 @@ PixelInputType VertexShaderEntry(VertexInputType input)
     // Store the input uv (texture coordinates) for the pixel shader to use.
     output.tex = input.tex;
     
+    // Calculate the normal vector against the world matrix only.
+    output.normal = mul(input.normal, (float3x3) worldMatrix);
+    
+    // NOTE: Sometimes these normals need to be re-normalized inside the pixel shader due to the interpolation that occurs.
+    // Normalize the normal vector.
+    output.normal = normalize(output.normal);
+    
     return output;
 }
 
@@ -63,9 +79,29 @@ PixelInputType VertexShaderEntry(VertexInputType input)
 float4 PixelShaderEntry(PixelInputType input) : SV_TARGET
 {
     float4 textureColor;
+    float3 lightDir;
+    float lightIntensity;
+    float4 color;
     
     // Sample the pixel color from the texture using the sampler at this texture coordinate location.
     textureColor = ShaderTexture.Sample(SampleType, input.tex);
     
-    return textureColor;
+    // Invert the light direction for calculations.
+    lightDir = -lightDirection;
+    
+    // Calculate the amount of light on this pixel.
+    /*
+      1 -> facing light (bright)
+      0 -> perpendicular (dark)
+    < 0 -> facing away
+    */
+    lightIntensity = saturate(dot(input.normal, lightDir));     // saturate = clamp(0-1)
+    
+    // Determine the final amount of diffuse color based on the diffuse color combined with the light intensity.
+    color = saturate(diffuseColor * lightIntensity);
+    
+    // Multiply the texture pixel and the final diffuse color to get the final pixel color result.
+    color *= textureColor;
+    
+    return color;
 }
