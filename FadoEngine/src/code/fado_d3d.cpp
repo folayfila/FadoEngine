@@ -1,4 +1,5 @@
 #include "fado_d3d.h"
+#include "../code/glb/fado_glb.h"
 
 ///////////////////////////
 // Constants
@@ -10,17 +11,17 @@ const char* k_psEntryFuncName = "PixelShaderEntry";
 ////////////////////////////////////////////////////////////////////////////////
 // FD3D
 ////////////////////////////////////////////////////////////////////////////////
-internal bool32 InitializeFD3D(FD3D* fdirect3D, int32 screenWidth, int32 screenHeight, bool32 vsync, HWND Window, bool32 fullScreen, float screenDepth, float screenNear)
+internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeight, bool32 vsync, HWND Window, bool32 fullScreen, f32 screenDepth, f32 screenNear)
 {
 	HRESULT result;
 	IDXGIFactory* factory;
 	IDXGIAdapter* adapter;
 	IDXGIOutput* adapterOutput;
-	uint32 numModes, numerator, denominator;
-	uint64 stringLength;
+	u32 numModes, numerator, denominator;
+	u64 stringLength;
 	DXGI_MODE_DESC* displayModeList;
 	DXGI_ADAPTER_DESC adapterDesc;
-	int32 error;
+	i32 error;
 	DXGI_SWAP_CHAIN_DESC swapChainDesc;
 	D3D_FEATURE_LEVEL featureLevel;
 	ID3D11Texture2D* backBufferPtr;
@@ -28,7 +29,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, int32 screenWidth, int32 screenH
 	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
 	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 	D3D11_RASTERIZER_DESC rasterDesc;
-	float fieldOfView, screenAspect;
+	f32 fieldOfView, screenAspect;
 
 	// Store the vsync setting.
 	fdirect3D->vsyncEnabled = vsync;
@@ -77,11 +78,11 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, int32 screenWidth, int32 screenH
 
 	// Now go through all the display modes and find the one that matches the screen width and height.
 	// When a match is found store the numerator and denominator of the refresh rate for that monitor.
-	for (uint32 i = 0; i < numModes; i++)
+	for (u32 i = 0; i < numModes; i++)
 	{
-		if (displayModeList[i].Width == (uint32)screenWidth)
+		if (displayModeList[i].Width == (u32)screenWidth)
 		{
-			if (displayModeList[i].Height == (uint32)screenHeight)
+			if (displayModeList[i].Height == (u32)screenHeight)
 			{
 				numerator = displayModeList[i].RefreshRate.Numerator;
 				denominator = displayModeList[i].RefreshRate.Denominator;
@@ -97,7 +98,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, int32 screenWidth, int32 screenH
 	}
 
 	// Store the dedicated video card memory in megabytes.
-	fdirect3D->videoCardMemory = (int32)(adapterDesc.DedicatedVideoMemory / 1024 / 1024);
+	fdirect3D->videoCardMemory = (i32)(adapterDesc.DedicatedVideoMemory / 1024 / 1024);
 
 	// Convert the name of the video card to a character array and store it.
 	error = wcstombs_s(&stringLength, fdirect3D->videoCardDescription, 128, adapterDesc.Description, 128);
@@ -325,7 +326,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, int32 screenWidth, int32 screenH
 
 internal void BeginScene(FD3D *fdirect3D, color_rgba color)
 {
-	float colorArr[4];
+	f32 colorArr[4];
 
 	// Setup the color to clear the buffer to.
 	colorArr[0] = color.r;
@@ -374,7 +375,7 @@ internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* d
 {
 	bool32 result;
 	wchar hlslFileName[128];
-	int32 error;
+	i32 error;
 
 	// > TODO: Write a good relative path loader or sth.
 	// Set the filename of the hlsl shader.
@@ -394,7 +395,7 @@ internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* d
 	ID3D10Blob* vertexShaderBuffer;
 	ID3D10Blob* pixelShaderBuffer;
 	D3D11_INPUT_ELEMENT_DESC polygonLayout[2];
-	uint32 numElements;
+	u32 numElements;
 	D3D11_BUFFER_DESC matrixBufferDesc;
 
 	// Compile the vertex shader code.
@@ -488,7 +489,7 @@ internal bool32 SetColorShaderParameters(FColorShader* colorShader, ID3D11Device
 	HRESULT result;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	FMatrixBuffer* dataPtr;
-	uint32 bufferNumber;
+	u32 bufferNumber;
 
 	// Transpose the matrices to prepare them for the shader.
 	worldMatrix = XMMatrixTranspose(worldMatrix);
@@ -522,7 +523,7 @@ internal bool32 SetColorShaderParameters(FColorShader* colorShader, ID3D11Device
 	return true;
 }
 
-internal bool32 RenderColorShader(FColorShader* colorShader, ID3D11DeviceContext* deviceContext, int32 indexCount, DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection)
+internal bool32 RenderColorShader(FColorShader* colorShader, ID3D11DeviceContext* deviceContext, i32 indexCount, DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection)
 {
 	// Set the shader parameters that it will use for rendering.
 	if (!SetColorShaderParameters(colorShader, deviceContext, world, view, projection))
@@ -551,7 +552,7 @@ internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Dev
 {
 	bool32 result;
 	wchar hlslFileName[128];
-	int32 error;
+	i32 error;
 
 	// > TODO: Write a good relative path loader or sth.
 	// Set the filename of the hlsl shader.
@@ -571,7 +572,7 @@ internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Dev
 	ID3D10Blob* vertexShaderBuffer;
 	ID3D10Blob* pixelShaderBuffer;
 	D3D11_INPUT_ELEMENT_DESC polygonLayout[2];
-	uint32 numElements;
+	u32 numElements;
 	D3D11_BUFFER_DESC matrixBufferDesc;
 
 	// Compile the vertex shader code.
@@ -689,7 +690,7 @@ internal bool32 SetTextureShaderParameters(FTextureShader* textureShader, ID3D11
 	HRESULT result;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	FMatrixBuffer* dataPtr;
-	uint32 bufferNumber;
+	u32 bufferNumber;
 
 	// Transpose the matrices to prepare them for the shader.
 	worldMatrix = XMMatrixTranspose(worldMatrix);
@@ -726,7 +727,7 @@ internal bool32 SetTextureShaderParameters(FTextureShader* textureShader, ID3D11
 	return true;
 }
 
-internal bool32 RenderTextureShader(FTextureShader* textureShader, ID3D11DeviceContext* deviceContext, int32 indexCount,
+internal bool32 RenderTextureShader(FTextureShader* textureShader, ID3D11DeviceContext* deviceContext, i32 indexCount,
 	DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection, ID3D11ShaderResourceView* texture)
 {
 	// Set the shader parameters that it will use for rendering.
@@ -758,7 +759,7 @@ internal bool32 InitializeLightShader(FTextureLightShader* lightShader, ID3D11De
 {
 	bool32 result;
 	wchar hlslFileName[128];
-	int32 error;
+	i32 error;
 
 	// > TODO: Write a good relative path loader or sth.
 	// Set the filename of the hlsl shader.
@@ -778,7 +779,7 @@ internal bool32 InitializeLightShader(FTextureLightShader* lightShader, ID3D11De
 	ID3D10Blob* vertexShaderBuffer;
 	ID3D10Blob* pixelShaderBuffer;
 	D3D11_INPUT_ELEMENT_DESC polygonLayout[3];
-	uint32 numElements;
+	u32 numElements;
 	D3D11_BUFFER_DESC matrixBufferDesc;
 
 	// Compile the vertex shader code.
@@ -923,7 +924,7 @@ internal bool32 SetLightShaderParameters(FTextureLightShader* lightShader, ID3D1
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	FMatrixBuffer* dataPtr;
 	FLightBuffer* lightDataPtr;
-	uint32 bufferNumber;
+	u32 bufferNumber;
 
 	// Transpose the matrices to prepare them for the shader.
 	worldMatrix = XMMatrixTranspose(worldMatrix);
@@ -984,7 +985,7 @@ internal bool32 SetLightShaderParameters(FTextureLightShader* lightShader, ID3D1
 	return true;
 }
 
-internal bool32 RenderLightShader(FTextureLightShader* lightShader, ID3D11DeviceContext* deviceContext, int32 indexCount,
+internal bool32 RenderLightShader(FTextureLightShader* lightShader, ID3D11DeviceContext* deviceContext, i32 indexCount,
 	DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection,
 	ID3D11ShaderResourceView* texture, DirectX::XMFLOAT3 lightDirection, DirectX::XMFLOAT4 diffuseColor)
 {
@@ -1016,11 +1017,11 @@ internal bool32 RenderLightShader(FTextureLightShader* lightShader, ID3D11Device
 
 bool32 LoadTarga32BitIntoTexture(const char* filename, FTexture* tex)
 {
-	int32 error, bpp, imageSize;
+	i32 error, bpp, imageSize;
 	FILE* filePtr;
-	uint32 count;
+	u32 count;
 	FTargaHeader targaFileHeader;
-	uint8* targaImage;
+	u8* targaImage;
 
 	// Open the targa file for reading in binary.
 	error = fopen_s(&filePtr, filename, "rb");
@@ -1030,16 +1031,16 @@ bool32 LoadTarga32BitIntoTexture(const char* filename, FTexture* tex)
 	}
 
 	// Read in the file header.
-	count = (uint32)fread(&targaFileHeader, sizeof(FTargaHeader), 1, filePtr);
+	count = (u32)fread(&targaFileHeader, sizeof(FTargaHeader), 1, filePtr);
 	if (count != 1)
 	{
 		return false;
 	}
 
 	// Get the important information from the header.
-	tex->height = (int32)targaFileHeader.height;
-	tex->width = (int32)targaFileHeader.width;
-	bpp = (int32)targaFileHeader.bpp;
+	tex->height = (i32)targaFileHeader.height;
+	tex->width = (i32)targaFileHeader.width;
+	bpp = (i32)targaFileHeader.bpp;
 
 	// Allow both 24 and 32 bit. 24 will have a 255 value for alpha.
 	if (bpp != 24 && bpp != 32)
@@ -1048,14 +1049,14 @@ bool32 LoadTarga32BitIntoTexture(const char* filename, FTexture* tex)
 	}
 
 	// Calculate the size of the 32 bit image data.
-	int32 bytesPerPixel = bpp / 8;;
+	i32 bytesPerPixel = bpp / 8;;
 	imageSize = tex->width * tex->height * bytesPerPixel;
 
 	// Allocate memory for the targa image data.
-	targaImage = new uint8[imageSize];
+	targaImage = new u8[imageSize];
 
 	// Read in the targa image data.
-	count = (uint32)fread(targaImage, 1, imageSize, filePtr);
+	count = (u32)fread(targaImage, 1, imageSize, filePtr);
 	if (count != imageSize)
 	{
 		delete[] targaImage;
@@ -1071,18 +1072,18 @@ bool32 LoadTarga32BitIntoTexture(const char* filename, FTexture* tex)
 	}
 
 	// Allocate memory for the targa destination data.
-	tex->targaData = new uint8[tex->width * tex->height * 4];
+	tex->targaData = new u8[tex->width * tex->height * 4];
 
 	// Initialize the index into the targa destination data array.
-	uint32 index = 0;
+	u32 index = 0;
 
 	// Initialize the index into the targa image data.
-	uint32 k = (tex->width * tex->height * bytesPerPixel) - (tex->width * bytesPerPixel);
+	u32 k = (tex->width * tex->height * bytesPerPixel) - (tex->width * bytesPerPixel);
 
 	// Now copy the targa image data into the targa destination array in the correct order since the targa format is stored upside down and also is not in RGBA order.
-	for (int32 v = 0; v < tex->height; v++)
+	for (i32 v = 0; v < tex->height; v++)
 	{
-		for (int32 u = 0; u < tex->width; u++)
+		for (i32 u = 0; u < tex->width; u++)
 		{
 			tex->targaData[index + 0] = targaImage[k + 2];  // Red.
 			tex->targaData[index + 1] = targaImage[k + 1];  // Green.
@@ -1118,7 +1119,7 @@ bool32 InitializeTexture(FTexture* tex, ID3D11Device* device, ID3D11DeviceContex
 	bool32 result;
 	D3D11_TEXTURE2D_DESC textureDesc;
 	HRESULT hResult;
-	uint32 rowPitch;
+	u32 rowPitch;
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 
 	// Load the targa image data into memory.
@@ -1180,7 +1181,7 @@ bool32 InitializeTexture(FTexture* tex, ID3D11Device* device, ID3D11DeviceContex
 ////////////////////////////////////////////////////////////////////////////////
 // Model
 ////////////////////////////////////////////////////////////////////////////////
-internal void MakeTriangle(FTextureLightVertex* vertices, uint32* indices)
+internal void MakeTriangle(FTextureLightVertex* vertices, u32* indices)
 {
 	// Load the vertex array with data.
 	vertices[0].position = DirectX::XMFLOAT3(-1.0f, -1.0f, 0.0f);  // Bottom left.
@@ -1201,7 +1202,7 @@ internal void MakeTriangle(FTextureLightVertex* vertices, uint32* indices)
 	indices[2] = 2;  // Bottom right.
 }
 
-internal void MakeQuad(FTextureLightVertex* vertices, uint32* indices)
+internal void MakeQuad(FTextureLightVertex* vertices, u32* indices)
 {
 	// Fill both the vertex and index array with the three points of the triangle as well as the index to each of the points in clockwise order of drawing.
 	vertices[0].position = DirectX::XMFLOAT3(-1.0f, 1.0f, 0.0f);  // Top left
@@ -1224,7 +1225,7 @@ internal void MakeQuad(FTextureLightVertex* vertices, uint32* indices)
 	indices[3] = 2; indices[4] = 1; indices[5] = 3;  // Triangle 2
 }
 
-internal bool32 UploadMesh(FMeshBuffer *mesh, ID3D11Device* device, FTextureLightVertex* vertices, uint32 vCount, uint32* indices, uint32 iCount)
+internal bool32 UploadMesh(FMeshBuffer *mesh, ID3D11Device* device, FTextureLightVertex* vertices, u32 vCount, u32* indices, u32 iCount)
 {
 	D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
 	D3D11_SUBRESOURCE_DATA vertexData, indexData;
@@ -1255,7 +1256,7 @@ internal bool32 UploadMesh(FMeshBuffer *mesh, ID3D11Device* device, FTextureLigh
 
 	// Set up the description of the static index buffer.
 	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	indexBufferDesc.ByteWidth = sizeof(uint32) * iCount;
+	indexBufferDesc.ByteWidth = sizeof(u32) * iCount;
 	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	indexBufferDesc.CPUAccessFlags = 0;
 	indexBufferDesc.MiscFlags = 0;
@@ -1276,7 +1277,7 @@ internal bool32 UploadMesh(FMeshBuffer *mesh, ID3D11Device* device, FTextureLigh
 	return true;
 }
 
-internal HMesh LoadMesh(FRenderWorld* world, ID3D11Device* device, FTextureLightVertex* verts, uint32 vCount, uint32* indices, uint32 iCount)
+internal HMesh LoadMesh(FRenderWorld* world, ID3D11Device* device, FTextureLightVertex* verts, u32 vCount, u32* indices, u32 iCount)
 {
 	HMesh handle = world->meshCount++;
 	UploadMesh(&world->meshes[handle], device, verts, vCount, indices, iCount);
@@ -1292,8 +1293,8 @@ internal HTexture LoadTexture(FRenderWorld* world, ID3D11Device* device, ID3D11D
 
 internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 {
-	uint32 stride;
-	uint32 offset;
+	u32 stride;
+	u32 offset;
 
 	// Set vertex buffer stride and offset.
 	stride = sizeof(FTextureLightVertex);
@@ -1309,6 +1310,70 @@ internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
+internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* outHandles, u32 maxHandles)
+{
+	FGLBAsset asset = {};
+	if (!GLB_Load(filename, &asset))
+	{
+		return 0;
+	}
+
+	u32 handleCount = 0;
+
+	// Walk every mesh -> every primitive
+	for (u32 mi = 0; mi < asset.meshCount; mi++)
+	{
+		FGLBMesh* mesh = &asset.meshes[mi];
+
+		for (u32 pi = 0; pi < mesh->primitiveCount; pi++)
+		{
+			FGLBPrimitive* prim = &mesh->primitives[pi];
+			if (!prim->vertices || !prim->indices || prim->vertexCount == 0)
+			{
+				continue;
+			}
+
+			if (handleCount >= maxHandles)
+			{
+				break;
+			}
+
+			// LoadMesh() is your existing function that calls UploadMesh()
+			// and returns an HMesh handle (uint32 index into world->meshes[])
+			//
+			// NOTE: FGLBVertex and FTextureVertex need to match in layout.
+			// FGLBVertex has position(xyz), normal(xyz), uv(uv).
+			// If your FTextureVertex only has position+uv, either:
+			//   a) cast FGLBVertex* and adjust stride  — simple but skips normals
+			//   b) convert to FTextureVertex[] first   — shown below
+			//   c) update FTextureVertex to include normals — recommended
+
+			// Option (b): convert to FTextureVertex (pos + uv only, normals dropped)
+			FTextureLightVertex* converted = (FTextureLightVertex*)malloc(prim->vertexCount * sizeof(FTextureLightVertex));
+			if (!converted) continue;
+
+			for (u32 v = 0; v < prim->vertexCount; v++)
+			{
+				converted[v].position = DirectX::XMFLOAT3(
+					prim->vertices[v].px,
+					prim->vertices[v].py,
+					prim->vertices[v].pz);
+				converted[v].texture = DirectX::XMFLOAT2(
+					prim->vertices[v].u,
+					prim->vertices[v].v);
+			}
+
+			HMesh handle = LoadMesh(world, world->d3d.device, converted, prim->vertexCount, prim->indices, prim->indexCount);
+			free(converted);
+
+			outHandles[handleCount++] = handle;
+		}
+	}
+
+	GLB_Free(&asset);
+	return handleCount;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // FCameraD3D
 ////////////////////////////////////////////////////////////////////////////////
@@ -1316,7 +1381,7 @@ internal void RenderCamera(FCamera* camera)
 {
 	DirectX::XMFLOAT3 up, pos, lookAt;
 	DirectX::XMVECTOR upVector, positionVector, lookAtVector;
-	float yaw, pitch, roll;
+	f32 yaw, pitch, roll;
 	DirectX::XMMATRIX rotationMatrix;
 
 	// Setup the vector that points upwards.
@@ -1346,7 +1411,7 @@ internal void RenderCamera(FCamera* camera)
 	// Set the yaw (Y axis), pitch (X axis), and roll (Z axis) rotations in radians.
 	// Degrees to radians conversion: π/180 ≈ 0.0174532925.
 	// DirectXMath rotation functions expect radians, so rotation values are multiplied by that constant.
-	const float kDegreeToRadians = 0.0174532925f;
+	const f32 kDegreeToRadians = 0.0174532925f;
 	pitch = camera->rotation.x * kDegreeToRadians;
 	yaw = camera->rotation.y * kDegreeToRadians;
 	roll = camera->rotation.z * kDegreeToRadians;
@@ -1368,7 +1433,7 @@ internal void RenderCamera(FCamera* camera)
 ////////////////////////////////////
 /// Global Functions
 ////////////////////////////////////
-bool32 Initialize(FRenderWorld* world, int32 screenWidth, int32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, float screenDepth, float screenNear)
+bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, f32 screenDepth, f32 screenNear)
 {
 	bool32 result = true;
 
@@ -1380,7 +1445,7 @@ bool32 Initialize(FRenderWorld* world, int32 screenWidth, int32 screenHeight, bo
 		return result;
 	}
 
-	world->camera.position = { 0.0f, 0.0f, -2.5f };
+	world->camera.position = { 0.0f, 0.0f, -5.0f };
 
 	// > Note: Geometry stays here for now until we load from files.
 #define DRAW_TRIANGLE 0
@@ -1393,7 +1458,7 @@ bool32 Initialize(FRenderWorld* world, int32 screenWidth, int32 screenHeight, bo
 #endif
 
 	FTextureLightVertex vertices[VCOUNT] = {};
-	uint32 indices[ICOUNT] = {};
+	u32 indices[ICOUNT] = {};
 
 #if DRAW_TRIANGLE
 	MakeTriangle(vertices, indices);
@@ -1401,13 +1466,20 @@ bool32 Initialize(FRenderWorld* world, int32 screenWidth, int32 screenHeight, bo
 	MakeQuad(vertices, indices);
 #endif
 
-	HMesh quad = LoadMesh(world, d3d->device, vertices, VCOUNT, indices, ICOUNT);
+	// Load a GLB model — up to 64 primitives
+	HMesh meshHandles[64] = {};
+	u32 meshCount = LoadGLBIntoWorld(world, "src\\models\\cube.glb", meshHandles, 64);
+	if (meshCount == 0)
+	{
+		MessageBox(window, L"Could not load suzanne.glb", L"Error", MB_OK);
+		return false;
+	}
 
 	const char* textureFileName = "src\\textures\\mosaic_diffuseoriginal.tga";
 	HTexture tex = LoadTexture(world, d3d->device, d3d->deviceContext, textureFileName);
 
 	world->texLightShader.diffuseColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	world->texLightShader.lightDirection = DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f);
+	world->texLightShader.lightDirection = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
 	result = InitializeLightShader(&world->texLightShader, d3d->device, window);
 	if (!result)
 	{
@@ -1436,7 +1508,7 @@ bool32 Render(FRenderWorld* world)
 	// Put the model vertex and index buffers on the graphics pipeline to prepare them for drawing.
 	RenderMesh(mesh, d3d->deviceContext);
 
-	local_presist float rot = 0.0f;
+	local_presist f32 rot = 0.0f;
 	rot -= 0.01f;
 	d3d->worldMatrix = DirectX::XMMatrixRotationY(rot);
 

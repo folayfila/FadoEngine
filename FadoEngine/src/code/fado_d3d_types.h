@@ -27,7 +27,7 @@
 struct FD3D
 {
 	bool32 vsyncEnabled;
-	int32 videoCardMemory;
+	i32 videoCardMemory;
 	char videoCardDescription[128];
 	IDXGISwapChain* swapChain;
 	ID3D11Device* device;
@@ -113,25 +113,25 @@ struct FLightBuffer
 {
 	DirectX::XMFLOAT4 diffuseColor;
 	DirectX::XMFLOAT3 lightDirection;
-	float padding;  // Added extra padding so structure is a multiple of 16 for CreateBuffer function requirements.
+	f32 padding;  // Added extra padding so structure is a multiple of 16 for CreateBuffer function requirements.
 };
 
 struct FTexture
 {
-	uint8* targaData;
+	u8* targaData;
 	ID3D11Texture2D* texture;
 	ID3D11ShaderResourceView* textureView;
-	int32 width;
-	int32 height;
+	i32 width;
+	i32 height;
 };
 
 struct FTargaHeader
 {
-	uint8 data1[12];
-	uint16 width;
-	uint16 height;
-	uint8 bpp;
-	uint8 data2;
+	u8 data1[12];
+	u16 width;
+	u16 height;
+	u8 bpp;
+	u8 data2;
 };
 
 ///////////////
@@ -140,8 +140,8 @@ struct FMeshBuffer
 {
 	ID3D11Buffer* vertexBuffer;
 	ID3D11Buffer* indexBuffer;
-	uint32 vertexCount;
-	uint32 indexCount;
+	u32 vertexCount;
+	u32 indexCount;
 };
 
 ////////////////////////////////////
@@ -165,8 +165,8 @@ struct FCamera
 #define INVALID_HANDLE 0xFFFFFFFF
 
 // Handlers
-typedef uint32 HMesh;
-typedef uint32 HTexture;
+typedef u32 HMesh;
+typedef u32 HTexture;
 
 struct FRenderWorld
 {
@@ -176,8 +176,8 @@ struct FRenderWorld
 
 	FMeshBuffer meshes[MAX_MESHES];		// models
 	FTexture textures[MAX_TEXTURES];	
-	uint32 meshCount;
-	uint32 texturesCount;
+	u32 meshCount;
+	u32 texturesCount;
 };
 
 #endif // !FADO_D3D_TYPES_H

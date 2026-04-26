@@ -5,38 +5,41 @@
 
 #include <stdint.h>
 /************** Types ***************/
-typedef int8_t int8;
-typedef int16_t int16;
-typedef int32_t int32;
-typedef int64_t int64;
+typedef int8_t i8;
+typedef int16_t i16;
+typedef int32_t i32;
+typedef int64_t i64;
 
-typedef uint8_t uint8;
-typedef uint16_t uint16;
-typedef uint32_t uint32;
-typedef uint64_t uint64;
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+
+typedef float f32;
+typedef double f64;
 
 typedef wchar_t wchar;
 
-typedef int32 bool32;
+typedef i32 bool32;
 
 struct vec2
 {
-    float x, y;
+    f32 x, y;
 };
 
 struct vec3
 {
-    float x, y, z;
+    f32 x, y, z;
 };
 
 struct color_rgba
 {
-    float r;
-    float g;
-    float b;
-    float a;
+    f32 r;
+    f32 g;
+    f32 b;
+    f32 a;
 
-    void Set(float Red, float Green, float Blue, float alpha = 1.0f)
+    void Set(f32 Red, f32 Green, f32 Blue, f32 alpha = 1.0f)
     {
         r = Red;
         g = Green;

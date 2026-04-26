@@ -16,6 +16,12 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{918fa7bd-55d0-46ef-8c93-8ae60badca02}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\glb">
+      <UniqueIdentifier>{ff0bcfbb-5705-46fd-a04f-13c9e87b2f42}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\glb">
+      <UniqueIdentifier>{fba2dfcd-115b-422a-b6c7-819b39b7e3d5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\code\fado_d3d.cpp">
@@ -23,6 +29,12 @@
     </ClCompile>
     <ClCompile Include="src\code\win32_fado.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\code\glb\fado_glb_usage.cpp">
+      <Filter>Source Files\glb</Filter>
+    </ClCompile>
+    <ClCompile Include="src\code\glb\fado_glb.cpp">
+      <Filter>Source Files\glb</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -37,6 +49,9 @@
     </ClInclude>
     <ClInclude Include="src\code\fado_d3d_types.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\code\glb\fado_glb.h">
+      <Filter>Header Files\glb</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

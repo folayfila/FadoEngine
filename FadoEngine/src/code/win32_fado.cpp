@@ -3,7 +3,7 @@
 //////////////////////////////////////////////////
 // Input
 //////////////////////////////////////////////////
-internal bool32 Win32IsKeyDown(Win32Input* input, uint32 key)
+internal bool32 Win32IsKeyDown(Win32Input* input, u32 key)
 {
 	bool32 isDown = input->keys[key];
 
@@ -16,12 +16,12 @@ internal void Win32HandleKeyboardInput(Win32Input* input, UINT msg, WPARAM wPara
 	{
 		case WM_KEYDOWN:
 		{
-			input->keys[(uint32)wParam] = true;
+			input->keys[(u32)wParam] = true;
 		} break;
 
 		case WM_KEYUP:
 		{
-			input->keys[(uint32)wParam] = false;
+			input->keys[(u32)wParam] = false;
 		} break;
 	}
 
@@ -78,14 +78,14 @@ LRESULT CALLBACK Win32WindowProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM
 //////////////////////////////////////////////////
 // Win32System
 //////////////////////////////////////////////////
-internal void Win32SystemInitializeWindows(Win32System* win32System, int& screenWidth, int& screenHeight)
+internal void Win32SystemInitializeWindows(Win32System* win32System, i32& screenWidth, i32& screenHeight)
 {
 	// >> Pretty much copied this code:
 	//
 
 	WNDCLASSEX wc;
 	DEVMODE dmScreenSettings;
-	int32 posX, posY;
+	i32 posX, posY;
 
 	GlobalApplicationHandle = win32System;
 
@@ -122,8 +122,8 @@ internal void Win32SystemInitializeWindows(Win32System* win32System, int& screen
 		// If full screen set the screen to maximum size of the users desktop and 32bit.
 		memset(&dmScreenSettings, 0, sizeof(dmScreenSettings));
 		dmScreenSettings.dmSize = sizeof(dmScreenSettings);
-		dmScreenSettings.dmPelsWidth = (uint64)screenWidth;
-		dmScreenSettings.dmPelsHeight = (uint64)screenHeight;
+		dmScreenSettings.dmPelsWidth = (u64)screenWidth;
+		dmScreenSettings.dmPelsHeight = (u64)screenHeight;
 		dmScreenSettings.dmBitsPerPel = 32;
 		dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
 
@@ -162,8 +162,8 @@ internal bool32 Win32Initialize(Win32System* win32System)
 {
 	bool32 result = true;
 
-	int32 screenWidth = 0;
-	int32 screenHeight = 0;
+	i32 screenWidth = 0;
+	i32 screenHeight = 0;
 	Win32SystemInitializeWindows(win32System, screenWidth, screenHeight);
 
 	result = Initialize(&win32System->world, screenWidth, screenHeight, VSYNC_ENABLED, win32System->window, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR);
