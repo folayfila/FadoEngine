@@ -1113,9 +1113,9 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
             strncpy_s(node->name, name, GLB_MAX_NAME - 1);
 
             // TRS
-            i32 tIdx = json_child_idx(&doc, nIdx, "translation");
-            i32 rIdx = json_child_idx(&doc, nIdx, "rotation");
             i32 sIdx = json_child_idx(&doc, nIdx, "scale");
+            i32 rIdx = json_child_idx(&doc, nIdx, "rotation");
+            i32 tIdx = json_child_idx(&doc, nIdx, "translation");
 
             node->scale[0] = node->scale[1] = node->scale[2] = 1.0f;
             node->rotation[3] = 1.0f; // identity quaternion
@@ -1129,7 +1129,7 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
                     {
                         node->translation[c] = (f32)v->numVal;
                     }
-                } node->hasTRS = true;
+                } node->hasSRT = true;
             }
             if (rIdx != GLB_INVALID)
             {
@@ -1140,7 +1140,7 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
                     {
                         node->rotation[c] = (f32)v->numVal;
                     }
-                } node->hasTRS = true;
+                } node->hasSRT = true;
             }
             if (sIdx != GLB_INVALID)
             {
@@ -1151,7 +1151,7 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
                     {
                         node->scale[c] = (f32)v->numVal;
                     }
-                } node->hasTRS = true;
+                } node->hasSRT = true;
             }
 
             // Record parent for children

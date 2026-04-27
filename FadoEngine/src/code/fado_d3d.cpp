@@ -1310,11 +1310,12 @@ internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
-internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* outHandles, u32 maxHandles)
+internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* outHandles, u32 maxHandles, u32 instances = 1)
 {
 	FGLBAsset asset = {};
 	if (!GLB_Load(filename, &asset))
 	{
+		Assert(0);	// Check filename, it failed to load!
 		return 0;
 	}
 
@@ -1338,9 +1339,6 @@ internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* 
 				break;
 			}
 
-			// LoadMesh() is your existing function that calls UploadMesh()
-			// and returns an HMesh handle (uint32 index into world->meshes[])
-			//
 			// NOTE: FGLBVertex and FTextureVertex need to match in layout.
 			// FGLBVertex has position(xyz), normal(xyz), uv(uv).
 			// If your FTextureVertex only has position+uv, either:
@@ -1363,10 +1361,12 @@ internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* 
 					prim->vertices[v].v);
 			}
 
-			HMesh handle = LoadMesh(world, world->d3d.device, converted, prim->vertexCount, prim->indices, prim->indexCount);
+			for (u32 i = 0; i < instances; ++i)
+			{
+				HMesh handle = LoadMesh(world, world->d3d.device, converted, prim->vertexCount, prim->indices, prim->indexCount);
+				outHandles[handleCount++] = handle;
+			}
 			free(converted);
-
-			outHandles[handleCount++] = handle;
 		}
 	}
 
@@ -1445,35 +1445,12 @@ bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32
 		return result;
 	}
 
-	world->camera.position = { 0.0f, 0.0f, -5.0f };
-
-	// > Note: Geometry stays here for now until we load from files.
-#define DRAW_TRIANGLE 0
-#if DRAW_TRIANGLE
-#define VCOUNT 3
-#define ICOUNT 3
-#else
-#define VCOUNT 4
-#define ICOUNT 6
-#endif
-
-	FTextureLightVertex vertices[VCOUNT] = {};
-	u32 indices[ICOUNT] = {};
-
-#if DRAW_TRIANGLE
-	MakeTriangle(vertices, indices);
-#else
-	MakeQuad(vertices, indices);
-#endif
+	world->camera.position = { 0.0f, 0.0f, -10.0f };
 
 	// Load a GLB model — up to 64 primitives
 	HMesh meshHandles[64] = {};
-	u32 meshCount = LoadGLBIntoWorld(world, "src\\models\\monkey.glb", meshHandles, 64);
-	if (meshCount == 0)
-	{
-		MessageBox(window, L"Could not load suzanne.glb", L"Error", MB_OK);
-		return false;
-	}
+	LoadGLBIntoWorld(world, "src\\models\\cube.glb", meshHandles, 64);
+	LoadGLBIntoWorld(world, "src\\models\\monkey.glb", meshHandles, 64);
 
 	const char* textureFileName = "src\\textures\\mosaic_diffuseoriginal.tga";
 	HTexture tex = LoadTexture(world, d3d->device, d3d->deviceContext, textureFileName);
@@ -1492,8 +1469,6 @@ bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32
 
 bool32 Render(FRenderWorld* world)
 {
-	bool32 result = true;
-
 	FD3D* d3d = &world->d3d;
 
 	// Clear the buffers to begin the scene.
@@ -1502,28 +1477,50 @@ bool32 Render(FRenderWorld* world)
 	// Generate the view matrix based on the camera's position.
 	RenderCamera(&world->camera);
 
-	FMeshBuffer* mesh = &world->meshes[0];
 	FTexture* tex = &world->textures[0];
-
-	// Put the model vertex and index buffers on the graphics pipeline to prepare them for drawing.
-	RenderMesh(mesh, d3d->deviceContext);
 
 	local_presist f32 rot = 0.0f;
 	rot -= 0.01f;
-	d3d->worldMatrix = DirectX::XMMatrixRotationY(rot);
+	local_presist f32 yOffset = 0.0f;
+	local_presist f32 ySign = 1.0f;
+	if (yOffset >= 1)
+	{
+		ySign = -1;
+	}
+	else if (yOffset <= -1)
+	{
+		ySign = 1;
+	}
+	yOffset += 0.01f * ySign;
 
-	// Render the model using the color shader.
-	result = RenderLightShader(&world->texLightShader, d3d->deviceContext, mesh->indexCount,
+	DirectX::XMMATRIX scaleMatrix;
+	DirectX::XMMATRIX rotMatrix;
+	DirectX::XMMATRIX transMatrix;
+
+	// Render the first mesh, offseted to the left
+	rotMatrix = DirectX::XMMatrixRotationY(rot);
+	transMatrix = DirectX::XMMatrixTranslation(-1.5f, yOffset, 0.0f);
+	d3d->worldMatrix = DirectX::XMMatrixMultiply(rotMatrix, transMatrix);
+
+	RenderMesh(&world->meshes[0], d3d->deviceContext);
+	RenderLightShader(&world->texLightShader, d3d->deviceContext, world->meshes[0].indexCount,
 		d3d->worldMatrix, world->camera.viewMatrix, d3d->projectionMatrix, tex->textureView,
 		world->texLightShader.lightDirection, world->texLightShader.diffuseColor);
 
-	if (!result)
-	{
-		return false;
-	}
+	// Render the second mesh, offseted to the right and scaled down
+	scaleMatrix = DirectX::XMMatrixScaling(0.75f, 0.75f, 0.75f);
+	transMatrix = DirectX::XMMatrixTranslation(1.5f, -yOffset, 0.0f);
+	DirectX::XMMATRIX srMatrix;
+	srMatrix = DirectX::XMMatrixMultiply(scaleMatrix, rotMatrix);
+	d3d->worldMatrix = DirectX::XMMatrixMultiply(srMatrix, transMatrix);
+
+	RenderMesh(&world->meshes[1], d3d->deviceContext);
+	RenderLightShader(&world->texLightShader, d3d->deviceContext, world->meshes[1].indexCount,
+		d3d->worldMatrix, world->camera.viewMatrix, d3d->projectionMatrix, tex->textureView,
+		world->texLightShader.lightDirection, world->texLightShader.diffuseColor);
 
 	// Present the rendered scene to the screen.
 	EndScene(d3d);
 
-	return result;
+	return true;
 }

@@ -83,10 +83,10 @@ struct FGLBNode
     char  name[GLB_MAX_NAME];
     i32   meshIndex;        // -1 = none
     i32   parentIndex;      // -1 = root
-    f32   translation[3];   // local transform components
-    f32   rotation[4];      // quaternion xyzw
     f32   scale[3];
-    bool32  hasTRS;         // true if any TRS values were present
+    f32   rotation[4];      // quaternion xyzw
+    f32   translation[3];   // local transform components
+    bool32  hasSRT;         // true if any SRT values were present
 };
 
 /* -----------------------------------------------------------------------
