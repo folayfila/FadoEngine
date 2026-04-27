@@ -1468,7 +1468,7 @@ bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32
 
 	// Load a GLB model — up to 64 primitives
 	HMesh meshHandles[64] = {};
-	u32 meshCount = LoadGLBIntoWorld(world, "src\\models\\cube.glb", meshHandles, 64);
+	u32 meshCount = LoadGLBIntoWorld(world, "src\\models\\monkey.glb", meshHandles, 64);
 	if (meshCount == 0)
 	{
 		MessageBox(window, L"Could not load suzanne.glb", L"Error", MB_OK);

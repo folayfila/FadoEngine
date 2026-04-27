@@ -6,7 +6,7 @@
  *
  * WHAT THIS COVERS:
  *   - GLB binary container parsing (header + JSON chunk + BIN chunk)
- *   - Minimal hand-rolled JSON parser (enough for glTF, not a full RFC 8259 impl)
+ *   - Minimal hand-rolled JSON parser (enough for glTF)
  *   - Buffer / BufferView / Accessor resolution
  *   - Mesh primitive extraction: POSITION, NORMAL, TEXCOORD_0, indices
  *   - Node hierarchy (flat array, parent index)
@@ -29,16 +29,16 @@
 
 #include "../fado_types.h"
 
-#define GLB_MAX_MESHES      256
+#define GLB_MAX_MESHES      64
 #define GLB_MAX_PRIMITIVES  16      // per mesh
-#define GLB_MAX_NODES       1024
-#define GLB_MAX_MATERIALS   256
-#define GLB_MAX_TEXTURES    256
-#define GLB_MAX_IMAGES      256
-#define GLB_MAX_ACCESSORS   1024
-#define GLB_MAX_BUFFERVIEWS 1024
+#define GLB_MAX_NODES       256
+#define GLB_MAX_MATERIALS   64
+#define GLB_MAX_TEXTURES    64
+#define GLB_MAX_IMAGES      64
+#define GLB_MAX_ACCESSORS   256
+#define GLB_MAX_BUFFERVIEWS 256
 #define GLB_MAX_NAME        128
-#define GLB_INVALID         0xFFFFFFFF
+#define GLB_INVALID         -1
 
 /* -----------------------------------------------------------------------
    Vertex — interleaved, DX11-ready
@@ -47,11 +47,14 @@ struct FGLBVertex
 {
     f32 px, py, pz;       // POSITION
     f32 nx, ny, nz;       // NORMAL   (0 if absent in file)
-    f32 u,  v;            // TEXCOORD (0 if absent)
+    f32 u,  v;            // TEXCOORD_0 (0 if absent)
 };
 
 /* -----------------------------------------------------------------------
    Primitive — one draw call's worth of data, fully flattened
+   Primitive = a batch of vertices + indices drawn in one call.
+   Example:
+   A character model is a mesh with 3 Primitives: body, clothes, eyes.
    ----------------------------------------------------------------------- */
 struct FGLBPrimitive
 {
@@ -83,11 +86,11 @@ struct FGLBNode
     f32   translation[3];   // local transform components
     f32   rotation[4];      // quaternion xyzw
     f32   scale[3];
-    bool32  hasTRS;           // true if any TRS values were present
+    bool32  hasTRS;         // true if any TRS values were present
 };
 
 /* -----------------------------------------------------------------------
-   Material (minimal — just base color texture for now)
+   Material (minimal - just base color texture for now)
    ----------------------------------------------------------------------- */
 struct FGLBMaterial
 {

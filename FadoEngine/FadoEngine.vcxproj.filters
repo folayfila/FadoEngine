@@ -30,9 +30,6 @@
     <ClCompile Include="src\code\win32_fado.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\code\glb\fado_glb_usage.cpp">
-      <Filter>Source Files\glb</Filter>
-    </ClCompile>
     <ClCompile Include="src\code\glb\fado_glb.cpp">
       <Filter>Source Files\glb</Filter>
     </ClCompile>

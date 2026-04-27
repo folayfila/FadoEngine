@@ -22,7 +22,7 @@
        chunkData   : chunkLength bytes of UTF-8 JSON
        padding     : 0x20 bytes to align to 4 bytes
    
-   [Chunk 1 — BIN, optional]
+   [Chunk 1 — BIN]
        chunkLength : u32
        chunkType   : u32 = 0x004E4942  ("BIN\0")
        chunkData   : chunkLength bytes of raw binary
@@ -55,12 +55,12 @@ struct FGLBChunkHeader
    helpers to navigate it.
    
    Supported types: null, bool, number (f64), string, array, object.
-   Objects and arrays store their children in a flat FJSONValue array
-   with an index/count into a shared pool.
+   Objects and arrays store their children in a flat FJSONValue pool
+   as a linked list, using firstChild and nextSibling indices.
    ======================================================================= */
 
 // > TODO: Check how we can handle a large number.
-#define JSON_POOL_MAX  10000//65536   // max total nodes across entire document
+#define JSON_POOL_MAX  256  // max total nodes across entire document
 
 enum FJSONType : u8
 {
@@ -80,10 +80,10 @@ struct FJSONValue
         bool32  boolVal;
         f64 numVal;
         char*  strVal;
-        i32 firstChild;   // ARRAY / OBJECT: index of first child, -1 if empty
+        i32 firstChild;   // ARRAY / OBJECT: index of first child, GLB_INVALID if empty
     };
     char* key;           // OBJECT / children only: key is a pointer into JSON text buffer
-    i32   nextSibling;   // index of next sibling in parent, -1 if last
+    i32   nextSibling;   // index of next sibling in parent, GLB_INVALID if last
 };
 
 struct FJSONDoc
@@ -132,7 +132,7 @@ internal i32 json_alloc_node(FJSONParser* p)
     if (p->doc->poolUsed >= JSON_POOL_MAX)
     {
         p->error = true;
-        return -1;
+        return GLB_INVALID;
     }
     i32 idx = p->doc->poolUsed++;
     memset(&p->doc->pool[idx], 0, sizeof(FJSONValue));
@@ -157,7 +157,7 @@ internal i32 json_parse_string(FJSONParser* p)
     if (p->cur >= p->end)
     {
         p->error = true;
-        return -1;
+        return GLB_INVALID;
     }
     *p->cur = '\0'; // null-terminate in place
     p->cur++;       // skip closing "
@@ -200,9 +200,9 @@ internal i32 json_parse_number(FJSONParser* p)
         }
     }
     i32 idx = json_alloc_node(p);
-    if (idx == -1)
+    if (idx == GLB_INVALID)
     {
-        return -1;
+        return GLB_INVALID;
     }
     p->doc->pool[idx].type = JSON_NUMBER;
     p->doc->pool[idx].numVal = strtod(start, nullptr);
@@ -213,13 +213,13 @@ internal i32 json_parse_array(FJSONParser* p)
 {
     p->cur++; // skip '['
     i32 arrIdx = json_alloc_node(p);
-    if (arrIdx == -1)
+    if (arrIdx == GLB_INVALID)
     {
-        return -1;
+        return GLB_INVALID;
     }
     p->doc->pool[arrIdx].type = JSON_ARRAY;
-    p->doc->pool[arrIdx].firstChild = -1;
-    p->doc->pool[arrIdx].nextSibling = -1;
+    p->doc->pool[arrIdx].firstChild = GLB_INVALID;
+    p->doc->pool[arrIdx].nextSibling = GLB_INVALID;
 
     json_skip_whitespace(p);
     if ((p->cur < p->end) && (*p->cur == ']'))
@@ -228,17 +228,17 @@ internal i32 json_parse_array(FJSONParser* p)
         return arrIdx;
     }
 
-    i32 lastChild = -1;
+    i32 lastChild = GLB_INVALID;
     while ((p->cur < p->end) && !p->error)
     {
         i32 valIdx = json_parse_value(p);
-        if (valIdx == -1)
+        if (valIdx == GLB_INVALID)
         {
             break;
         }
-        p->doc->pool[arrIdx].nextSibling = -1;
+        p->doc->pool[arrIdx].nextSibling = GLB_INVALID;
 
-        if (lastChild == -1)
+        if (lastChild == GLB_INVALID)
         {
             p->doc->pool[arrIdx].firstChild = valIdx;
         }
@@ -273,13 +273,13 @@ internal i32 json_parse_object(FJSONParser* p)
 {
     p->cur++; // skip '{'
     i32 objIdx = json_alloc_node(p);
-    if (objIdx == -1)
+    if (objIdx == GLB_INVALID)
     {
-        return -1;
+        return GLB_INVALID;
     }
     p->doc->pool[objIdx].type = JSON_OBJECT;
-    p->doc->pool[objIdx].firstChild = -1;
-    p->doc->pool[objIdx].nextSibling = -1;
+    p->doc->pool[objIdx].firstChild = GLB_INVALID;
+    p->doc->pool[objIdx].nextSibling = GLB_INVALID;
 
     json_skip_whitespace(p);
     if ((p->cur < p->end) && (*p->cur == '}'))
@@ -288,7 +288,7 @@ internal i32 json_parse_object(FJSONParser* p)
         return objIdx;
     }
 
-    i32 lastChild = -1;
+    i32 lastChild = GLB_INVALID;
     while ((p->cur < p->end) && !p->error)
     {
         json_skip_whitespace(p);
@@ -323,14 +323,14 @@ internal i32 json_parse_object(FJSONParser* p)
         }
 
         i32 valIdx = json_parse_value(p);
-        if (valIdx == -1)
+        if (valIdx == GLB_INVALID)
         {
             break;
         }
         p->doc->pool[valIdx].key = key;
-        p->doc->pool[objIdx].nextSibling = -1;
+        p->doc->pool[objIdx].nextSibling = GLB_INVALID;
 
-        if (lastChild == -1)
+        if (lastChild == GLB_INVALID)
         {
             p->doc->pool[objIdx].firstChild = valIdx;
         }
@@ -363,7 +363,7 @@ internal i32 json_parse_object(FJSONParser* p)
 
 internal i32 json_parse_value(FJSONParser* p)
 {
-    i32 result = -1;
+    i32 result = GLB_INVALID;
     json_skip_whitespace(p);
     if (p->cur >= p->end || p->error)
     {
@@ -416,7 +416,7 @@ internal i32 json_parse_value(FJSONParser* p)
     }
 
     p->error = true;
-    return -1;
+    return GLB_INVALID;
 }
 
 internal bool32 json_parse(FJSONDoc* doc, char* text, u32 textLen)
@@ -453,7 +453,7 @@ internal FJSONValue* json_obj_get(FJSONDoc* doc, i32 objIdx, const char* key)
     }
 
     i32 ci = obj->firstChild;
-    while (ci != -1)
+    while (ci != GLB_INVALID)
     {
         FJSONValue* child = &doc->pool[ci];
         if (child->key && strcmp(child->key, key) == 0)
@@ -481,7 +481,7 @@ internal FJSONValue* json_arr_get(FJSONDoc* doc, i32 arrIdx, u32 index)
 
     i32 ci = arr->firstChild;
     u32 i = 0;
-    while (ci != -1)
+    while (ci != GLB_INVALID)
     {
         if (i == index)
         {
@@ -526,7 +526,7 @@ internal i32 json_child_idx(FJSONDoc* doc, i32 parentIdx, const char* key)
     FJSONValue* v = json_obj_get(doc, parentIdx, key);
     if (!v)
     {
-        return -1;
+        return GLB_INVALID;
     }
     return (i32)(v - doc->pool);
 }
@@ -704,7 +704,7 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
     cursor += 8 + ((jsonLen + 3) & ~3u); // advance past chunk (padded to 4)
 
     // ----------------------------------------------------------------
-    // 5.4  Locate BIN chunk (optional)
+    // 5.4  Locate BIN chunk
     // ----------------------------------------------------------------
     const u8* binData    = nullptr;
     u32       binLength  = 0;
@@ -745,10 +745,10 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
     u32 bufferViewCount = 0;
 
     i32 bvArrayIdx = json_child_idx(&doc, rootIdx, "bufferViews");
-    if (bvArrayIdx != -1)
+    if (bvArrayIdx != GLB_INVALID)
     {
         i32 ci = doc.pool[bvArrayIdx].firstChild;
-        while ((ci != -1) && (bufferViewCount < GLB_MAX_BUFFERVIEWS))
+        while ((ci != GLB_INVALID) && (bufferViewCount < GLB_MAX_BUFFERVIEWS))
         {
             FJSONValue* bvNode = &doc.pool[ci];
             if (!bvNode || (bvNode->type != JSON_OBJECT))
@@ -776,10 +776,10 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
     u32 accessorCount = 0;
 
     i32 accArrayIdx = json_child_idx(&doc, rootIdx, "accessors");
-    if (accArrayIdx != -1)
+    if (accArrayIdx != GLB_INVALID)
     {
         i32 ci = doc.pool[accArrayIdx].firstChild;
-        while ((ci != -1) && (accessorCount < GLB_MAX_ACCESSORS))
+        while ((ci != GLB_INVALID) && (accessorCount < GLB_MAX_ACCESSORS))
         {
             FJSONValue* accNode = &doc.pool[ci];
 
@@ -808,10 +808,10 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
     // 5.8  Parse images
     // ----------------------------------------------------------------
     i32 imgArrayIdx = json_child_idx(&doc, rootIdx, "images");
-    if (imgArrayIdx != -1)
+    if (imgArrayIdx != GLB_INVALID)
     { 
         i32 ci = doc.pool[imgArrayIdx].firstChild;
-        while ((ci != -1) && (out->imageCount < GLB_MAX_IMAGES))
+        while ((ci != GLB_INVALID) && (out->imageCount < GLB_MAX_IMAGES))
         {
             FJSONValue* imgNode = &doc.pool[ci];
             if (!imgNode || (imgNode->type != JSON_OBJECT))
@@ -827,7 +827,7 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
             strncpy_s(out->images[i].name,     name, GLB_MAX_NAME - 1);
             strncpy_s(out->images[i].mimeType, mime, 31);
 
-            i32 bvIndex = json_int(&doc, iIdx, "bufferView", -1);
+            i32 bvIndex = json_int(&doc, iIdx, "bufferView", GLB_INVALID);
             if (bvIndex >= 0 && binData && (u32)bvIndex < bufferViewCount)
             {
                 FGLBBufferView* bv = &bufferViews[bvIndex];
@@ -844,10 +844,10 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
     // 5.9  Parse textures
     // ----------------------------------------------------------------
     i32 texArrayIdx = json_child_idx(&doc, rootIdx, "textures");
-    if (texArrayIdx != -1)
+    if (texArrayIdx != GLB_INVALID)
     {
         i32 ci = doc.pool[texArrayIdx].firstChild;
-        while ((ci != -1) && (out->textureCount < GLB_MAX_TEXTURES))
+        while ((ci != GLB_INVALID) && (out->textureCount < GLB_MAX_TEXTURES))
         {
             FJSONValue* texNode = &doc.pool[ci];
             if (!texNode || (texNode->type != JSON_OBJECT))
@@ -873,7 +873,7 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
     if (matArrayIdx != -1)
     {
         i32 ci = doc.pool[matArrayIdx].firstChild;
-        while ((ci != -1) && (out->materialCount < GLB_MAX_MATERIALS))
+        while ((ci != GLB_INVALID) && (out->materialCount < GLB_MAX_MATERIALS))
         {
             FJSONValue* matNode = &doc.pool[ci];
             if (!matNode || (matNode->type != JSON_OBJECT))
@@ -895,11 +895,11 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
             out->materials[i].baseColorTextureIndex = -1;
 
             i32 pbrIdx = json_child_idx(&doc, mIdx, "pbrMetallicRoughness");
-            if (pbrIdx != -1)
+            if (pbrIdx != GLB_INVALID)
             {
                 // Base color factor
                 i32 bcfIdx = json_child_idx(&doc, pbrIdx, "baseColorFactor");
-                if (bcfIdx != -1)
+                if (bcfIdx != GLB_INVALID)
                 {
                     for (u32 c = 0; c < 4; c++)
                     {
@@ -913,7 +913,7 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
 
                 // Base color texture
                 i32 bctIdx = json_child_idx(&doc, pbrIdx, "baseColorTexture");
-                if (bctIdx != -1)
+                if (bctIdx != GLB_INVALID)
                 {
                     out->materials[i].baseColorTextureIndex = json_int(&doc, bctIdx, "index", -1);
                 }
@@ -928,10 +928,10 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
     // 5.11  Parse meshes and their primitives
     // ----------------------------------------------------------------
     i32 meshArrayIdx = json_child_idx(&doc, rootIdx, "meshes");
-    if (meshArrayIdx != -1)
+    if (meshArrayIdx != GLB_INVALID)
     {
         i32 mci = doc.pool[meshArrayIdx].firstChild;
-        while ((mci != -1) && (out->meshCount < GLB_MAX_MESHES))
+        while ((mci != GLB_INVALID) && (out->meshCount < GLB_MAX_MESHES))
         {
             FJSONValue* meshNode = &doc.pool[mci];
             if (!meshNode || (meshNode->type != JSON_OBJECT))
@@ -947,14 +947,14 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
             strncpy_s(out->meshes[mi].name, meshName, GLB_MAX_NAME - 1);
 
             i32 primArrayIdx = json_child_idx(&doc, meshNodeIdx, "primitives");
-            if (primArrayIdx == -1)
+            if (primArrayIdx == GLB_INVALID)
             {
                 mci = meshNode->nextSibling;
                 continue;
             }
 
             i32 pci = doc.pool[primArrayIdx].firstChild;
-            while ((pci != -1) && (out->meshes[mi].primitiveCount < GLB_MAX_PRIMITIVES))
+            while ((pci != GLB_INVALID) && (out->meshes[mi].primitiveCount < GLB_MAX_PRIMITIVES))
             {
                 FJSONValue* primNode = &doc.pool[pci];
                 if (!primNode || (primNode->type != JSON_OBJECT))
@@ -970,7 +970,7 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
 
                 // ---- Attributes ----
                 i32 attribIdx = json_child_idx(&doc, primNodeIdx, "attributes");
-                if (attribIdx == -1)
+                if (attribIdx == GLB_INVALID)
                 {
                     pci = primNode->nextSibling;
                     continue;
@@ -1091,10 +1091,10 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
     // 5.12  Parse nodes
     // ----------------------------------------------------------------
     i32 nodeArrayIdx = json_child_idx(&doc, rootIdx, "nodes");
-    if (nodeArrayIdx != -1)
+    if (nodeArrayIdx != GLB_INVALID)
     {
         i32 nci = doc.pool[nodeArrayIdx].firstChild;
-        while ((nci != -1) && (out->nodeCount < GLB_MAX_NODES))
+        while ((nci != GLB_INVALID) && (out->nodeCount < GLB_MAX_NODES))
         {
             FJSONValue* nodeNode = &doc.pool[nci];
             if (!nodeNode || (nodeNode->type != JSON_OBJECT))
@@ -1120,7 +1120,7 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
             node->scale[0] = node->scale[1] = node->scale[2] = 1.0f;
             node->rotation[3] = 1.0f; // identity quaternion
 
-            if (tIdx != -1)
+            if (tIdx != GLB_INVALID)
             {
                 for (u32 c = 0; c < 3; c++)
                 {
@@ -1131,7 +1131,7 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
                     }
                 } node->hasTRS = true;
             }
-            if (rIdx != -1)
+            if (rIdx != GLB_INVALID)
             {
                 for (u32 c = 0; c < 4; c++)
                 {
@@ -1142,7 +1142,7 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
                     }
                 } node->hasTRS = true;
             }
-            if (sIdx != -1)
+            if (sIdx != GLB_INVALID)
             {
                 for (u32 c = 0; c < 3; c++)
                 {
@@ -1156,10 +1156,10 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
 
             // Record parent for children
             i32 childrenIdx = json_child_idx(&doc, nIdx, "children");
-            if (childrenIdx != -1)
+            if (childrenIdx != GLB_INVALID)
             {
                 i32 ci = doc.pool[childrenIdx].firstChild;
-                while (ci != -1)
+                while (ci != GLB_INVALID)
                 {
                     FJSONValue* childRef = &doc.pool[ci];
                     if (childRef->type == JSON_NUMBER)
@@ -1185,21 +1185,21 @@ bool32 GLB_Load(const char* filename, FGLBAsset* out)
     i32 sceneArrayIdx = json_child_idx(&doc, rootIdx, "scenes");
     i32 defaultScene  = json_int(&doc, rootIdx, "scene", 0);
 
-    if (sceneArrayIdx != -1)
+    if (sceneArrayIdx != GLB_INVALID)
     {
         FJSONValue* sceneVal = json_arr_get(&doc, sceneArrayIdx, (u32)defaultScene);
         if (sceneVal && sceneVal->type == JSON_OBJECT)
         {
             u32 sceneObjIdx = (u32)(sceneVal - doc.pool);
             i32 nodesArrIdx = json_child_idx(&doc, sceneObjIdx, "nodes");
-            if (nodesArrIdx != -1)
+            if (nodesArrIdx != GLB_INVALID)
             {
                 i32 ci = doc.pool[nodesArrIdx].firstChild;
-                while ((ci != -1) && (out->sceneRootCount < GLB_MAX_NODES))
+                while ((ci != GLB_INVALID) && (out->sceneRootCount < GLB_MAX_NODES))
                 {
                     FJSONValue* rootRef = &doc.pool[ci];
                     out->sceneRootNodes[out->sceneRootCount] = (rootRef->type == JSON_NUMBER)
-                        ? (i32)rootRef->numVal : -1;
+                        ? (i32)rootRef->numVal : GLB_INVALID;
 
                     out->sceneRootCount++;
                     ci = rootRef->nextSibling;
