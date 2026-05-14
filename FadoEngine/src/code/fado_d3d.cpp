@@ -918,7 +918,7 @@ internal bool32 InitializeLightShader(FTextureLightShader* lightShader, ID3D11De
 
 internal bool32 SetLightShaderParameters(FTextureLightShader* lightShader, ID3D11DeviceContext* deviceContext,
 	DirectX::XMMATRIX worldMatrix, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix,
-	ID3D11ShaderResourceView* texture, DirectX::XMFLOAT3 lightDirection, DirectX::XMFLOAT4 diffuseColor)
+	ID3D11ShaderResourceView* texture, DirectX::XMFLOAT3 lightDirection, DirectX::XMFLOAT4 diffuseColor, DirectX::XMFLOAT4 ambientColor)
 {
 	HRESULT result;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -969,6 +969,7 @@ internal bool32 SetLightShaderParameters(FTextureLightShader* lightShader, ID3D1
 	lightDataPtr = (FLightBuffer*)mappedResource.pData;
 
 	// Copy the lighting variables into the constant buffer.
+	lightDataPtr->ambientColor = ambientColor;
 	lightDataPtr->diffuseColor = diffuseColor;
 	lightDataPtr->lightDirection = lightDirection;
 	lightDataPtr->padding = 0.0f;
@@ -987,10 +988,10 @@ internal bool32 SetLightShaderParameters(FTextureLightShader* lightShader, ID3D1
 
 internal bool32 RenderLightShader(FTextureLightShader* lightShader, ID3D11DeviceContext* deviceContext, i32 indexCount,
 	DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection,
-	ID3D11ShaderResourceView* texture, DirectX::XMFLOAT3 lightDirection, DirectX::XMFLOAT4 diffuseColor)
+	ID3D11ShaderResourceView* texture, DirectX::XMFLOAT3 lightDirection, DirectX::XMFLOAT4 diffuseColor, DirectX::XMFLOAT4 ambientColor)
 {
 	// Set the shader parameters that it will use for rendering.
-	if (!SetLightShaderParameters(lightShader, deviceContext, world, view, projection, texture, lightDirection, diffuseColor))
+	if (!SetLightShaderParameters(lightShader, deviceContext, world, view, projection, texture, lightDirection, diffuseColor, ambientColor))
 	{
 		return false;
 	}
@@ -1455,8 +1456,9 @@ bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32
 	const char* textureFileName = "src\\textures\\mosaic_diffuseoriginal.tga";
 	HTexture tex = LoadTexture(world, d3d->device, d3d->deviceContext, textureFileName);
 
+	world->texLightShader.ambientColor = DirectX::XMFLOAT4(0.15f, 0.15f, 0.15f, 1.0f);
 	world->texLightShader.diffuseColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	world->texLightShader.lightDirection = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+	world->texLightShader.lightDirection = DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f);
 	result = InitializeLightShader(&world->texLightShader, d3d->device, window);
 	if (!result)
 	{
@@ -1505,7 +1507,7 @@ bool32 Render(FRenderWorld* world)
 	RenderMesh(&world->meshes[0], d3d->deviceContext);
 	RenderLightShader(&world->texLightShader, d3d->deviceContext, world->meshes[0].indexCount,
 		d3d->worldMatrix, world->camera.viewMatrix, d3d->projectionMatrix, tex->textureView,
-		world->texLightShader.lightDirection, world->texLightShader.diffuseColor);
+		world->texLightShader.lightDirection, world->texLightShader.diffuseColor, world->texLightShader.ambientColor);
 
 	// Render the second mesh, offseted to the right and scaled down
 	scaleMatrix = DirectX::XMMatrixScaling(0.75f, 0.75f, 0.75f);
@@ -1517,7 +1519,7 @@ bool32 Render(FRenderWorld* world)
 	RenderMesh(&world->meshes[1], d3d->deviceContext);
 	RenderLightShader(&world->texLightShader, d3d->deviceContext, world->meshes[1].indexCount,
 		d3d->worldMatrix, world->camera.viewMatrix, d3d->projectionMatrix, tex->textureView,
-		world->texLightShader.lightDirection, world->texLightShader.diffuseColor);
+		world->texLightShader.lightDirection, world->texLightShader.diffuseColor, world->texLightShader.ambientColor);
 
 	// Present the rendered scene to the screen.
 	EndScene(d3d);

@@ -98,6 +98,7 @@ struct FTextureLightShader
 	ID3D11SamplerState* sampleState;
 	ID3D11Buffer* matrixBuffer;
 	ID3D11Buffer* lightBuffer;
+	DirectX::XMFLOAT4 ambientColor;
 	DirectX::XMFLOAT4 diffuseColor;
 	DirectX::XMFLOAT3 lightDirection;
 };
@@ -111,6 +112,7 @@ struct FTextureLightVertex
 
 struct FLightBuffer
 {
+	DirectX::XMFLOAT4 ambientColor;
 	DirectX::XMFLOAT4 diffuseColor;
 	DirectX::XMFLOAT3 lightDirection;
 	f32 padding;  // Added extra padding so structure is a multiple of 16 for CreateBuffer function requirements.
