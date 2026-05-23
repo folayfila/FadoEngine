@@ -1340,14 +1340,7 @@ internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* 
 				break;
 			}
 
-			// NOTE: FGLBVertex and FTextureVertex need to match in layout.
-			// FGLBVertex has position(xyz), normal(xyz), uv(uv).
-			// If your FTextureVertex only has position+uv, either:
-			//   a) cast FGLBVertex* and adjust stride  — simple but skips normals
-			//   b) convert to FTextureVertex[] first   — shown below
-			//   c) update FTextureVertex to include normals — recommended
-
-			// Option (b): convert to FTextureVertex (pos + uv only, normals dropped)
+			// NOTE: FGLBVertex and FTextureLightVertex need to match in layout.
 			FTextureLightVertex* converted = (FTextureLightVertex*)malloc(prim->vertexCount * sizeof(FTextureLightVertex));
 			if (!converted) continue;
 
@@ -1360,6 +1353,10 @@ internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* 
 				converted[v].texture = DirectX::XMFLOAT2(
 					prim->vertices[v].u,
 					prim->vertices[v].v);
+				converted[v].normal = DirectX::XMFLOAT3(
+					prim->vertices[v].nx,
+					prim->vertices[v].ny,
+					prim->vertices[v].nz);
 			}
 
 			for (u32 i = 0; i < instances; ++i)
@@ -1458,7 +1455,8 @@ bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32
 
 	world->texLightShader.ambientColor = DirectX::XMFLOAT4(0.15f, 0.15f, 0.15f, 1.0f);
 	world->texLightShader.diffuseColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	world->texLightShader.lightDirection = DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f);
+	world->texLightShader.lightDirection = DirectX::XMFLOAT3(-10.0f, 0.0f, 0.0f);
+
 	result = InitializeLightShader(&world->texLightShader, d3d->device, window);
 	if (!result)
 	{
@@ -1501,7 +1499,7 @@ bool32 Render(FRenderWorld* world)
 
 	// Render the first mesh, offseted to the left
 	rotMatrix = DirectX::XMMatrixRotationY(rot);
-	transMatrix = DirectX::XMMatrixTranslation(-1.5f, yOffset, 0.0f);
+	transMatrix = DirectX::XMMatrixTranslation(-1.5f, 0.0f, 0.0f);
 	d3d->worldMatrix = DirectX::XMMatrixMultiply(rotMatrix, transMatrix);
 
 	RenderMesh(&world->meshes[0], d3d->deviceContext);
@@ -1511,7 +1509,7 @@ bool32 Render(FRenderWorld* world)
 
 	// Render the second mesh, offseted to the right and scaled down
 	scaleMatrix = DirectX::XMMatrixScaling(0.75f, 0.75f, 0.75f);
-	transMatrix = DirectX::XMMatrixTranslation(1.5f, -yOffset, 0.0f);
+	transMatrix = DirectX::XMMatrixTranslation(1.5f, 0.0f, 0.0f);
 	DirectX::XMMATRIX srMatrix;
 	srMatrix = DirectX::XMMatrixMultiply(scaleMatrix, rotMatrix);
 	d3d->worldMatrix = DirectX::XMMatrixMultiply(srMatrix, transMatrix);

@@ -46,8 +46,8 @@
 struct FGLBVertex
 {
     f32 px, py, pz;       // POSITION
-    f32 nx, ny, nz;       // NORMAL   (0 if absent in file)
     f32 u,  v;            // TEXCOORD_0 (0 if absent)
+    f32 nx, ny, nz;       // NORMAL   (0 if absent in file)
 };
 
 /* -----------------------------------------------------------------------
