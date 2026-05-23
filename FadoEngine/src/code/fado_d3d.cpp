@@ -1449,13 +1449,14 @@ bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32
 	HMesh meshHandles[64] = {};
 	LoadGLBIntoWorld(world, "src\\models\\cube.glb", meshHandles, 64);
 	LoadGLBIntoWorld(world, "src\\models\\monkey.glb", meshHandles, 64);
+	LoadGLBIntoWorld(world, "src\\models\\sphere.glb", meshHandles, 64);
 
 	const char* textureFileName = "src\\textures\\mosaic_diffuseoriginal.tga";
 	HTexture tex = LoadTexture(world, d3d->device, d3d->deviceContext, textureFileName);
 
-	world->texLightShader.ambientColor = DirectX::XMFLOAT4(0.15f, 0.15f, 0.15f, 1.0f);
+	world->texLightShader.ambientColor = DirectX::XMFLOAT4(0.5f, 0.35f, 0.25f, 1.0f);
 	world->texLightShader.diffuseColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	world->texLightShader.lightDirection = DirectX::XMFLOAT3(-10.0f, 0.0f, 0.0f);
+	world->texLightShader.lightDirection = DirectX::XMFLOAT3(1.5f, 0.0f, 1.0f);
 
 	result = InitializeLightShader(&world->texLightShader, d3d->device, window);
 	if (!result)
@@ -1497,9 +1498,10 @@ bool32 Render(FRenderWorld* world)
 	DirectX::XMMATRIX rotMatrix;
 	DirectX::XMMATRIX transMatrix;
 
+#if 1
 	// Render the first mesh, offseted to the left
 	rotMatrix = DirectX::XMMatrixRotationY(rot);
-	transMatrix = DirectX::XMMatrixTranslation(-1.5f, 0.0f, 0.0f);
+	transMatrix = DirectX::XMMatrixTranslation(-1.5f, -1.5f, 0.0f);
 	d3d->worldMatrix = DirectX::XMMatrixMultiply(rotMatrix, transMatrix);
 
 	RenderMesh(&world->meshes[0], d3d->deviceContext);
@@ -1507,9 +1509,16 @@ bool32 Render(FRenderWorld* world)
 		d3d->worldMatrix, world->camera.viewMatrix, d3d->projectionMatrix, tex->textureView,
 		world->texLightShader.lightDirection, world->texLightShader.diffuseColor, world->texLightShader.ambientColor);
 
+	transMatrix = DirectX::XMMatrixTranslation(0.0f, 1.5f, 0.0f);
+	d3d->worldMatrix = DirectX::XMMatrixMultiply(rotMatrix, transMatrix);
+	RenderMesh(&world->meshes[2], d3d->deviceContext);
+	RenderLightShader(&world->texLightShader, d3d->deviceContext, world->meshes[2].indexCount,
+		d3d->worldMatrix, world->camera.viewMatrix, d3d->projectionMatrix, tex->textureView,
+		world->texLightShader.lightDirection, world->texLightShader.diffuseColor, world->texLightShader.ambientColor);
+
 	// Render the second mesh, offseted to the right and scaled down
 	scaleMatrix = DirectX::XMMatrixScaling(0.75f, 0.75f, 0.75f);
-	transMatrix = DirectX::XMMatrixTranslation(1.5f, 0.0f, 0.0f);
+	transMatrix = DirectX::XMMatrixTranslation(1.5f, -1.5f, 0.0f);
 	DirectX::XMMATRIX srMatrix;
 	srMatrix = DirectX::XMMatrixMultiply(scaleMatrix, rotMatrix);
 	d3d->worldMatrix = DirectX::XMMatrixMultiply(srMatrix, transMatrix);
@@ -1518,6 +1527,7 @@ bool32 Render(FRenderWorld* world)
 	RenderLightShader(&world->texLightShader, d3d->deviceContext, world->meshes[1].indexCount,
 		d3d->worldMatrix, world->camera.viewMatrix, d3d->projectionMatrix, tex->textureView,
 		world->texLightShader.lightDirection, world->texLightShader.diffuseColor, world->texLightShader.ambientColor);
+#endif
 
 	// Present the rendered scene to the screen.
 	EndScene(d3d);
