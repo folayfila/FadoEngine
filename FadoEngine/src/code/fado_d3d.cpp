@@ -168,8 +168,8 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	// Discard the back buffer contents after presenting.
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
-	// Don't set the advanced flags.
-	swapChainDesc.Flags = 0;
+	// Allow DXGI to cooperate with the window resize more gracefully.
+	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 	// Set the feature level to DirectX 11.
 	featureLevel = D3D_FEATURE_LEVEL_11_0;
@@ -181,6 +181,11 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	{
 		return false;
 	}
+
+	// Disable DXGI default Alt+Enter fullscreen.
+	fdirect3D->swapChain->GetParent(__uuidof(IDXGIFactory), (void**)&factory);
+	factory->MakeWindowAssociation(Window, DXGI_MWA_NO_ALT_ENTER);
+	factory->Release();
 
 	// Get the pointer to the back buffer.
 	result = fdirect3D->swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBufferPtr);

@@ -23,17 +23,20 @@ struct Win32Input
 
 struct Win32System
 {
-	LPCWSTR applicationName;
+	FRenderWorld world;
+
 	HINSTANCE instance;
 	HWND window;
 
 	Win32Input input;
-	FRenderWorld world;
 };
 
 ///////////////////////////////
 // Globals //
 ///////////////////////////////
 global_variable Win32System* GlobalApplicationHandle;
+global_variable WINDOWPLACEMENT GlobalWindowPosition = { sizeof(GlobalWindowPosition) };
+global_variable bool32 GlobalShowCursor = true;
+global_variable bool32 GlobalRunning = true;
 
 #endif // WIN32_FADO_H
