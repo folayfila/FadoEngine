@@ -1,4 +1,5 @@
 #include "win32_fado.h"
+#include <xinput.h>
 
 internal void ToggleFullscreen(HWND Window)
 {
@@ -30,64 +31,230 @@ internal void ToggleFullscreen(HWND Window)
 //////////////////////////////////////////////////
 // Input
 //////////////////////////////////////////////////
-internal void Win32HandleKeyboardInput(Win32System* system, UINT msg, WPARAM wParam, LPARAM lParam)
+#define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE *pState)
+typedef X_INPUT_GET_STATE(x_input_get_state);
+X_INPUT_GET_STATE(XInputGetStateStub)
 {
-	Win32Input* input = &system->input;
-	switch (msg)
-	{
-		case WM_KEYDOWN:
-		{
-			input->keys[(u32)wParam] = true;
-		} break;
+	return ERROR_DEVICE_NOT_CONNECTED;
+}
+global_variable x_input_get_state* XInputGetState_ = XInputGetStateStub;
+#define XInputGetState XInputGetState_
 
-		case WM_KEYUP:
-		{
-			input->keys[(u32)wParam] = false;
-		} break;
-	}
+#define X_INPUT_SET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration)
+typedef X_INPUT_SET_STATE(x_input_set_state);
+X_INPUT_SET_STATE(XInputSetStateStub)
+{
+	return ERROR_DEVICE_NOT_CONNECTED;
+}
+global_variable x_input_set_state* XInputSetState_ = XInputSetStateStub;
+#define XInputSetState XInputSetState_
 
-	if (input->keys[VK_ESCAPE])
+internal void Win32LoadXInput()
+{
+	HMODULE xInputLibrary = LoadLibraryA("xinput1_4.dll");
+	if (xInputLibrary)
 	{
-		GlobalRunning = false;
-	}
+		XInputGetState = (x_input_get_state*)GetProcAddress(xInputLibrary, "XInputGetState");
+		if (!XInputGetState) { XInputGetState = XInputGetStateStub; }
 
-	if ((input->keys[VK_RETURN]))
-	{
-		ToggleFullscreen(system->window);
+		XInputSetState = (x_input_set_state*)GetProcAddress(xInputLibrary, "XInputSetState");
+		if (!XInputSetState) { XInputSetState = XInputSetStateStub; }
 	}
 }
 
-LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+internal f32 Win32ProcessXInputStickValue(SHORT value, SHORT deadZoneThreshold)
 {
-	LRESULT result = 0;
-	switch (message)
+	f32 result = 0;
+	if (value > deadZoneThreshold)
 	{
-		// Check if the window is being destroyed.
+		result = (f32)value / 32768.0f;
+	}
+	else if (value < -deadZoneThreshold)
+	{
+		result = (f32)value / 32767.0f;
+	}
+	return result;
+}
+
+internal void Win32ProcessButtonState(FGameButtonState* state, bool32 isDown, f32 deltaTime)
+{
+	state->isDown = isDown;
+
+	if (state->isDown && state->wasDown)
+	{
+		state->heldLength += deltaTime;
+	}
+	else
+	{
+		state->heldLength = 0.0f;
+	}
+}
+
+internal bool32 Win32IsXInputButtonDown(DWORD XInputButtonState, DWORD ButtonBit)
+{
+	bool32 result = ((XInputButtonState & ButtonBit) == ButtonBit);
+	return result;
+}
+
+internal void Win32HandleControllerInput(HWND Window, FGameInput* input)
+{
+	f32 dt = input->deltaTime;
+
+	POINT mousePoint;
+	GetCursorPos(&mousePoint);
+	ScreenToClient(Window, &mousePoint);
+	input->mouse.x = mousePoint.x;
+	input->mouse.y = mousePoint.y;
+	input->mouse.z = 0;
+	Win32ProcessButtonState(&input->mouse.buttons[0], (GetKeyState(VK_LBUTTON) & (1 << 15)),  dt);
+	Win32ProcessButtonState(&input->mouse.buttons[1], (GetKeyState(VK_MBUTTON) & (1 << 15)),  dt);
+	Win32ProcessButtonState(&input->mouse.buttons[2], (GetKeyState(VK_RBUTTON) & (1 << 15)),  dt);
+	Win32ProcessButtonState(&input->mouse.buttons[3], (GetKeyState(VK_XBUTTON1) & (1 << 15)), dt);
+	Win32ProcessButtonState(&input->mouse.buttons[4], (GetKeyState(VK_XBUTTON2) & (1 << 15)), dt);
+
+	DWORD controllerIndex = 0;	// Currently only one controller.
+	FGameControllerInput* controller = &input->controller;
+
+	XINPUT_STATE controllerState;
+	if (XInputGetState(controllerIndex, &controllerState) == ERROR_SUCCESS)
+	{
+		// This controller is pluged in.
+		controller->isConnected = true;
+
+		XINPUT_GAMEPAD* pad = &controllerState.Gamepad;
+
+		controller->stickAverage.x = Win32ProcessXInputStickValue(
+			pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+		controller->stickAverage.y = Win32ProcessXInputStickValue(
+			pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+
+		controller->isAnalog = (controller->stickAverage.x != 0 || controller->stickAverage.y != 0);
+
+		f32 threshold = 0.5f;
+
+		// Triggers
+		controller->leftTrigger = pad->bLeftTrigger / 255.0f;
+		controller->rightTrigger = pad->bRightTrigger / 255.0f;
+		Win32ProcessButtonState(&controller->leftTriggerButton, (controller->leftTrigger > threshold), dt);
+		Win32ProcessButtonState(&controller->rightTriggerButton, (controller->rightTrigger > threshold), dt);
+
+		// Shoulder Buttons
+		Win32ProcessButtonState(&controller->leftShoulder,
+			Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_LEFT_SHOULDER),
+			dt);
+		Win32ProcessButtonState(&controller->rightShoulder,
+			Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_RIGHT_SHOULDER),
+			dt);
+
+		// Gamepad Buttons
+		Win32ProcessButtonState(&controller->actionDown,  Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_A), dt);
+		Win32ProcessButtonState(&controller->actionUp,    Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_Y), dt);
+		Win32ProcessButtonState(&controller->actionLeft,  Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_X), dt);
+		Win32ProcessButtonState(&controller->actionRight, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_B), dt);
+
+		// DPad Buttons
+		Win32ProcessButtonState(&controller->dpadDown,  Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_DPAD_DOWN),  dt);
+		Win32ProcessButtonState(&controller->dpadUp,    Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_DPAD_UP),    dt);
+		Win32ProcessButtonState(&controller->dpadLeft,  Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_DPAD_LEFT),  dt);
+		Win32ProcessButtonState(&controller->dpadRight, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_DPAD_RIGHT), dt);
+
+		// Analog
+		Win32ProcessButtonState(&controller->dpadDown, (controller->stickAverage.y > -threshold ? 1 : 0), dt);
+		Win32ProcessButtonState(&controller->dpadLeft, (controller->stickAverage.x > -threshold ? 1 : 0), dt);
+		// Analog overrides the original dpad state for up and right, so we check it only if the spad wasn't used.
+		if (!controller->dpadUp.isDown)
+		{
+			Win32ProcessButtonState(&controller->dpadUp, (controller->stickAverage.y > threshold ? 1 : 0), dt);
+		}
+		if (!controller->dpadRight.isDown)
+		{
+			Win32ProcessButtonState(&controller->dpadRight, (controller->stickAverage.x > threshold ? 1 : 0), dt);
+		}
+
+		// Start & Back
+		Win32ProcessButtonState(&controller->start, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_START), dt);
+		Win32ProcessButtonState(&controller->back, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_BACK), dt);
+	}
+	else
+	{
+		controller->isConnected = false;
+	}
+}
+
+internal void Win32HandleKeyboardInput(MSG* msg, WPARAM wParam, LPARAM lParam, FGameControllerInput* input)
+{
+	u32 vKCode = (u32)wParam;
+	bool32 wasDown = ((lParam & (1 << 30)) != 0);
+	bool32 isDown =  ((lParam & (1 << 31)) == 0);
+
+	bool32 altIsDown = (lParam & (1 << 29));
+	if (altIsDown && (vKCode == VK_RETURN) && isDown && !wasDown)
+	{
+		ToggleFullscreen(msg->hwnd);
+	}
+
+	if ((altIsDown && (vKCode == VK_F4)) || ((vKCode == VK_ESCAPE)))
+	{
+		GlobalRunning = false;
+	}
+}
+
+internal void Win32HandleWindowsMessageLoop(FGameControllerInput* controller)
+{
+	MSG message;
+	PeekMessage(&message, 0, 0, 0, PM_REMOVE);
+	switch (message.message)
+	{
+		case WM_SYSKEYDOWN:
+		case WM_SYSKEYUP:
+		case WM_KEYDOWN:
+		case WM_KEYUP:
+		{
+			Win32HandleKeyboardInput(&message, message.wParam, message.lParam, controller);
+		} break;
+
 		case WM_DESTROY:
 		case WM_CLOSE:
 		{
 			GlobalRunning = false;
 		} break;
 
-		// Explicitly call Render when the window is resized or dragged.
+		default:
+		{
+			TranslateMessage(&message);
+			DispatchMessageW(&message);
+		}
+	}
+}
+
+internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
+{
+	LRESULT result = 0;
+
+	switch (Message)
+	{
+		case WM_DESTROY:
+		case WM_CLOSE:
+		{
+			GlobalRunning = false;
+		} break;
+
 		case WM_PAINT:
 		{
 			Render(&GlobalApplicationHandle->world);
-		}break;
+		} break;
 
-		// Check if a key has been pressed on the keyboard.
 		case WM_SYSKEYDOWN:
 		case WM_SYSKEYUP:
 		case WM_KEYDOWN:
 		case WM_KEYUP:
 		{
-			Win32HandleKeyboardInput(GlobalApplicationHandle, message, wParam, lParam);
+			Assert(!"Keyboard input came in through a non-dispatch message.");
 		} break;
 
-		// All other messages pass to the message handler in the system class.
 		default:
 		{
-			result = DefWindowProcW(window, message, wParam, lParam);
+			result = DefWindowProcW(Window, Message, WParam, LParam);
 		} break;
 	}
 	return result;
@@ -147,21 +314,46 @@ int WINAPI wWinMain(
 	PWSTR pCmdLine,
 	int nCmdShow)
 {
+	LARGE_INTEGER perfFrequency;
+	QueryPerformanceFrequency(&perfFrequency);
+
+	LARGE_INTEGER lastCounter;
+	QueryPerformanceCounter(&lastCounter);
+
 	Win32System win32System = {};
 	Win32Initialize(&win32System);
 	
+	Win32LoadXInput();
+	FGameState gameState = {};
+	FGameInput input = {};
+
 	// Game loop.
-	MSG message;
-	while (GlobalRunning)
+	gameState.running = true;
+	while (GlobalRunning && gameState.running)
 	{
+		LARGE_INTEGER currentCounter;
+		QueryPerformanceCounter(&currentCounter);
+		f32 deltaTime =
+			(f32)(currentCounter.QuadPart - lastCounter.QuadPart) /
+			(f32)perfFrequency.QuadPart;
+
+		input.deltaTime = deltaTime;
+
 		// Handle windows messages.
-		if (PeekMessageW(&message, 0, 0, 0, PM_REMOVE))
+		Win32HandleWindowsMessageLoop(&input.controller);
+		Win32HandleControllerInput(win32System.window, &input);
+
+		// Update and render.
+		GameUpdate(&gameState, &input);
+		Render(&win32System.world);
+
+		// Update the previous buttons state.
+		for (u32 buttonIndex = 0; buttonIndex < ArrayCount(input.controller.buttons); ++buttonIndex)
 		{
-			TranslateMessage(&message);
-			DispatchMessageW(&message);
+			input.controller.buttons[buttonIndex].wasDown = input.controller.buttons[buttonIndex].isDown;
 		}
 
-		Render(&win32System.world);
+		lastCounter = currentCounter;
 	}
 
 	return 0;

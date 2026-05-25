@@ -14,12 +14,7 @@
 // INCLUDES //
 ///////////////////////////////
 #include "fado_d3d.h"
-
-// > TODO: Replace the input struct with an input API like DirectInput.
-struct Win32Input
-{
-	bool32 keys[256];
-};
+#include "fado.h"
 
 struct Win32System
 {
@@ -27,8 +22,6 @@ struct Win32System
 
 	HINSTANCE instance;
 	HWND window;
-
-	Win32Input input;
 };
 
 ///////////////////////////////
@@ -38,5 +31,6 @@ global_variable Win32System* GlobalApplicationHandle;
 global_variable WINDOWPLACEMENT GlobalWindowPosition = { sizeof(GlobalWindowPosition) };
 global_variable bool32 GlobalShowCursor = true;
 global_variable bool32 GlobalRunning = true;
+global_variable LARGE_INTEGER GlobalPerfCountFrequency;
 
 #endif // WIN32_FADO_H

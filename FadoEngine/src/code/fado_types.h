@@ -22,12 +22,12 @@ typedef wchar_t wchar;
 
 typedef i32 bool32;
 
-struct vec2
+struct v2
 {
     f32 x, y;
 };
 
-struct vec3
+struct v3
 {
     f32 x, y, z;
 };

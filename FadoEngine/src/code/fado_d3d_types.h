@@ -152,8 +152,8 @@ struct FMeshBuffer
 ////////////////////////////////////
 struct FCamera
 {
-	vec3 position;
-	vec3 rotation;
+	v3 position;
+	v3 rotation;
 	DirectX::XMMATRIX viewMatrix;
 };
 

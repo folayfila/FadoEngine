@@ -1,0 +1,75 @@
+#ifndef FADO_H
+#define FADO_H
+
+#include "fado_types.h"
+
+
+struct FGameButtonState
+{
+	bool32 wasDown;
+	bool32 isDown;
+	f32 heldLength;	// Time since the button has been pressed and held.
+};
+
+struct FMouseInput
+{
+    FGameButtonState buttons[5];
+    i32 x, y, z;
+};
+
+struct FGameControllerInput
+{
+    v2 stickAverage;
+    bool32 isConnected;
+    bool32 isAnalog;
+
+    // L2 & R2 buttons are handled as triggers with push values.
+    f32 leftTrigger;
+    f32 rightTrigger;
+
+    union
+    {
+        FGameButtonState buttons[14];
+        struct
+        {
+            FGameButtonState dpadUp;
+            FGameButtonState dpadDown;
+            FGameButtonState dpadLeft;
+            FGameButtonState dpadRight;
+
+            FGameButtonState actionUp;
+            FGameButtonState actionDown;
+            FGameButtonState actionLeft;
+            FGameButtonState actionRight;
+
+            FGameButtonState leftShoulder;          // L1
+            FGameButtonState rightShoulder;         // R1
+
+            FGameButtonState leftTriggerButton;     // L2
+            FGameButtonState rightTriggerButton;    // R2
+
+            FGameButtonState start;
+            FGameButtonState back;
+
+            //? All buttons must be added above this one.
+            FGameButtonState terminator;
+        };
+    };
+};
+
+struct FGameInput
+{
+    FMouseInput mouse;
+    FGameControllerInput controller;
+    f32 deltaTime;
+};
+
+struct FGameState
+{
+    bool32 running;
+};
+
+///////////////////////////////////////////////////////////////////
+void GameUpdate(FGameState* gameState, FGameInput* input);
+
+#endif FADO_H
