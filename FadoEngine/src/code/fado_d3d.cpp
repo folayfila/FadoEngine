@@ -13,28 +13,12 @@ const char* k_psEntryFuncName = "PixelShaderEntry";
 ////////////////////////////////////////////////////////////////////////////////
 internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeight, bool32 vsync, HWND Window, bool32 fullScreen, f32 screenDepth, f32 screenNear)
 {
-	HRESULT result;
-	IDXGIFactory* factory;
-	IDXGIAdapter* adapter;
-	IDXGIOutput* adapterOutput;
-	u32 numModes, numerator, denominator;
-	u64 stringLength;
-	DXGI_MODE_DESC* displayModeList;
-	DXGI_ADAPTER_DESC adapterDesc;
-	i32 error;
-	DXGI_SWAP_CHAIN_DESC swapChainDesc;
-	D3D_FEATURE_LEVEL featureLevel;
-	ID3D11Texture2D* backBufferPtr;
-	D3D11_TEXTURE2D_DESC depthBufferDesc;
-	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
-	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-	D3D11_RASTERIZER_DESC rasterDesc;
-	f32 fieldOfView, screenAspect;
-
 	// Store the vsync setting.
 	fdirect3D->vsyncEnabled = vsync;
 
 	// Create a DirectX graphics interface factory.
+	HRESULT result;
+	IDXGIFactory* factory;
 	result = CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)&factory);
 	if (FAILED(result))
 	{
@@ -42,6 +26,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	}
 
 	// Use the factory to create an adapter for the primary graphics interface (video card).
+	IDXGIAdapter* adapter;
 	result = factory->EnumAdapters(0, &adapter);
 	if (FAILED(result))
 	{
@@ -49,12 +34,14 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	}
 
 	// Enumerate the primary adapter output (monitor).
+	IDXGIOutput* adapterOutput;
 	result = adapter->EnumOutputs(0, &adapterOutput);
 	if (FAILED(result))
 	{
 		return false;
 	}
 
+	u32 numModes = 0;
 	// Get the number of modes that fit the DXGI_FORMAT_R8G8B8A8_UNORM display format for the adapter output (monitor).
 	result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &numModes, NULL);
 	if (FAILED(result))
@@ -63,6 +50,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	}
 
 	// Create a list to hold all the possible display modes for this monitor/video card combination.
+	DXGI_MODE_DESC* displayModeList;
 	displayModeList = new DXGI_MODE_DESC[numModes];
 	if (!displayModeList)
 	{
@@ -78,6 +66,8 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 
 	// Now go through all the display modes and find the one that matches the screen width and height.
 	// When a match is found store the numerator and denominator of the refresh rate for that monitor.
+	u32 numerator = 0;
+	u32 denominator = 0;
 	for (u32 i = 0; i < numModes; i++)
 	{
 		if (displayModeList[i].Width == (u32)screenWidth)
@@ -91,6 +81,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	}
 
 	// Get the adapter (video card) description.
+	DXGI_ADAPTER_DESC adapterDesc;
 	result = adapter->GetDesc(&adapterDesc);
 	if (FAILED(result))
 	{
@@ -101,6 +92,8 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	fdirect3D->videoCardMemory = (i32)(adapterDesc.DedicatedVideoMemory / 1024 / 1024);
 
 	// Convert the name of the video card to a character array and store it.
+	u64 stringLength;
+	i32 error;
 	error = wcstombs_s(&stringLength, fdirect3D->videoCardDescription, 128, adapterDesc.Description, 128);
 	if (error != 0)
 	{
@@ -124,6 +117,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	factory = 0;
 
 	// Initialize the swap chain description.
+	DXGI_SWAP_CHAIN_DESC swapChainDesc;
 	ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
 
 	// Set to a single back buffer.
@@ -172,6 +166,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 	// Set the feature level to DirectX 11.
+	D3D_FEATURE_LEVEL featureLevel;
 	featureLevel = D3D_FEATURE_LEVEL_11_0;
 
 	// Create the swap chain, Direct3D device, and Direct3D device context.
@@ -188,6 +183,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	factory->Release();
 
 	// Get the pointer to the back buffer.
+	ID3D11Texture2D* backBufferPtr;
 	result = fdirect3D->swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBufferPtr);
 	if (FAILED(result))
 	{
@@ -206,6 +202,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	backBufferPtr = 0;
 
 	// Initialize the description of the depth buffer.
+	D3D11_TEXTURE2D_DESC depthBufferDesc;
 	ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
 
 	// Set up the description of the depth buffer.
@@ -229,6 +226,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	}
 
 	// Initialize the description of the stencil state.
+	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
 	ZeroMemory(&depthStencilDesc, sizeof(depthStencilDesc));
 
 	// Set up the description of the stencil state.
@@ -263,6 +261,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	fdirect3D->deviceContext->OMSetDepthStencilState(fdirect3D->depthStencilState, 1);
 
 	// Initialize the depth stencil view.
+	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
 
 	// Set up the depth stencil view description.
@@ -281,6 +280,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	fdirect3D->deviceContext->OMSetRenderTargets(1, &fdirect3D->renderTargetView, fdirect3D->depthStencilView);
 
 	// Setup the raster description which will determine how and what polygons will be drawn.
+	D3D11_RASTERIZER_DESC rasterDesc;
 	rasterDesc.AntialiasedLineEnable = false;
 	rasterDesc.CullMode = D3D11_CULL_BACK;
 	rasterDesc.DepthBias = 0;
@@ -314,8 +314,8 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	fdirect3D->deviceContext->RSSetViewports(1, &fdirect3D->viewport);
 
 	// Setup the projection matrix.
-	fieldOfView = Pi32 / 4.0f;
-	screenAspect = (float)screenWidth / (float)screenHeight;
+	f32 fieldOfView = Pi32 / 4.0f;
+	f32 screenAspect = (float)screenWidth / (float)screenHeight;
 
 	// Create the projection matrix for 3D rendering.
 	fdirect3D->projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(fieldOfView, screenAspect, screenNear, screenDepth);
@@ -361,63 +361,44 @@ internal void EndScene(FD3D* fdirect3D)
 	}
 }
 
-internal void SetBackBufferRenderTarget(FD3D *fd3d)
-{
-	// Bind the render target view and depth stencil buffer to the output render pipeline.
-	fd3d->deviceContext->OMSetRenderTargets(1, &fd3d->renderTargetView, fd3d->depthStencilView);
-}
-
-internal void ResetViewport(FD3D *fdirect3D)
-{
-	// Set the viewport.
-	fdirect3D->deviceContext->RSSetViewports(1, &fdirect3D->viewport);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // FColorShaderD3D
 ////////////////////////////////////////////////////////////////////////////////
 internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* device, HWND window)
 {
-	bool32 result;
-	wchar hlslFileName[128];
-	i32 error;
-
-	// > TODO: Write a good relative path loader or sth.
 	// Set the filename of the hlsl shader.
-	error = wcscpy_s(hlslFileName, 128, L"src\\shaders\\color.hlsl");
+	wchar hlslFileName[128];
+	i32 error = wcscpy_s(hlslFileName, 128, L"src\\shaders\\color.hlsl");
 	if (error != 0)
 	{
 		return false;
 	}
 
-	if (GetFileAttributes(hlslFileName) == INVALID_FILE_ATTRIBUTES)
+	if (GetFileAttributesW(hlslFileName) == INVALID_FILE_ATTRIBUTES)
 	{
-		MessageBox(NULL, L"File not found!", hlslFileName, MB_OK);
+		MessageBoxW(NULL, L"File not found!", hlslFileName, MB_OK);
+		return false;
 	}
 
-	// Initialize the vertex and pixel (hlsl) shaders.
 	ID3D10Blob* errorMessage;
-	ID3D10Blob* vertexShaderBuffer;
-	ID3D10Blob* pixelShaderBuffer;
-	D3D11_INPUT_ELEMENT_DESC polygonLayout[2];
-	u32 numElements;
-	D3D11_BUFFER_DESC matrixBufferDesc;
 
 	// Compile the vertex shader code.
-	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
+	ID3D10Blob* vertexShaderBuffer;
+	HRESULT result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&vertexShaderBuffer, &errorMessage);
 	if (FAILED(result))
 	{
-		MessageBox(window, hlslFileName, L"Missing Shader File", MB_OK);
+		MessageBoxW(window, hlslFileName, L"Missing Shader File", MB_OK);
 		return false;
 	}
 
 	// Compile the pixel shader code.
+	ID3D10Blob* pixelShaderBuffer;
 	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_psEntryFuncName, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&pixelShaderBuffer, &errorMessage);
 	if (FAILED(result))
 	{
-		MessageBox(window, hlslFileName, L"Missing Shader File", MB_OK);
+		MessageBoxW(window, hlslFileName, L"Missing Shader File", MB_OK);
 		return false;
 	}
 
@@ -436,7 +417,8 @@ internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* d
 	}
 
 	// Create the vertex input layout description.
-	// This setup needs to match the VertexType stucture in the ModelClass and in the shader.
+	// This setup needs to match the VertexType stucture in the model and in the shader.
+	D3D11_INPUT_ELEMENT_DESC polygonLayout[2];
 	polygonLayout[0].SemanticName = "POSITION";
 	polygonLayout[0].SemanticIndex = 0;
 	polygonLayout[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -454,7 +436,7 @@ internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* d
 	polygonLayout[1].InstanceDataStepRate = 0;
 
 	// Get a count of the elements in the layout.
-	numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
+	u32 numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
 
 	// Create the vertex input layout.
 	result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
@@ -472,6 +454,7 @@ internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* d
 	pixelShaderBuffer = 0;
 
 	// Setup the description of the dynamic matrix constant buffer that is in the vertex shader.
+	D3D11_BUFFER_DESC matrixBufferDesc;
 	matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	matrixBufferDesc.ByteWidth = sizeof(FMatrixBuffer);
 	matrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
@@ -491,25 +474,21 @@ internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* d
 
 internal bool32 SetColorShaderParameters(FColorShader* colorShader, ID3D11DeviceContext* deviceContext, DirectX::XMMATRIX worldMatrix, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix)
 {
-	HRESULT result;
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	FMatrixBuffer* dataPtr;
-	u32 bufferNumber;
-
 	// Transpose the matrices to prepare them for the shader.
 	worldMatrix = XMMatrixTranspose(worldMatrix);
 	viewMatrix = XMMatrixTranspose(viewMatrix);
 	projectionMatrix = XMMatrixTranspose(projectionMatrix);
 
 	// Lock the constant buffer so it can be written to.
-	result = deviceContext->Map(colorShader->matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	HRESULT result = deviceContext->Map(colorShader->matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(result))
 	{
 		return false;
 	}
 
 	// Get a pointer to the data in the constant buffer.
-	dataPtr = (FMatrixBuffer*)mappedResource.pData;
+	FMatrixBuffer* dataPtr = (FMatrixBuffer*)mappedResource.pData;
 
 	// Copy the matrices into the constant buffer.
 	dataPtr->world = worldMatrix;
@@ -520,7 +499,7 @@ internal bool32 SetColorShaderParameters(FColorShader* colorShader, ID3D11Device
 	deviceContext->Unmap(colorShader->matrixBuffer, 0);
 
 	// Set the position of the constant buffer in the vertex shader.
-	bufferNumber = 0;
+	u32 bufferNumber = 0;
 
 	// Finanly set the constant buffer in the vertex shader with the updated values.
 	deviceContext->VSSetConstantBuffers(bufferNumber, 1, &colorShader->matrixBuffer);
@@ -528,73 +507,62 @@ internal bool32 SetColorShaderParameters(FColorShader* colorShader, ID3D11Device
 	return true;
 }
 
-internal bool32 RenderColorShader(FColorShader* colorShader, ID3D11DeviceContext* deviceContext, i32 indexCount, DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection)
+internal void RenderColorShader(FColorShader* colorShader, ID3D11DeviceContext* deviceContext, i32 indexCount, DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection)
 {
 	// Set the shader parameters that it will use for rendering.
 	if (!SetColorShaderParameters(colorShader, deviceContext, world, view, projection))
 	{
-		return false;
+		return;
 	}
 
 	// Now render the prepared buffers with the shader.
 	// Set the vertex input layout.
 	deviceContext->IASetInputLayout(colorShader->layout);
 
-	// Set the vertex and pixel shaders that will be used to render this triangle.
+	// Set the vertex and pixel shaders that will be used to render the model.
 	deviceContext->VSSetShader(colorShader->vertexShader, NULL, 0);
 	deviceContext->PSSetShader(colorShader->pixelShader, NULL, 0);
 
-	// Render the triangle.
+	// Render the model.
 	deviceContext->DrawIndexed(indexCount, 0, 0);
-
-	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// FTextureShaderD3D
+// FTextureShader
 ////////////////////////////////////////////////////////////////////////////////
 internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Device* device, HWND window)
 {
-	bool32 result;
-	wchar hlslFileName[128];
-	i32 error;
-
-	// > TODO: Write a good relative path loader or sth.
 	// Set the filename of the hlsl shader.
-	error = wcscpy_s(hlslFileName, 128, L"src\\shaders\\texture.hlsl");
+	wchar hlslFileName[128];
+	i32 error = wcscpy_s(hlslFileName, 128, L"src\\shaders\\texture.hlsl");
 	if (error != 0)
 	{
 		return false;
 	}
 
-	if (GetFileAttributes(hlslFileName) == INVALID_FILE_ATTRIBUTES)
+	if (GetFileAttributesW(hlslFileName) == INVALID_FILE_ATTRIBUTES)
 	{
-		MessageBox(NULL, L"File not found!", hlslFileName, MB_OK);
+		MessageBoxW(NULL, L"File not found!", hlslFileName, MB_OK);
 	}
 
-	// Initialize the vertex and pixel (hlsl) shaders.
+	// Compile the vertex shader code.
 	ID3D10Blob* errorMessage;
 	ID3D10Blob* vertexShaderBuffer;
-	ID3D10Blob* pixelShaderBuffer;
-	D3D11_INPUT_ELEMENT_DESC polygonLayout[2];
-	u32 numElements;
-	D3D11_BUFFER_DESC matrixBufferDesc;
-
-	// Compile the vertex shader code.
-	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
+	HRESULT result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&vertexShaderBuffer, &errorMessage);
 	if (FAILED(result))
 	{
-		MessageBox(window, hlslFileName, L"Missing Shader File", MB_OK);
+		MessageBoxW(window, hlslFileName, L"Missing Shader File", MB_OK);
 		return false;
 	}
 
 	// Compile the pixel shader code.
+	ID3D10Blob* pixelShaderBuffer;
 	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_psEntryFuncName, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&pixelShaderBuffer, &errorMessage);
 	if (FAILED(result))
 	{
-		MessageBox(window, hlslFileName, L"Missing Shader File", MB_OK);
+		MessageBoxW(window, hlslFileName, L"Missing Shader File", MB_OK);
 		return false;
 	}
 
@@ -613,7 +581,8 @@ internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Dev
 	}
 
 	// Create the vertex input layout description.
-	// This setup needs to match the VertexType stucture in the ModelClass and in the shader.
+	// This setup needs to match the VertexType stucture in the model and in the shader.
+	D3D11_INPUT_ELEMENT_DESC polygonLayout[2];
 	polygonLayout[0].SemanticName = "POSITION";
 	polygonLayout[0].SemanticIndex = 0;
 	polygonLayout[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -631,7 +600,7 @@ internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Dev
 	polygonLayout[1].InstanceDataStepRate = 0;
 
 	// Get a count of the elements in the layout.
-	numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
+	u32 numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
 
 	// Create the vertex input layout.
 	result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
@@ -649,6 +618,7 @@ internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Dev
 	pixelShaderBuffer = 0;
 
 	// Setup the description of the dynamic matrix constant buffer that is in the vertex shader.
+	D3D11_BUFFER_DESC matrixBufferDesc;
 	matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	matrixBufferDesc.ByteWidth = sizeof(FMatrixBuffer);
 	matrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
@@ -692,25 +662,21 @@ internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Dev
 internal bool32 SetTextureShaderParameters(FTextureShader* textureShader, ID3D11DeviceContext* deviceContext, DirectX::XMMATRIX worldMatrix, DirectX::XMMATRIX viewMatrix,
 	DirectX::XMMATRIX projectionMatrix, ID3D11ShaderResourceView* texture)
 {
-	HRESULT result;
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	FMatrixBuffer* dataPtr;
-	u32 bufferNumber;
-
 	// Transpose the matrices to prepare them for the shader.
 	worldMatrix = XMMatrixTranspose(worldMatrix);
 	viewMatrix = XMMatrixTranspose(viewMatrix);
 	projectionMatrix = XMMatrixTranspose(projectionMatrix);
 
 	// Lock the constant buffer so it can be written to.
-	result = deviceContext->Map(textureShader->matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	HRESULT result = deviceContext->Map(textureShader->matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(result))
 	{
 		return false;
 	}
 
 	// Get a pointer to the data in the constant buffer.
-	dataPtr = (FMatrixBuffer*)mappedResource.pData;
+	FMatrixBuffer* dataPtr = (FMatrixBuffer*)mappedResource.pData;
 
 	// Copy the matrices into the constant buffer.
 	dataPtr->world = worldMatrix;
@@ -721,7 +687,7 @@ internal bool32 SetTextureShaderParameters(FTextureShader* textureShader, ID3D11
 	deviceContext->Unmap(textureShader->matrixBuffer, 0);
 
 	// Set the position of the constant buffer in the vertex shader.
-	bufferNumber = 0;
+	u32 bufferNumber = 0;
 
 	// Finanly set the constant buffer in the vertex shader with the updated values.
 	deviceContext->VSSetConstantBuffers(bufferNumber, 1, &textureShader->matrixBuffer);
@@ -732,13 +698,13 @@ internal bool32 SetTextureShaderParameters(FTextureShader* textureShader, ID3D11
 	return true;
 }
 
-internal bool32 RenderTextureShader(FTextureShader* textureShader, ID3D11DeviceContext* deviceContext, i32 indexCount,
+internal void RenderTextureShader(FTextureShader* textureShader, ID3D11DeviceContext* deviceContext, i32 indexCount,
 	DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection, ID3D11ShaderResourceView* texture)
 {
 	// Set the shader parameters that it will use for rendering.
 	if (!SetTextureShaderParameters(textureShader, deviceContext, world, view, projection, texture))
 	{
-		return false;
+		return;
 	}
 
 	// Set the vertex input layout.
@@ -753,55 +719,44 @@ internal bool32 RenderTextureShader(FTextureShader* textureShader, ID3D11DeviceC
 
 	// Render.
 	deviceContext->DrawIndexed(indexCount, 0, 0);
-
-	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// FLightShaderD3D
+// FLightShader
 ////////////////////////////////////////////////////////////////////////////////
 internal bool32 InitializeLightShader(FTextureLightShader* lightShader, ID3D11Device* device, HWND window)
 {
-	bool32 result;
-	wchar hlslFileName[128];
-	i32 error;
-
-	// > TODO: Write a good relative path loader or sth.
 	// Set the filename of the hlsl shader.
-	error = wcscpy_s(hlslFileName, 128, L"src\\shaders\\light.hlsl");
+	wchar hlslFileName[128];
+	i32 error = wcscpy_s(hlslFileName, 128, L"src\\shaders\\light.hlsl");
 	if (error != 0)
 	{
 		return false;
 	}
 
-	if (GetFileAttributes(hlslFileName) == INVALID_FILE_ATTRIBUTES)
+	if (GetFileAttributesW(hlslFileName) == INVALID_FILE_ATTRIBUTES)
 	{
-		MessageBox(NULL, L"File not found!", hlslFileName, MB_OK);
+		MessageBoxW(NULL, L"File not found!", hlslFileName, MB_OK);
 	}
 
-	// Initialize the vertex and pixel (hlsl) shaders.
+	// Compile the vertex shader code.
 	ID3D10Blob* errorMessage;
 	ID3D10Blob* vertexShaderBuffer;
-	ID3D10Blob* pixelShaderBuffer;
-	D3D11_INPUT_ELEMENT_DESC polygonLayout[3];
-	u32 numElements;
-	D3D11_BUFFER_DESC matrixBufferDesc;
-
-	// Compile the vertex shader code.
-	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
+	HRESULT result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&vertexShaderBuffer, &errorMessage);
 	if (FAILED(result))
 	{
-		MessageBox(window, hlslFileName, L"Missing Shader File", MB_OK);
+		MessageBoxW(window, hlslFileName, L"Missing Shader File", MB_OK);
 		return false;
 	}
 
 	// Compile the pixel shader code.
+	ID3D10Blob* pixelShaderBuffer;
 	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_psEntryFuncName, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&pixelShaderBuffer, &errorMessage);
 	if (FAILED(result))
 	{
-		MessageBox(window, hlslFileName, L"Missing Shader File", MB_OK);
+		MessageBoxW(window, hlslFileName, L"Missing Shader File", MB_OK);
 		return false;
 	}
 
@@ -820,7 +775,8 @@ internal bool32 InitializeLightShader(FTextureLightShader* lightShader, ID3D11De
 	}
 
 	// Create the vertex input layout description.
-	// This setup needs to match the VertexType stucture in the ModelClass and in the shader.
+	// This setup needs to match the VertexType stucture in the model and in the shader.
+	D3D11_INPUT_ELEMENT_DESC polygonLayout[3];
 	polygonLayout[0].SemanticName = "POSITION";
 	polygonLayout[0].SemanticIndex = 0;
 	polygonLayout[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -829,24 +785,24 @@ internal bool32 InitializeLightShader(FTextureLightShader* lightShader, ID3D11De
 	polygonLayout[0].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polygonLayout[0].InstanceDataStepRate = 0;
 
-	polygonLayout[1].SemanticName = "TEXCOORD";
+	polygonLayout[1].SemanticName = "NORMAL";
 	polygonLayout[1].SemanticIndex = 0;
-	polygonLayout[1].Format = DXGI_FORMAT_R32G32_FLOAT;
+	polygonLayout[1].Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	polygonLayout[1].InputSlot = 0;
 	polygonLayout[1].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 	polygonLayout[1].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polygonLayout[1].InstanceDataStepRate = 0;
 
-	polygonLayout[2].SemanticName = "NORMAL";
+	polygonLayout[2].SemanticName = "TEXCOORD";
 	polygonLayout[2].SemanticIndex = 0;
-	polygonLayout[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	polygonLayout[2].Format = DXGI_FORMAT_R32G32_FLOAT;
 	polygonLayout[2].InputSlot = 0;
 	polygonLayout[2].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 	polygonLayout[2].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polygonLayout[2].InstanceDataStepRate = 0;
 
 	// Get a count of the elements in the layout.
-	numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
+	u32 numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
 
 	// Create the vertex input layout.
 	result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
@@ -864,6 +820,7 @@ internal bool32 InitializeLightShader(FTextureLightShader* lightShader, ID3D11De
 	pixelShaderBuffer = 0;
 
 	// Setup the description of the dynamic matrix constant buffer that is in the vertex shader.
+	D3D11_BUFFER_DESC matrixBufferDesc;
 	matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	matrixBufferDesc.ByteWidth = sizeof(FMatrixBuffer);
 	matrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
@@ -925,26 +882,21 @@ internal bool32 SetLightShaderParameters(FTextureLightShader* lightShader, ID3D1
 	DirectX::XMMATRIX worldMatrix, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix,
 	ID3D11ShaderResourceView* texture, DirectX::XMFLOAT3 lightDirection, DirectX::XMFLOAT4 diffuseColor, DirectX::XMFLOAT4 ambientColor)
 {
-	HRESULT result;
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	FMatrixBuffer* dataPtr;
-	FLightBuffer* lightDataPtr;
-	u32 bufferNumber;
-
 	// Transpose the matrices to prepare them for the shader.
 	worldMatrix = XMMatrixTranspose(worldMatrix);
 	viewMatrix = XMMatrixTranspose(viewMatrix);
 	projectionMatrix = XMMatrixTranspose(projectionMatrix);
 
 	// Lock the constant buffer so it can be written to.
-	result = deviceContext->Map(lightShader->matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	HRESULT result = deviceContext->Map(lightShader->matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(result))
 	{
 		return false;
 	}
 
 	// Get a pointer to the data in the constant buffer.
-	dataPtr = (FMatrixBuffer*)mappedResource.pData;
+	FMatrixBuffer* dataPtr = (FMatrixBuffer*)mappedResource.pData;
 
 	// Copy the matrices into the constant buffer.
 	dataPtr->world = worldMatrix;
@@ -955,7 +907,7 @@ internal bool32 SetLightShaderParameters(FTextureLightShader* lightShader, ID3D1
 	deviceContext->Unmap(lightShader->matrixBuffer, 0);
 
 	// Set the position of the constant buffer in the vertex shader.
-	bufferNumber = 0;
+	u32 bufferNumber = 0;
 
 	// Finanly set the constant buffer in the vertex shader with the updated values.
 	deviceContext->VSSetConstantBuffers(bufferNumber, 1, &lightShader->matrixBuffer);
@@ -971,7 +923,7 @@ internal bool32 SetLightShaderParameters(FTextureLightShader* lightShader, ID3D1
 	}
 
 	// Get a pointer to the data in the constant buffer.
-	lightDataPtr = (FLightBuffer*)mappedResource.pData;
+	FLightBuffer* lightDataPtr = (FLightBuffer*)mappedResource.pData;
 
 	// Copy the lighting variables into the constant buffer.
 	lightDataPtr->ambientColor = ambientColor;
@@ -991,14 +943,14 @@ internal bool32 SetLightShaderParameters(FTextureLightShader* lightShader, ID3D1
 	return true;
 }
 
-internal bool32 RenderLightShader(FTextureLightShader* lightShader, ID3D11DeviceContext* deviceContext, i32 indexCount,
+internal void RenderLightShader(FTextureLightShader* lightShader, ID3D11DeviceContext* deviceContext, i32 indexCount,
 	DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection,
 	ID3D11ShaderResourceView* texture, DirectX::XMFLOAT3 lightDirection, DirectX::XMFLOAT4 diffuseColor, DirectX::XMFLOAT4 ambientColor)
 {
 	// Set the shader parameters that it will use for rendering.
 	if (!SetLightShaderParameters(lightShader, deviceContext, world, view, projection, texture, lightDirection, diffuseColor, ambientColor))
 	{
-		return false;
+		return;
 	}
 
 	// Set the vertex input layout.
@@ -1013,8 +965,6 @@ internal bool32 RenderLightShader(FTextureLightShader* lightShader, ID3D11Device
 
 	// Render.
 	deviceContext->DrawIndexed(indexCount, 0, 0);
-
-	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1023,21 +973,17 @@ internal bool32 RenderLightShader(FTextureLightShader* lightShader, ID3D11Device
 
 bool32 LoadTarga32BitIntoTexture(const char* filename, FTexture* tex)
 {
-	i32 error, bpp, imageSize;
-	FILE* filePtr;
-	u32 count;
-	FTargaHeader targaFileHeader;
-	u8* targaImage;
-
 	// Open the targa file for reading in binary.
-	error = fopen_s(&filePtr, filename, "rb");
+	FILE* filePtr;
+	i32 error = fopen_s(&filePtr, filename, "rb");
 	if (error != 0)
 	{
 		return false;
 	}
 
 	// Read in the file header.
-	count = (u32)fread(&targaFileHeader, sizeof(FTargaHeader), 1, filePtr);
+	FTargaHeader targaFileHeader = {};
+	u32 count = (u32)fread(&targaFileHeader, sizeof(FTargaHeader), 1, filePtr);
 	if (count != 1)
 	{
 		return false;
@@ -1046,7 +992,7 @@ bool32 LoadTarga32BitIntoTexture(const char* filename, FTexture* tex)
 	// Get the important information from the header.
 	tex->height = (i32)targaFileHeader.height;
 	tex->width = (i32)targaFileHeader.width;
-	bpp = (i32)targaFileHeader.bpp;
+	i32 bpp = (i32)targaFileHeader.pixelDepth;
 
 	// Allow both 24 and 32 bit. 24 will have a 255 value for alpha.
 	if (bpp != 24 && bpp != 32)
@@ -1055,11 +1001,11 @@ bool32 LoadTarga32BitIntoTexture(const char* filename, FTexture* tex)
 	}
 
 	// Calculate the size of the 32 bit image data.
-	i32 bytesPerPixel = bpp / 8;;
-	imageSize = tex->width * tex->height * bytesPerPixel;
+	i32 bytesPerPixel = bpp / 8;
+	i32 imageSize = tex->width * tex->height * bytesPerPixel;
 
 	// Allocate memory for the targa image data.
-	targaImage = new u8[imageSize];
+	u8* targaImage = new u8[imageSize];
 
 	// Read in the targa image data.
 	count = (u32)fread(targaImage, 1, imageSize, filePtr);
@@ -1233,14 +1179,11 @@ internal void MakeQuad(FTextureLightVertex* vertices, u32* indices)
 
 internal bool32 UploadMesh(FMeshBuffer *mesh, ID3D11Device* device, FTextureLightVertex* vertices, u32 vCount, u32* indices, u32 iCount)
 {
-	D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
-	D3D11_SUBRESOURCE_DATA vertexData, indexData;
-	HRESULT result;
-
 	mesh->vertexCount = vCount;
 	mesh->indexCount = iCount;
 
 	// Set up the description of the static vertex buffer.
+	D3D11_BUFFER_DESC vertexBufferDesc;
 	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
 	vertexBufferDesc.ByteWidth = sizeof(FTextureLightVertex) * vCount;
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
@@ -1249,18 +1192,20 @@ internal bool32 UploadMesh(FMeshBuffer *mesh, ID3D11Device* device, FTextureLigh
 	vertexBufferDesc.StructureByteStride = 0;
 
 	// Give the subresource structure a pointer to the vertex data.
+	D3D11_SUBRESOURCE_DATA vertexData;
 	vertexData.pSysMem = vertices;
 	vertexData.SysMemPitch = 0;
 	vertexData.SysMemSlicePitch = 0;
 
 	// Now create the vertex buffer.
-	result = device->CreateBuffer(&vertexBufferDesc, &vertexData, &mesh->vertexBuffer);
+	HRESULT result = device->CreateBuffer(&vertexBufferDesc, &vertexData, &mesh->vertexBuffer);
 	if (FAILED(result))
 	{
 		return false;
 	}
 
 	// Set up the description of the static index buffer.
+	D3D11_BUFFER_DESC indexBufferDesc;
 	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
 	indexBufferDesc.ByteWidth = sizeof(u32) * iCount;
 	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
@@ -1269,6 +1214,7 @@ internal bool32 UploadMesh(FMeshBuffer *mesh, ID3D11Device* device, FTextureLigh
 	indexBufferDesc.StructureByteStride = 0;
 
 	// Give the subresource structure a pointer to the index data.
+	D3D11_SUBRESOURCE_DATA indexData;
 	indexData.pSysMem = indices;
 	indexData.SysMemPitch = 0;
 	indexData.SysMemSlicePitch = 0;
@@ -1299,12 +1245,9 @@ internal HTexture LoadTexture(FRenderWorld* world, ID3D11Device* device, ID3D11D
 
 internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 {
-	u32 stride;
-	u32 offset;
-
 	// Set vertex buffer stride and offset.
-	stride = sizeof(FTextureLightVertex);
-	offset = 0;
+	u32 stride = sizeof(FTextureLightVertex);
+	u32 offset = 0;
 
 	// Set the vertex buffer to active in the input assembler so it can be rendered.
 	deviceContext->IASetVertexBuffers(0, 1, &mesh->vertexBuffer, &stride, &offset);
@@ -1345,9 +1288,12 @@ internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* 
 				break;
 			}
 
-			// NOTE: FGLBVertex and FTextureLightVertex need to match in layout.
+			// NOTE: FGLBVertex and the texture struct need to match in layout.
 			FTextureLightVertex* converted = (FTextureLightVertex*)malloc(prim->vertexCount * sizeof(FTextureLightVertex));
-			if (!converted) continue;
+			if (!converted)
+			{
+				continue;
+			}
 
 			for (u32 v = 0; v < prim->vertexCount; v++)
 			{
@@ -1355,13 +1301,13 @@ internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* 
 					prim->vertices[v].px,
 					prim->vertices[v].py,
 					prim->vertices[v].pz);
-				converted[v].texture = DirectX::XMFLOAT2(
-					prim->vertices[v].u,
-					prim->vertices[v].v);
 				converted[v].normal = DirectX::XMFLOAT3(
 					prim->vertices[v].nx,
 					prim->vertices[v].ny,
 					prim->vertices[v].nz);
+				converted[v].texture = DirectX::XMFLOAT2(
+					prim->vertices[v].u,
+					prim->vertices[v].v);
 			}
 
 			for (u32 i = 0; i < instances; ++i)
@@ -1378,49 +1324,47 @@ internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// FCameraD3D
+// FCamera
 ////////////////////////////////////////////////////////////////////////////////
 internal void RenderCamera(FCamera* camera)
 {
-	DirectX::XMFLOAT3 up, pos, lookAt;
-	DirectX::XMVECTOR upVector, positionVector, lookAtVector;
-	f32 yaw, pitch, roll;
-	DirectX::XMMATRIX rotationMatrix;
-
 	// Setup the vector that points upwards.
+	DirectX::XMFLOAT3 up;
 	up.x = 0.0f;
 	up.y = 1.0f;
 	up.z = 0.0f;
 
 	// Load it into a XMVECTOR structure.
-	upVector = XMLoadFloat3(&up);
+	DirectX::XMVECTOR upVector = XMLoadFloat3(&up);
 
 	// Setup the position of the camera in the world.
+	DirectX::XMFLOAT3 pos;
 	pos.x = camera->position.x;
 	pos.y = camera->position.y;
 	pos.z = camera->position.z;
 
 	// Load it into a XMVECTOR structure.
-	positionVector = XMLoadFloat3(&pos);
+	DirectX::XMVECTOR positionVector = XMLoadFloat3(&pos);
 
 	// Setup where the camera is looking by default.
+	DirectX::XMFLOAT3 lookAt;
 	lookAt.x = 0.0f;
 	lookAt.y = 0.0f;
 	lookAt.z = 1.0f;
 
 	// Load it into a XMVECTOR structure.
-	lookAtVector = XMLoadFloat3(&lookAt);
+	DirectX::XMVECTOR lookAtVector = XMLoadFloat3(&lookAt);
 
 	// Set the yaw (Y axis), pitch (X axis), and roll (Z axis) rotations in radians.
 	// Degrees to radians conversion: π/180 ≈ 0.0174532925.
 	// DirectXMath rotation functions expect radians, so rotation values are multiplied by that constant.
 	const f32 kDegreeToRadians = 0.0174532925f;
-	pitch = camera->rotation.x * kDegreeToRadians;
-	yaw = camera->rotation.y * kDegreeToRadians;
-	roll = camera->rotation.z * kDegreeToRadians;
+	f32 pitch = camera->rotation.x * kDegreeToRadians;
+	f32 yaw = camera->rotation.y * kDegreeToRadians;
+	f32 roll = camera->rotation.z * kDegreeToRadians;
 
 	// Create the rotation matrix from the yaw, pitch, and roll values.
-	rotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
+	DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
 
 	// Transform the lookAt and up vector by the rotation matrix so the view is correctly rotated at the origin.
 	lookAtVector = XMVector3TransformCoord(lookAtVector, rotationMatrix);
@@ -1444,7 +1388,7 @@ bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32
 	result = InitializeFD3D(d3d, screenWidth, screenHeight, vsync, window, fullScreen, screenDepth, screenNear);
 	if (!result)
 	{
-		MessageBox(window, L"Could not initialize Direct3D", L"Error", MB_OK);
+		MessageBoxW(window, L"Could not initialize Direct3D", L"Error", MB_OK);
 		return result;
 	}
 
@@ -1466,7 +1410,7 @@ bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32
 	result = InitializeLightShader(&world->texLightShader, d3d->device, window);
 	if (!result)
 	{
-		MessageBox(window, L"Could not initialize the texture shader.", L"Error", MB_OK);
+		MessageBoxW(window, L"Could not initialize the texture shader.", L"Error", MB_OK);
 		return result;
 	}
 

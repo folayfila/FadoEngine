@@ -26,9 +26,9 @@
 ////////////////////////////////////
 struct FD3D
 {
-	bool32 vsyncEnabled;
-	i32 videoCardMemory;
-	char videoCardDescription[128];
+	DirectX::XMMATRIX projectionMatrix;
+	DirectX::XMMATRIX worldMatrix;
+	DirectX::XMMATRIX orthoMatrix;
 	IDXGISwapChain* swapChain;
 	ID3D11Device* device;
 	ID3D11DeviceContext* deviceContext;
@@ -37,10 +37,10 @@ struct FD3D
 	ID3D11DepthStencilState* depthStencilState;
 	ID3D11DepthStencilView* depthStencilView;
 	ID3D11RasterizerState* rasterState;
-	DirectX::XMMATRIX projectionMatrix;
-	DirectX::XMMATRIX worldMatrix;
-	DirectX::XMMATRIX orthoMatrix;
 	D3D11_VIEWPORT viewport;
+	bool32 vsyncEnabled;
+	i32 videoCardMemory;
+	char videoCardDescription[128];
 };
 
 ////////////////////////////////////
@@ -106,8 +106,8 @@ struct FTextureLightShader
 struct FTextureLightVertex
 {
 	DirectX::XMFLOAT3 position;
-	DirectX::XMFLOAT2 texture;
 	DirectX::XMFLOAT3 normal;
+	DirectX::XMFLOAT2 texture;
 };
 
 struct FLightBuffer
@@ -120,21 +120,30 @@ struct FLightBuffer
 
 struct FTexture
 {
-	u8* targaData;
 	ID3D11Texture2D* texture;
 	ID3D11ShaderResourceView* textureView;
 	i32 width;
 	i32 height;
+	u8* targaData;
 };
 
+#pragma pack(push, 1)
 struct FTargaHeader
 {
-	u8 data1[12];
-	u16 width;
-	u16 height;
-	u8 bpp;
-	u8 data2;
+	u8 idLength;         /* 00h  Size of Image ID field */
+	u8 colorMapType;     /* 01h  Color map type */
+	u8 imageType;        /* 02h  Image type code */
+	u16 cMapStart;       /* 03h  Color map origin */
+	u16 cMapLength;      /* 05h  Color map length */
+	u8 cMapDepth;        /* 07h  Depth of color map entries */
+	u16 xOffset;         /* 08h  X origin of image */
+	u16 yOffset;         /* 0Ah  Y origin of image */
+	u16 width;           /* 0Ch  Width of image */
+	u16 height;          /* 0Eh  Height of image */
+	u8 pixelDepth;       /* 10h  Image pixel size */
+	u8 imageDescriptor;  /* 11h  Image descriptor byte */
 };
+#pragma pack(pop)
 
 ///////////////
 // Model
@@ -152,9 +161,9 @@ struct FMeshBuffer
 ////////////////////////////////////
 struct FCamera
 {
+	DirectX::XMMATRIX viewMatrix;
 	v3 position;
 	v3 rotation;
-	DirectX::XMMATRIX viewMatrix;
 };
 
 

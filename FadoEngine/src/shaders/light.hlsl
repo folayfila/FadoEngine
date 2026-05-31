@@ -34,15 +34,15 @@ SamplerState SampleType : register(s0);
 struct VertexInputType
 {
     float4 position : POSITION;
-    float2 tex : TEXCOORD0;
     float3 normal : NORMAL;
+    float2 tex : TEXCOORD0;
 };
 
 struct PixelInputType
 {
     float4 position : SV_POSITION; // SV = System Value
-    float2 tex : TEXCOORD0;
     float3 normal : NORMAL;
+    float2 tex : TEXCOORD0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,11 +61,11 @@ PixelInputType VertexShaderEntry(VertexInputType input)
     output.position = mul(output.position, viewMatrix);
     output.position = mul(output.position, projectionMatrix);
     
-    // Store the input uv (texture coordinates) for the pixel shader to use.
-    output.tex = input.tex;
-    
     // Calculate the normal vector against the world matrix only.
     output.normal = mul(input.normal, (float3x3) worldMatrix);
+    
+    // Store the input uv (texture coordinates) for the pixel shader to use.
+    output.tex = input.tex;
     
     // NOTE: Sometimes these normals need to be re-normalized inside the pixel shader due to the interpolation that occurs.
     // Normalize the normal vector.

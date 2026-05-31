@@ -34,19 +34,17 @@ struct v3
 
 struct color_rgba
 {
-    f32 r;
-    f32 g;
-    f32 b;
-    f32 a;
-
-    void Set(f32 Red, f32 Green, f32 Blue, f32 alpha = 1.0f)
+    union
     {
-        r = Red;
-        g = Green;
-        b = Blue;
-        a = alpha;
-    }
-
+        f32 rgba[4];
+        struct
+        {
+            f32 r;
+            f32 g;
+            f32 b;
+            f32 a;
+        };
+    };
 };
 
 /**************************************/
