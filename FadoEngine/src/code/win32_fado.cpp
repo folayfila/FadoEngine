@@ -263,10 +263,8 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPA
 //////////////////////////////////////////////////
 // Win32System
 //////////////////////////////////////////////////
-internal bool32 Win32Initialize(Win32System* win32System)
+internal void Win32Initialize(FEngineMemory* memory, Win32System* win32System)
 {
-	bool32 result = true;
-
 	GlobalApplicationHandle = win32System;
 
 	// Get the instance of this application.
@@ -300,9 +298,7 @@ internal bool32 Win32Initialize(Win32System* win32System)
 		0, 0, win32System->instance, 0);
 
 	// Initialize Dx11.
-	result = Initialize(&win32System->world, screenWidth, screenHeight, VSYNC_ENABLED, win32System->window, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR);
-
-	return result;
+	Initialize(&memory->scratch, &win32System->world, screenWidth, screenHeight, VSYNC_ENABLED, win32System->window, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR);
 }
 
 //////////////////////////////////////////////////
@@ -320,8 +316,14 @@ int WINAPI wWinMain(
 	LARGE_INTEGER lastCounter;
 	QueryPerformanceCounter(&lastCounter);
 
+	FEngineMemory engineMemory = {};
+	u32 totalSize = Megabytes(64) + Megabytes(8);
+	void* base = VirtualAlloc(0, totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	engineMemory.permanent = ArenaMake((u8*)base, Megabytes(64));
+	engineMemory.scratch = ArenaMake((u8*)base + Megabytes(64), Megabytes(8));
+
 	Win32System win32System = {};
-	Win32Initialize(&win32System);
+	Win32Initialize(&engineMemory, &win32System);
 	
 	Win32LoadXInput();
 	FGameState gameState = {};
@@ -344,7 +346,7 @@ int WINAPI wWinMain(
 		Win32HandleControllerInput(win32System.window, &input);
 
 		// Update and render.
-		GameUpdate(&gameState, &input);
+		GameUpdate(&engineMemory, &gameState, &input);
 		Render(&win32System.world);
 
 		// Update the previous buttons state.

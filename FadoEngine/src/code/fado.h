@@ -70,6 +70,6 @@ struct FGameState
 };
 
 ///////////////////////////////////////////////////////////////////
-void GameUpdate(FGameState* gameState, FGameInput* input);
+void GameUpdate(FEngineMemory* memory, FGameState* gameState, FGameInput* input);
 
 #endif FADO_H

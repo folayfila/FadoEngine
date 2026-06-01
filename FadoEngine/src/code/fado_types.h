@@ -22,31 +22,6 @@ typedef wchar_t wchar;
 
 typedef i32 bool32;
 
-struct v2
-{
-    f32 x, y;
-};
-
-struct v3
-{
-    f32 x, y, z;
-};
-
-struct color_rgba
-{
-    union
-    {
-        f32 rgba[4];
-        struct
-        {
-            f32 r;
-            f32 g;
-            f32 b;
-            f32 a;
-        };
-    };
-};
-
 /**************************************/
 
 #define internal static
@@ -101,5 +76,74 @@ struct color_rgba
 #define Gigabytes(Value) (Megabytes(Value) * 1024)
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+
+//////////////////////////////////////////
+
+struct v2
+{
+    f32 x, y;
+};
+
+struct v3
+{
+    f32 x, y, z;
+};
+
+struct color_rgba
+{
+    union
+    {
+        f32 rgba[4];
+        struct
+        {
+            f32 r;
+            f32 g;
+            f32 b;
+            f32 a;
+        };
+    };
+};
+
+///
+/////////////////// Arena ///////////////////////
+struct FMemoryArena
+{
+    u32 used;
+    u32 size;
+    u8* base;
+};
+
+struct FEngineMemory
+{
+    // Permanent — lives for the entire session.
+    // Scratch — reset every asset load (or every frame for temp work).
+    FMemoryArena permanent;
+    FMemoryArena scratch;
+};
+
+#define ArenaPushSize(Arena, type) (type *)AreaPushSize_(Arena, sizeof(type))
+#define ArenaPushArray(Arena, Count, type) (type *)AreaPushSize_(Arena, (Count)*sizeof(type))
+internal void* AreaPushSize_(FMemoryArena* arena, u32 size)
+{
+    Assert((arena->used + size) <= arena->size);
+    void* result = arena->base + arena->used;
+    arena->used += size;
+
+    return result;
+}
+
+internal FMemoryArena ArenaMake(u8* backing, u32 size)
+{
+    FMemoryArena arena = {};
+    arena.base = backing;
+    arena.size = size;
+    return arena;
+}
+
+inline void ArenaReset(FMemoryArena* arena)
+{
+    arena->used = 0;
+}
+////////////////////////////////////////////////
 
 #endif // FADO_TYPES_H

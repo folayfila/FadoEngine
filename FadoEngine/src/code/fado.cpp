@@ -15,7 +15,7 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
 
 }
 
-void GameUpdate(FGameState* gameState, FGameInput* input)
+void GameUpdate(FEngineMemory* memory, FGameState* gameState, FGameInput* input)
 {
 	HandleGameInput(gameState, input);
 }

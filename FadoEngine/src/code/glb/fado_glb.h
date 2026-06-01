@@ -152,7 +152,7 @@ struct FGLBAsset
 
 // Load a .glb file. Returns true on success.
 // Call GLB_Free when done.
-bool32 GLB_Load(const char* filename, FGLBAsset* out);
+bool32 GLB_Load(FMemoryArena* scratchArena, const char* filename, FGLBAsset* out);
 
 // Free all heap memory owned by the asset.
 void GLB_Free(FGLBAsset* asset);

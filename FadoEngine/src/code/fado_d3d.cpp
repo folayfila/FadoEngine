@@ -11,7 +11,7 @@ const char* k_psEntryFuncName = "PixelShaderEntry";
 ////////////////////////////////////////////////////////////////////////////////
 // FD3D
 ////////////////////////////////////////////////////////////////////////////////
-internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeight, bool32 vsync, HWND Window, bool32 fullScreen, f32 screenDepth, f32 screenNear)
+internal bool32 InitializeFD3D(FMemoryArena* scratchArena, FD3D* fdirect3D, i32 screenWidth, i32 screenHeight, bool32 vsync, HWND Window, bool32 fullScreen, f32 screenDepth, f32 screenNear)
 {
 	// Store the vsync setting.
 	fdirect3D->vsyncEnabled = vsync;
@@ -51,7 +51,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 
 	// Create a list to hold all the possible display modes for this monitor/video card combination.
 	DXGI_MODE_DESC* displayModeList;
-	displayModeList = new DXGI_MODE_DESC[numModes];
+	displayModeList = (DXGI_MODE_DESC*)ArenaPushArray(scratchArena, numModes, DXGI_MODE_DESC);
 	if (!displayModeList)
 	{
 		return false;
@@ -100,10 +100,6 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 		return false;
 	}
 
-	// Release the display mode list.
-	delete[] displayModeList;
-	displayModeList = 0;
-
 	// Release the adapter output.
 	adapterOutput->Release();
 	adapterOutput = 0;
@@ -116,9 +112,11 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	factory->Release();
 	factory = 0;
 
+	// Release displayModeList by resetting the scratch
+	ArenaReset(scratchArena);
+
 	// Initialize the swap chain description.
-	DXGI_SWAP_CHAIN_DESC swapChainDesc;
-	ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
+	DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
 
 	// Set to a single back buffer.
 	swapChainDesc.BufferCount = 1;
@@ -202,8 +200,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	backBufferPtr = 0;
 
 	// Initialize the description of the depth buffer.
-	D3D11_TEXTURE2D_DESC depthBufferDesc;
-	ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
+	D3D11_TEXTURE2D_DESC depthBufferDesc = {};
 
 	// Set up the description of the depth buffer.
 	depthBufferDesc.Width = screenWidth;
@@ -226,8 +223,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	}
 
 	// Initialize the description of the stencil state.
-	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
-	ZeroMemory(&depthStencilDesc, sizeof(depthStencilDesc));
+	D3D11_DEPTH_STENCIL_DESC depthStencilDesc = {};
 
 	// Set up the description of the stencil state.
 	depthStencilDesc.DepthEnable = true;
@@ -261,8 +257,7 @@ internal bool32 InitializeFD3D(FD3D* fdirect3D, i32 screenWidth, i32 screenHeigh
 	fdirect3D->deviceContext->OMSetDepthStencilState(fdirect3D->depthStencilState, 1);
 
 	// Initialize the depth stencil view.
-	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
+	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {};
 
 	// Set up the depth stencil view description.
 	depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -1259,10 +1254,12 @@ internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
-internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* outHandles, u32 maxHandles, u32 instances = 1)
+internal u32 LoadGLBIntoWorld(FMemoryArena* scratchArena, FRenderWorld* world, const char* filename, HMesh* outHandles, u32 maxHandles, u32 instances = 1)
 {
-	FGLBAsset asset = {};
-	if (!GLB_Load(filename, &asset))
+	FGLBAsset* asset = ArenaPushSize(scratchArena, FGLBAsset);
+	memset(asset, 0, sizeof(FGLBAsset));
+
+	if (!GLB_Load(scratchArena, filename, asset))
 	{
 		Assert(0);	// Check filename, it failed to load!
 		return 0;
@@ -1271,9 +1268,9 @@ internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* 
 	u32 handleCount = 0;
 
 	// Walk every mesh -> every primitive
-	for (u32 mi = 0; mi < asset.meshCount; mi++)
+	for (u32 mi = 0; mi < asset->meshCount; mi++)
 	{
-		FGLBMesh* mesh = &asset.meshes[mi];
+		FGLBMesh* mesh = &asset->meshes[mi];
 
 		for (u32 pi = 0; pi < mesh->primitiveCount; pi++)
 		{
@@ -1289,10 +1286,10 @@ internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* 
 			}
 
 			// NOTE: FGLBVertex and the texture struct need to match in layout.
-			FTextureLightVertex* converted = (FTextureLightVertex*)malloc(prim->vertexCount * sizeof(FTextureLightVertex));
+			FTextureLightVertex* converted = (FTextureLightVertex*)ArenaPushArray(scratchArena, prim->vertexCount, FTextureLightVertex);
 			if (!converted)
 			{
-				continue;
+				Assert(0);
 			}
 
 			for (u32 v = 0; v < prim->vertexCount; v++)
@@ -1315,11 +1312,11 @@ internal u32 LoadGLBIntoWorld(FRenderWorld* world, const char* filename, HMesh* 
 				HMesh handle = LoadMesh(world, world->d3d.device, converted, prim->vertexCount, prim->indices, prim->indexCount);
 				outHandles[handleCount++] = handle;
 			}
-			free(converted);
 		}
 	}
 
-	GLB_Free(&asset);
+	ArenaReset(scratchArena);
+	GLB_Free(asset);
 	return handleCount;
 }
 
@@ -1380,12 +1377,12 @@ internal void RenderCamera(FCamera* camera)
 ////////////////////////////////////
 /// Global Functions
 ////////////////////////////////////
-bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, f32 screenDepth, f32 screenNear)
+bool32 Initialize(FMemoryArena* scratchArena, FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, f32 screenDepth, f32 screenNear)
 {
 	bool32 result = true;
 
 	FD3D* d3d = &world->d3d;
-	result = InitializeFD3D(d3d, screenWidth, screenHeight, vsync, window, fullScreen, screenDepth, screenNear);
+	result = InitializeFD3D(scratchArena, d3d, screenWidth, screenHeight, vsync, window, fullScreen, screenDepth, screenNear);
 	if (!result)
 	{
 		MessageBoxW(window, L"Could not initialize Direct3D", L"Error", MB_OK);
@@ -1396,9 +1393,9 @@ bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32
 
 	// Load a GLB model — up to 64 primitives
 	HMesh meshHandles[64] = {};
-	LoadGLBIntoWorld(world, "src\\models\\cube.glb", meshHandles, 64);
-	LoadGLBIntoWorld(world, "src\\models\\monkey.glb", meshHandles, 64);
-	LoadGLBIntoWorld(world, "src\\models\\sphere.glb", meshHandles, 64);
+	LoadGLBIntoWorld(scratchArena, world, "src\\models\\cube.glb", meshHandles, 64);
+	LoadGLBIntoWorld(scratchArena, world, "src\\models\\monkey.glb", meshHandles, 64);
+	LoadGLBIntoWorld(scratchArena, world, "src\\models\\sphere.glb", meshHandles, 64);
 
 	const char* textureFileName = "src\\textures\\mosaic_diffuseoriginal.tga";
 	HTexture tex = LoadTexture(world, d3d->device, d3d->deviceContext, textureFileName);
