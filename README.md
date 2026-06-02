@@ -3,7 +3,7 @@
 ##### Ongoing project
 
 Fado is a custom 3D game engine written in **C++** using **Direct3D 11**.
-The engine is heavily data oriented, where we have a bunch of struct, and create functions that operate on those structs.
+The engine is heavily data oriented; we have a bunch of structs, and create functions that operate on those structs.
 
 ![Description](media/5_actual_direct_light.gif)
 
