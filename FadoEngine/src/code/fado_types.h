@@ -104,7 +104,20 @@ struct color_rgba
     };
 };
 
-///
+/////////////////// Transform ///////////////////////
+#define MAX_TRANSFORMS 1024
+#define INVALID_TRANSFORM 0xFFFFFFFF
+
+typedef u32 HTransform; // Transform handle.
+
+struct FTransformTable
+{
+    v3 positions[MAX_TRANSFORMS];
+    v3 scales[MAX_TRANSFORMS];
+    v3 rotation[MAX_TRANSFORMS];
+    u32 count;
+};
+
 /////////////////// Arena ///////////////////////
 struct FMemoryArena
 {

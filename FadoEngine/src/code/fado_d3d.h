@@ -14,7 +14,7 @@
 #include "fado_d3d_types.h"
 
 // Global functions called from the win32 platform layer.
-bool32 Initialize(FMemoryArena* scratchArena, FRenderWorld *application, i32 screenWidth, i32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, f32 screenDepth, f32 screenNear);
-bool32 Render(FRenderWorld* application);
+bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, f32 screenDepth, f32 screenNear, FMemoryArena* scratchArena, FTransformTable* transforms);
+bool32 Render(FRenderWorld* application, FTransformTable* transforms);
 
 #endif	// FADO_D3D_H

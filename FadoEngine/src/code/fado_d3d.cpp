@@ -1323,7 +1323,7 @@ internal u32 LoadGLBIntoWorld(FMemoryArena* scratchArena, FRenderWorld* world, c
 ////////////////////////////////////////////////////////////////////////////////
 // FCamera
 ////////////////////////////////////////////////////////////////////////////////
-internal void RenderCamera(FCamera* camera)
+internal void RenderCamera(FCamera* camera, FTransformTable* transforms)
 {
 	// Setup the vector that points upwards.
 	DirectX::XMFLOAT3 up;
@@ -1336,9 +1336,9 @@ internal void RenderCamera(FCamera* camera)
 
 	// Setup the position of the camera in the world.
 	DirectX::XMFLOAT3 pos;
-	pos.x = camera->position.x;
-	pos.y = camera->position.y;
-	pos.z = camera->position.z;
+	pos.x = transforms->positions[camera->hTransform].x;
+	pos.y = transforms->positions[camera->hTransform].y;
+	pos.z = transforms->positions[camera->hTransform].z;
 
 	// Load it into a XMVECTOR structure.
 	DirectX::XMVECTOR positionVector = XMLoadFloat3(&pos);
@@ -1356,9 +1356,9 @@ internal void RenderCamera(FCamera* camera)
 	// Degrees to radians conversion: π/180 ≈ 0.0174532925.
 	// DirectXMath rotation functions expect radians, so rotation values are multiplied by that constant.
 	const f32 kDegreeToRadians = 0.0174532925f;
-	f32 pitch = camera->rotation.x * kDegreeToRadians;
-	f32 yaw = camera->rotation.y * kDegreeToRadians;
-	f32 roll = camera->rotation.z * kDegreeToRadians;
+	f32 pitch = transforms->rotation[camera->hTransform].x * kDegreeToRadians;
+	f32 yaw	  = transforms->rotation[camera->hTransform].y * kDegreeToRadians;
+	f32 roll  = transforms->rotation[camera->hTransform].z * kDegreeToRadians;
 
 	// Create the rotation matrix from the yaw, pitch, and roll values.
 	DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
@@ -1377,7 +1377,7 @@ internal void RenderCamera(FCamera* camera)
 ////////////////////////////////////
 /// Global Functions
 ////////////////////////////////////
-bool32 Initialize(FMemoryArena* scratchArena, FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, f32 screenDepth, f32 screenNear)
+bool32 Initialize(FRenderWorld* world, i32 screenWidth, i32 screenHeight, bool32 vsync, HWND window, bool32 fullScreen, f32 screenDepth, f32 screenNear, FMemoryArena* scratchArena, FTransformTable* transforms)
 {
 	bool32 result = true;
 
@@ -1389,7 +1389,7 @@ bool32 Initialize(FMemoryArena* scratchArena, FRenderWorld* world, i32 screenWid
 		return result;
 	}
 
-	world->camera.position = { 0.0f, 0.0f, -10.0f };
+	transforms->positions[world->camera.hTransform] = { 0.0f, 0.0f, -10.0f };
 
 	// Load a GLB model — up to 64 primitives
 	HMesh meshHandles[64] = {};
@@ -1414,7 +1414,7 @@ bool32 Initialize(FMemoryArena* scratchArena, FRenderWorld* world, i32 screenWid
 	return result;
 }
 
-bool32 Render(FRenderWorld* world)
+bool32 Render(FRenderWorld* world, FTransformTable* transforms)
 {
 	FD3D* d3d = &world->d3d;
 
@@ -1422,7 +1422,7 @@ bool32 Render(FRenderWorld* world)
 	BeginScene(d3d, color_rgba{ 0.0f, 0.0f, 0.0f, 3.0f });
 
 	// Generate the view matrix based on the camera's position.
-	RenderCamera(&world->camera);
+	RenderCamera(&world->camera, transforms);
 
 	FTexture* tex = &world->textures[0];
 

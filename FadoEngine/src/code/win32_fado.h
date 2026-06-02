@@ -21,6 +21,7 @@ struct Win32System
 	FRenderWorld world;
 	HINSTANCE instance;
 	HWND window;
+	FTransformTable* transforms;
 };
 
 ///////////////////////////////

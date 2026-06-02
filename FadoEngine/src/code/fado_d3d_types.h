@@ -127,6 +127,7 @@ struct FTexture
 	u8* targaData;
 };
 
+// > TODO: Replace targa with something more logical :)
 #pragma pack(push, 1)
 struct FTargaHeader
 {
@@ -162,8 +163,7 @@ struct FMeshBuffer
 struct FCamera
 {
 	DirectX::XMMATRIX viewMatrix;
-	v3 position;
-	v3 rotation;
+	HTransform hTransform;
 };
 
 
@@ -171,8 +171,8 @@ struct FCamera
 /// FRenderWorld
 /// The appilcaton that holds all d3d required stuff, texturtes and meshes.
 ////////////////////////////////////
-#define MAX_MESHES 64
-#define MAX_TEXTURES 64
+#define MAX_MESHES 1024
+#define MAX_TEXTURES 1024
 #define INVALID_HANDLE 0xFFFFFFFF
 
 // Handlers

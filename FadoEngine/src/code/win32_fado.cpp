@@ -112,80 +112,103 @@ internal void Win32HandleControllerInput(HWND Window, FGameInput* input)
 	Win32ProcessButtonState(&input->mouse.buttons[3], (GetKeyState(VK_XBUTTON1) & (1 << 15)), dt);
 	Win32ProcessButtonState(&input->mouse.buttons[4], (GetKeyState(VK_XBUTTON2) & (1 << 15)), dt);
 
-	DWORD controllerIndex = 0;	// Currently only one controller.
-	FGameControllerInput* controller = &input->controller;
-
-	XINPUT_STATE controllerState;
-	if (XInputGetState(controllerIndex, &controllerState) == ERROR_SUCCESS)
+	u32 maxControllerCount = XUSER_MAX_COUNT;
+	if (maxControllerCount > (ArrayCount(input->controllers) - 1))
 	{
-		// This controller is pluged in.
-		controller->isConnected = true;
-
-		XINPUT_GAMEPAD* pad = &controllerState.Gamepad;
-
-		controller->stickAverage.x = Win32ProcessXInputStickValue(
-			pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-		controller->stickAverage.y = Win32ProcessXInputStickValue(
-			pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-
-		controller->isAnalog = (controller->stickAverage.x != 0 || controller->stickAverage.y != 0);
-
-		f32 threshold = 0.5f;
-
-		// Triggers
-		controller->leftTrigger = pad->bLeftTrigger / 255.0f;
-		controller->rightTrigger = pad->bRightTrigger / 255.0f;
-		Win32ProcessButtonState(&controller->leftTriggerButton, (controller->leftTrigger > threshold), dt);
-		Win32ProcessButtonState(&controller->rightTriggerButton, (controller->rightTrigger > threshold), dt);
-
-		// Shoulder Buttons
-		Win32ProcessButtonState(&controller->leftShoulder,
-			Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_LEFT_SHOULDER),
-			dt);
-		Win32ProcessButtonState(&controller->rightShoulder,
-			Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_RIGHT_SHOULDER),
-			dt);
-
-		// Gamepad Buttons
-		Win32ProcessButtonState(&controller->actionDown,  Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_A), dt);
-		Win32ProcessButtonState(&controller->actionUp,    Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_Y), dt);
-		Win32ProcessButtonState(&controller->actionLeft,  Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_X), dt);
-		Win32ProcessButtonState(&controller->actionRight, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_B), dt);
-
-		// DPad Buttons
-		Win32ProcessButtonState(&controller->dpadDown,  Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_DPAD_DOWN),  dt);
-		Win32ProcessButtonState(&controller->dpadUp,    Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_DPAD_UP),    dt);
-		Win32ProcessButtonState(&controller->dpadLeft,  Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_DPAD_LEFT),  dt);
-		Win32ProcessButtonState(&controller->dpadRight, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_DPAD_RIGHT), dt);
-
-		// Analog
-		Win32ProcessButtonState(&controller->dpadDown, (controller->stickAverage.y > -threshold ? 1 : 0), dt);
-		Win32ProcessButtonState(&controller->dpadLeft, (controller->stickAverage.x > -threshold ? 1 : 0), dt);
-		// Analog overrides the original dpad state for up and right, so we check it only if the spad wasn't used.
-		if (!controller->dpadUp.isDown)
-		{
-			Win32ProcessButtonState(&controller->dpadUp, (controller->stickAverage.y > threshold ? 1 : 0), dt);
-		}
-		if (!controller->dpadRight.isDown)
-		{
-			Win32ProcessButtonState(&controller->dpadRight, (controller->stickAverage.x > threshold ? 1 : 0), dt);
-		}
-
-		// Start & Back
-		Win32ProcessButtonState(&controller->start, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_START), dt);
-		Win32ProcessButtonState(&controller->back, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_BACK), dt);
+		maxControllerCount = (ArrayCount(input->controllers) - 1);
 	}
-	else
+
+	for (u32 controllerIndex = 0; controllerIndex < maxControllerCount; ++controllerIndex)
 	{
-		controller->isConnected = false;
+		// 0 in input->controllers is for the keyboard, but XInput counts the first controller as 0,
+		// so we increment the index here only to get the controller, but use controllerIndex as is for XInput.
+		FGameControllerInput* controller = &input->controllers[controllerIndex + 1];
+
+		XINPUT_STATE controllerState;
+		if (XInputGetState(controllerIndex, &controllerState) == ERROR_SUCCESS)
+		{
+			// This controller is pluged in.
+			controller->isConnected = true;
+
+			XINPUT_GAMEPAD* pad = &controllerState.Gamepad;
+
+			// Analog is handled in the game code by checking the stick average.
+			controller->leftStickAverage.x = Win32ProcessXInputStickValue(pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+			controller->leftStickAverage.y = Win32ProcessXInputStickValue(pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+			controller->rightStickAverage.x = Win32ProcessXInputStickValue(pad->sThumbRX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+			controller->rightStickAverage.y = Win32ProcessXInputStickValue(pad->sThumbRY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+
+			controller->isAnalog = (controller->leftStickAverage.x != 0 || controller->leftStickAverage.y != 0);
+
+			f32 threshold = 0.5f;
+
+			// Triggers
+			controller->leftTrigger = pad->bLeftTrigger / 255.0f;
+			controller->rightTrigger = pad->bRightTrigger / 255.0f;
+			Win32ProcessButtonState(&controller->leftTriggerButton, (controller->leftTrigger > threshold), dt);
+			Win32ProcessButtonState(&controller->rightTriggerButton, (controller->rightTrigger > threshold), dt);
+
+			// Shoulder Buttons
+			Win32ProcessButtonState(&controller->leftShoulder,
+				Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_LEFT_SHOULDER),
+				dt);
+			Win32ProcessButtonState(&controller->rightShoulder,
+				Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_RIGHT_SHOULDER),
+				dt);
+
+			// Gamepad Buttons
+			Win32ProcessButtonState(&controller->actionDown, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_A), dt);
+			Win32ProcessButtonState(&controller->actionUp, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_Y), dt);
+			Win32ProcessButtonState(&controller->actionLeft, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_X), dt);
+			Win32ProcessButtonState(&controller->actionRight, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_B), dt);
+
+			// DPad Buttons
+			Win32ProcessButtonState(&controller->dpadDown, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_DPAD_DOWN), dt);
+			Win32ProcessButtonState(&controller->dpadUp, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_DPAD_UP), dt);
+			Win32ProcessButtonState(&controller->dpadLeft, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_DPAD_LEFT), dt);
+			Win32ProcessButtonState(&controller->dpadRight, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_DPAD_RIGHT), dt);
+
+			// Start & Back
+			Win32ProcessButtonState(&controller->start, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_START), dt);
+			Win32ProcessButtonState(&controller->back, Win32IsXInputButtonDown(pad->wButtons, XINPUT_GAMEPAD_BACK), dt);
+		}
+		else
+		{
+			controller->isConnected = false;
+		}
 	}
 }
 
-internal void Win32HandleKeyboardInput(MSG* msg, WPARAM wParam, LPARAM lParam, FGameControllerInput* input)
+internal void Win32HandleKeyboardInput(MSG* msg, WPARAM wParam, LPARAM lParam, FGameControllerInput* keyboard, f32 deltaTime)
 {
 	u32 vKCode = (u32)wParam;
 	bool32 wasDown = ((lParam & (1 << 30)) != 0);
 	bool32 isDown =  ((lParam & (1 << 31)) == 0);
+
+	if (vKCode == 'W')
+	{
+		Win32ProcessButtonState(&keyboard->dpadUp, isDown, deltaTime);
+	}
+	if (vKCode == 'S')
+	{
+		Win32ProcessButtonState(&keyboard->dpadDown, isDown, deltaTime);
+	}
+	if (vKCode == 'A')
+	{
+		Win32ProcessButtonState(&keyboard->dpadLeft, isDown, deltaTime);
+	}
+	if (vKCode == 'D')
+	{
+		Win32ProcessButtonState(&keyboard->dpadRight, isDown, deltaTime);
+	}
+	if (vKCode == 'E')
+	{
+		Win32ProcessButtonState(&keyboard->rightShoulder, isDown, deltaTime);
+	}
+	if (vKCode == 'Q')
+	{
+		Win32ProcessButtonState(&keyboard->leftShoulder, isDown, deltaTime);
+	}
 
 	bool32 altIsDown = (lParam & (1 << 29));
 	if (altIsDown && (vKCode == VK_RETURN) && isDown && !wasDown)
@@ -199,7 +222,7 @@ internal void Win32HandleKeyboardInput(MSG* msg, WPARAM wParam, LPARAM lParam, F
 	}
 }
 
-internal void Win32HandleWindowsMessageLoop(FGameControllerInput* controller)
+internal void Win32HandleWindowsMessageLoop(FGameControllerInput* keyboard, f32 deltaTime)
 {
 	MSG message;
 	PeekMessage(&message, 0, 0, 0, PM_REMOVE);
@@ -210,7 +233,7 @@ internal void Win32HandleWindowsMessageLoop(FGameControllerInput* controller)
 		case WM_KEYDOWN:
 		case WM_KEYUP:
 		{
-			Win32HandleKeyboardInput(&message, message.wParam, message.lParam, controller);
+			Win32HandleKeyboardInput(&message, message.wParam, message.lParam, keyboard, deltaTime);
 		} break;
 
 		case WM_DESTROY:
@@ -241,7 +264,7 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPA
 
 		case WM_PAINT:
 		{
-			Render(&GlobalApplicationHandle->world);
+			Render(&GlobalApplicationHandle->world, GlobalApplicationHandle->transforms);
 		} break;
 
 		case WM_SYSKEYDOWN:
@@ -298,7 +321,7 @@ internal void Win32Initialize(FEngineMemory* memory, Win32System* win32System)
 		0, 0, win32System->instance, 0);
 
 	// Initialize Dx11.
-	Initialize(&memory->scratch, &win32System->world, screenWidth, screenHeight, VSYNC_ENABLED, win32System->window, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR);
+	Initialize(&win32System->world, screenWidth, screenHeight, VSYNC_ENABLED, win32System->window, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR, &memory->scratch, win32System->transforms);
 }
 
 //////////////////////////////////////////////////
@@ -322,16 +345,20 @@ int WINAPI wWinMain(
 	engineMemory.permanent = ArenaMake((u8*)base, Megabytes(64));
 	engineMemory.scratch = ArenaMake((u8*)base + Megabytes(64), Megabytes(8));
 
-	Win32System win32System = {};
-	Win32Initialize(&engineMemory, &win32System);
+	Win32System* win32System = ArenaPushSize(&engineMemory.permanent, Win32System);
+	win32System->transforms = ArenaPushSize(&engineMemory.permanent, FTransformTable);
+	Win32Initialize(&engineMemory, win32System);
+	win32System->world.camera.hTransform = 0;
 	
 	Win32LoadXInput();
-	FGameState gameState = {};
-	FGameInput input = {};
+	FGameState* gameState = ArenaPushSize(&engineMemory.permanent, FGameState);
+	gameState->transforms = win32System->transforms;
+	gameState->hCameraTransform = win32System->world.camera.hTransform;
+	FGameInput* input = ArenaPushSize(&engineMemory.permanent, FGameInput);
 
 	// Game loop.
-	gameState.running = true;
-	while (GlobalRunning && gameState.running)
+	gameState->running = true;
+	while (GlobalRunning && gameState->running)
 	{
 		LARGE_INTEGER currentCounter;
 		QueryPerformanceCounter(&currentCounter);
@@ -339,20 +366,25 @@ int WINAPI wWinMain(
 			(f32)(currentCounter.QuadPart - lastCounter.QuadPart) /
 			(f32)perfFrequency.QuadPart;
 
-		input.deltaTime = deltaTime;
+		input->deltaTime = deltaTime;
 
 		// Handle windows messages.
-		Win32HandleWindowsMessageLoop(&input.controller);
-		Win32HandleControllerInput(win32System.window, &input);
+		FGameControllerInput* keyboardInput = &input->controllers[0];
+		keyboardInput->isConnected = true;
+		Win32HandleWindowsMessageLoop(keyboardInput, deltaTime);
+		Win32HandleControllerInput(win32System->window, input);
 
 		// Update and render.
-		GameUpdate(&engineMemory, &gameState, &input);
-		Render(&win32System.world);
+		GameUpdate(&engineMemory, gameState, input);
+		Render(&win32System->world, win32System->transforms);
 
 		// Update the previous buttons state.
-		for (u32 buttonIndex = 0; buttonIndex < ArrayCount(input.controller.buttons); ++buttonIndex)
+		for (u32 controllerIndex = 0; controllerIndex < ArrayCount(input->controllers); ++controllerIndex)
 		{
-			input.controller.buttons[buttonIndex].wasDown = input.controller.buttons[buttonIndex].isDown;
+			for (u32 buttonIndex = 0; buttonIndex < ArrayCount(input->controllers[0].buttons); ++buttonIndex)
+			{
+				input->controllers[controllerIndex].buttons[buttonIndex].wasDown = input->controllers[controllerIndex].buttons[buttonIndex].isDown;
+			}
 		}
 
 		lastCounter = currentCounter;

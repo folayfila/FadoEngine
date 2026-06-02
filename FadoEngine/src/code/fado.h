@@ -17,9 +17,19 @@ struct FMouseInput
     i32 x, y, z;
 };
 
+enum EStickDirection
+{
+    None,
+    Up,
+    Down,
+    Left,
+    Right
+};
+
 struct FGameControllerInput
 {
-    v2 stickAverage;
+    v2 leftStickAverage;
+    v2 rightStickAverage;
     bool32 isConnected;
     bool32 isAnalog;
 
@@ -60,13 +70,16 @@ struct FGameControllerInput
 struct FGameInput
 {
     FMouseInput mouse;
-    FGameControllerInput controller;
+    FGameControllerInput controllers[5];    // 0->Keyboard, 1-4>Controller
     f32 deltaTime;
 };
 
 struct FGameState
 {
     bool32 running;
+
+    FTransformTable* transforms;
+    HTransform hCameraTransform;
 };
 
 ///////////////////////////////////////////////////////////////////
