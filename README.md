@@ -5,9 +5,11 @@
 Fado is a custom 3D game engine written in **C++** using **Direct3D 11**.
 The engine is heavily data oriented; we have a bunch of structs, and create functions that operate on those structs.
 
-![Description](media/5_actual_direct_light.gif)
+![Description](media/showcase.gif)
 
 ### Latest Features
+- Movable camera using a handle for an array of Transforms (AoS) (working on rotation with quaternions).
+- Multiple controllers support. 
 - Implemented a Memory Arena system that allocates memeory only at startup and use it throughout the session.
 - Fully resizable and full-screen toggle-supported window.
 - Implemented XInput to support keyboard and controller input.
