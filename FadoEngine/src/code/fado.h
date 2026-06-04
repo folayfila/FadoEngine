@@ -15,6 +15,7 @@ struct FMouseInput
 {
     FGameButtonState buttons[5];
     i32 x, y, z;
+    i32 deltaX, deltaY; // Difference in mouse position between the last and current frame.
 };
 
 enum EStickDirection

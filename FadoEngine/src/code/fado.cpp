@@ -100,6 +100,18 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
             Rotate(gameState->transforms, gameState->hCamera, { 0, -sensitivity, 0 });
         }
 
+        // Mouse Rotation
+        // Mouse deltaY maps to pitch and deltaX maps to yaw.
+        // The sensitivity value is much smaller than the controller one because mouse deltas are in pixels, not a -1 to 1 range.
+        f32 mouseSensitivity = 0.1f;
+        f32 mouseYaw = input->mouse.deltaX * mouseSensitivity;
+        f32 mousePitch = input->mouse.deltaY * mouseSensitivity;
+
+        // For now, we rotate with mouse only if the mouse left click is down.
+        if ((mouseYaw != 0 || mousePitch != 0) && (input->mouse.buttons[0].isDown))
+        {
+            Rotate(gameState->transforms, gameState->hCamera, { mousePitch, mouseYaw, 0 });
+        }
 
         if (controllerInput->back.isDown)
         {

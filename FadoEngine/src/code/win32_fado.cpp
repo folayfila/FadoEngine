@@ -104,9 +104,34 @@ internal void Win32HandleControllerInput(HWND Window, FGameInput* input)
 	POINT mousePoint;
 	GetCursorPos(&mousePoint);
 	ScreenToClient(Window, &mousePoint);
-	input->mouse.x = mousePoint.x;
-	input->mouse.y = mousePoint.y;
+
+	// Only update if mouse is within the window bounds.
+	RECT clientRect;
+	GetClientRect(Window, &clientRect);
+	if ((mousePoint.x >= clientRect.left) && (mousePoint.x <= clientRect.right) &&
+		(mousePoint.y >= clientRect.top) && (mousePoint.y <= clientRect.bottom))
+	{
+		// We update the delta only if the previous and current mouse position were in bounds.
+		// This prevents huge delta values if the user goes outside of the bounds and then back from another corner,
+		// in that case, we just set the update the mouse position to the current, and calculate delta on the next frame.
+		if ((input->mouse.x != 0) && (input->mouse.y != 0))
+		{
+			input->mouse.deltaX = mousePoint.x - input->mouse.x;
+			input->mouse.deltaY = mousePoint.y - input->mouse.y;
+		}
+		input->mouse.x = mousePoint.x;
+		input->mouse.y = mousePoint.y;
+	}
+	else
+	{
+		// Reset the position and delta if the mouse is out of the game bounds.
+		input->mouse.x = 0;
+		input->mouse.y = 0;
+		input->mouse.deltaX = 0;
+		input->mouse.deltaY = 0;
+	}
 	input->mouse.z = 0;
+
 	Win32ProcessButtonState(&input->mouse.buttons[0], (GetKeyState(VK_LBUTTON) & (1 << 15)),  dt);
 	Win32ProcessButtonState(&input->mouse.buttons[1], (GetKeyState(VK_MBUTTON) & (1 << 15)),  dt);
 	Win32ProcessButtonState(&input->mouse.buttons[2], (GetKeyState(VK_RBUTTON) & (1 << 15)),  dt);
