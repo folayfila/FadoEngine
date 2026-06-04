@@ -1325,52 +1325,27 @@ internal u32 LoadGLBIntoWorld(FMemoryArena* scratchArena, FRenderWorld* world, c
 ////////////////////////////////////////////////////////////////////////////////
 internal void RenderCamera(FCamera* camera, FTransformTable* transforms)
 {
-	// Setup the vector that points upwards.
-	DirectX::XMFLOAT3 up;
-	up.x = 0.0f;
-	up.y = 1.0f;
-	up.z = 0.0f;
+	quat q = transforms->rotations[camera->hTransform];
 
-	// Load it into a XMVECTOR structure.
-	DirectX::XMVECTOR upVector = XMLoadFloat3(&up);
+	// Load quaternion directly into DirectXMath.
+	DirectX::XMVECTOR quatVector = DirectX::XMVectorSet(q.x, q.y, q.z, q.w);
 
-	// Setup the position of the camera in the world.
-	DirectX::XMFLOAT3 pos;
-	pos.x = transforms->positions[camera->hTransform].x;
-	pos.y = transforms->positions[camera->hTransform].y;
-	pos.z = transforms->positions[camera->hTransform].z;
+	// Build rotation matrix from quaternion.
+	DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixRotationQuaternion(quatVector);
 
-	// Load it into a XMVECTOR structure.
-	DirectX::XMVECTOR positionVector = XMLoadFloat3(&pos);
+	// Position
+	v3 pos = transforms->positions[camera->hTransform];
+	DirectX::XMVECTOR positionVector = DirectX::XMVectorSet(pos.x, pos.y, pos.z, 0.0f);
 
-	// Setup where the camera is looking by default.
-	DirectX::XMFLOAT3 lookAt;
-	lookAt.x = 0.0f;
-	lookAt.y = 0.0f;
-	lookAt.z = 1.0f;
+	// Default forward and up, rotated by the quaternion matrix.
+	DirectX::XMVECTOR lookAtVector = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+	DirectX::XMVECTOR upVector = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
-	// Load it into a XMVECTOR structure.
-	DirectX::XMVECTOR lookAtVector = XMLoadFloat3(&lookAt);
-
-	// Set the yaw (Y axis), pitch (X axis), and roll (Z axis) rotations in radians.
-	// Degrees to radians conversion: π/180 ≈ 0.0174532925.
-	// DirectXMath rotation functions expect radians, so rotation values are multiplied by that constant.
-	const f32 kDegreeToRadians = 0.0174532925f;
-	f32 pitch = transforms->rotation[camera->hTransform].x * kDegreeToRadians;
-	f32 yaw	  = transforms->rotation[camera->hTransform].y * kDegreeToRadians;
-	f32 roll  = transforms->rotation[camera->hTransform].z * kDegreeToRadians;
-
-	// Create the rotation matrix from the yaw, pitch, and roll values.
-	DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
-
-	// Transform the lookAt and up vector by the rotation matrix so the view is correctly rotated at the origin.
 	lookAtVector = XMVector3TransformCoord(lookAtVector, rotationMatrix);
 	upVector = XMVector3TransformCoord(upVector, rotationMatrix);
 
-	// Translate the rotated camera position to the location of the viewer.
 	lookAtVector = DirectX::XMVectorAdd(positionVector, lookAtVector);
 
-	// Finally create the view matrix from the three updated vectors.
 	camera->viewMatrix = DirectX::XMMatrixLookAtLH(positionVector, lookAtVector, upVector);
 }
 

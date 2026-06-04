@@ -87,6 +87,32 @@ struct v2
 struct v3
 {
     f32 x, y, z;
+
+    inline v3& operator+=(v3 a)
+    {
+        x += a.x;
+        y += a.y;
+        z += a.z;
+        return *this;
+    }
+    inline v3& operator-=(v3 a)
+    {
+        x -= a.x;
+        y -= a.y;
+        z -= a.z;
+        return *this;
+    }
+};
+
+struct v4
+{
+    f32 x, y, z, w;
+};
+typedef v4 quat;
+
+struct matrix
+{
+    f32 m[16];
 };
 
 struct color_rgba
@@ -114,7 +140,7 @@ struct FTransformTable
 {
     v3 positions[MAX_TRANSFORMS];
     v3 scales[MAX_TRANSFORMS];
-    v3 rotation[MAX_TRANSFORMS];
+    quat rotations[MAX_TRANSFORMS];
     u32 count;
 };
 

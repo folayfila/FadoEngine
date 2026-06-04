@@ -79,7 +79,7 @@ struct FGameState
     bool32 running;
 
     FTransformTable* transforms;
-    HTransform hCameraTransform;
+    HTransform hCamera;
 };
 
 ///////////////////////////////////////////////////////////////////

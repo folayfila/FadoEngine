@@ -1,4 +1,5 @@
 #include "fado.h"
+#include "fado_math.h"
 
 internal bool32 IsStickHeld(v2 stickAverage, EStickDirection direction)
 {
@@ -45,48 +46,58 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
             return;
         }
 
+        quat camRot = gameState->transforms->rotations[gameState->hCamera];
+        v3* camPos = &gameState->transforms->positions[gameState->hCamera];
+
+        v3 forward = QuatForward(camRot);
+        v3 right = QuatRight(camRot);
+        v3 up = QuatUp(camRot);
+
         // Movement
+        f32 moveSpeed = 10.0f * input->deltaTime;
         if ((controllerInput->dpadUp.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Up)))
         {
-            gameState->transforms->positions[gameState->hCameraTransform].z += 1.0f;
+            *camPos += forward * moveSpeed;
         }
         if ((controllerInput->dpadDown.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Down)))
         {
-            gameState->transforms->positions[gameState->hCameraTransform].z -= 1.0f;
+            *camPos -= forward * moveSpeed;
         }
         if ((controllerInput->dpadRight.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Right)))
         {
-            gameState->transforms->positions[gameState->hCameraTransform].x += 1.0f;
+            *camPos += right * moveSpeed;
         }
         if ((controllerInput->dpadLeft.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Left)))
         {
-            gameState->transforms->positions[gameState->hCameraTransform].x -= 1.0f;
+            *camPos -= right * moveSpeed;
         }
         if (controllerInput->rightShoulder.isDown)
         {
-            gameState->transforms->positions[gameState->hCameraTransform].y += 1.0f;
+            *camPos += up * moveSpeed;
         }
         if (controllerInput->leftShoulder.isDown)
         {
-            gameState->transforms->positions[gameState->hCameraTransform].y -= 1.0f;
+            *camPos -= up * moveSpeed;
         }
         
         // Rotation
+        f32 sensitivity = 100.0f * input->deltaTime;
         if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Up))
         {
-            gameState->transforms->rotation[gameState->hCameraTransform].x += 1.0f;
+            Rotate(gameState->transforms, gameState->hCamera, { -sensitivity, 0, 0 });
         }
         if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Down))
         {
-            gameState->transforms->rotation[gameState->hCameraTransform].x -= 1.0f;
+            Rotate(gameState->transforms, gameState->hCamera, { sensitivity, 0, 0 });
+
         }
         if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Right))
         {
-            gameState->transforms->rotation[gameState->hCameraTransform].y += 1.0f;
+            Rotate(gameState->transforms, gameState->hCamera, { 0, sensitivity, 0 });
         }
         if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Left))
         {
-            gameState->transforms->rotation[gameState->hCameraTransform].y -= 1.0f;
+            Rotate(gameState->transforms, gameState->hCamera, { 0, -sensitivity, 0 });
         }
 
 

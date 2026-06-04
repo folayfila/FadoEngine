@@ -1,5 +1,6 @@
 #include "win32_fado.h"
 #include <xinput.h>
+#include "fado_math.h"
 
 internal void ToggleFullscreen(HWND Window)
 {
@@ -349,11 +350,12 @@ int WINAPI wWinMain(
 	win32System->transforms = ArenaPushSize(&engineMemory.permanent, FTransformTable);
 	Win32Initialize(&engineMemory, win32System);
 	win32System->world.camera.hTransform = 0;
+	win32System->transforms->rotations[win32System->world.camera.hTransform] = QuatIndentity();
 	
 	Win32LoadXInput();
 	FGameState* gameState = ArenaPushSize(&engineMemory.permanent, FGameState);
 	gameState->transforms = win32System->transforms;
-	gameState->hCameraTransform = win32System->world.camera.hTransform;
+	gameState->hCamera = win32System->world.camera.hTransform;
 	FGameInput* input = ArenaPushSize(&engineMemory.permanent, FGameInput);
 
 	// Game loop.
