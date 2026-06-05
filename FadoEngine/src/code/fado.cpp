@@ -84,22 +84,24 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
         f32 sensitivity = 100.0f * input->deltaTime;
         if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Up))
         {
-            Rotate(gameState->transforms, gameState->hCamera, { -sensitivity, 0, 0 });
+            gameState->cameraPitch -= sensitivity;
         }
         if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Down))
         {
-            Rotate(gameState->transforms, gameState->hCamera, { sensitivity, 0, 0 });
-
+            gameState->cameraPitch += sensitivity;
         }
         if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Right))
         {
-            Rotate(gameState->transforms, gameState->hCamera, { 0, sensitivity, 0 });
+            gameState->cameraYaw += sensitivity;
         }
         if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Left))
         {
-            Rotate(gameState->transforms, gameState->hCamera, { 0, -sensitivity, 0 });
+            gameState->cameraYaw -= sensitivity;
         }
-
+        gameState->cameraPitch = Clampf32(gameState->cameraPitch, -89.0f, 89.0f);
+        SetRotation(gameState->transforms, gameState->hCamera,
+            { gameState->cameraPitch, gameState->cameraYaw, 0 });
+       
         // Mouse Rotation
         // Mouse deltaY maps to pitch and deltaX maps to yaw.
         // The sensitivity value is much smaller than the controller one because mouse deltas are in pixels, not a -1 to 1 range.
@@ -107,11 +109,10 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
         f32 mouseYaw = input->mouse.deltaX * mouseSensitivity;
         f32 mousePitch = input->mouse.deltaY * mouseSensitivity;
 
-        gameState->cameraYaw += mouseYaw;
-        
         // Clamp to prevent gimbal lock at the poles. When we pitch up or down past 90 degrees, 
         // the camera flips because there's no restriction on how far you can pitch.
         gameState->cameraPitch += Clampf32(mousePitch, -89.0f, 89.0f);
+        gameState->cameraYaw += mouseYaw;
 
         // We rotate with mouse only if the mouse right-click is down.
         if ((mouseYaw != 0 || mousePitch != 0) && (input->mouse.isRotating))
