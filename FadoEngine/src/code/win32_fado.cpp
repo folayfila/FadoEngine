@@ -105,19 +105,25 @@ internal void Win32HandleControllerInput(HWND Window, FGameInput* input)
 	GetCursorPos(&mousePoint);
 	ScreenToClient(Window, &mousePoint);
 
-	// Only update if mouse is within the window bounds.
+	// Only update if mouse is within the window bounds and the mouse-right click
 	RECT clientRect;
 	GetClientRect(Window, &clientRect);
 	if ((mousePoint.x >= clientRect.left) && (mousePoint.x <= clientRect.right) &&
 		(mousePoint.y >= clientRect.top) && (mousePoint.y <= clientRect.bottom))
 	{
-		// We update the delta only if the previous and current mouse position were in bounds.
+		// We update the delta only if the user was holding the right-click mouse button, i.e. was already rotating.
 		// This prevents huge delta values if the user goes outside of the bounds and then back from another corner,
 		// in that case, we just set the update the mouse position to the current, and calculate delta on the next frame.
-		if ((input->mouse.x != 0) && (input->mouse.y != 0))
+		if (input->mouse.isRotating)
 		{
 			input->mouse.deltaX = mousePoint.x - input->mouse.x;
 			input->mouse.deltaY = mousePoint.y - input->mouse.y;
+		}
+		else
+		{
+			input->mouse.deltaX = 0;
+			input->mouse.deltaY = 0;
+			input->mouse.isRotating = true;
 		}
 		input->mouse.x = mousePoint.x;
 		input->mouse.y = mousePoint.y;
@@ -129,6 +135,7 @@ internal void Win32HandleControllerInput(HWND Window, FGameInput* input)
 		input->mouse.y = 0;
 		input->mouse.deltaX = 0;
 		input->mouse.deltaY = 0;
+		input->mouse.isRotating = false;
 	}
 	input->mouse.z = 0;
 
@@ -137,6 +144,8 @@ internal void Win32HandleControllerInput(HWND Window, FGameInput* input)
 	Win32ProcessButtonState(&input->mouse.buttons[2], (GetKeyState(VK_RBUTTON) & (1 << 15)),  dt);
 	Win32ProcessButtonState(&input->mouse.buttons[3], (GetKeyState(VK_XBUTTON1) & (1 << 15)), dt);
 	Win32ProcessButtonState(&input->mouse.buttons[4], (GetKeyState(VK_XBUTTON2) & (1 << 15)), dt);
+
+	input->mouse.isRotating = ((input->mouse.buttons[2].isDown) || (input->mouse.buttons[2].wasDown));
 
 	u32 maxControllerCount = XUSER_MAX_COUNT;
 	if (maxControllerCount > (ArrayCount(input->controllers) - 1))

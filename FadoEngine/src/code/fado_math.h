@@ -6,7 +6,46 @@
 #include "fado_types.h"
 #include <math.h>
 
+//////////////////////////////////////////////////////////////////////////
 #define Deg2Rad(d) ((d) * (Pi32 / 180.0f))
+
+//////////////////////////////////////////////////////////////////////////
+///////////////////// General ///////////////////////////////////////
+
+inline f32 Clampf32(f32 value, f32 min, f32 max)
+{
+	if (value < min)
+	{
+		return min;
+	}
+	else if (value > max)
+	{
+		return max;
+	}
+	else
+	{
+		return value;
+	}
+}
+
+inline i32 Clampi32(i32 value, i32 min, i32 max)
+{
+	if (value < min)
+	{
+		return min;
+	}
+	else if (value > max)
+	{
+		return max;
+	}
+	else
+	{
+		return value;
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+///////////////////// Vectors ///////////////////////////////////////
 
 inline v3 operator*(v3 a, f32 b)
 {

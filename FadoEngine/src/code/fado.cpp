@@ -107,10 +107,18 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
         f32 mouseYaw = input->mouse.deltaX * mouseSensitivity;
         f32 mousePitch = input->mouse.deltaY * mouseSensitivity;
 
-        // For now, we rotate with mouse only if the mouse left click is down.
-        if ((mouseYaw != 0 || mousePitch != 0) && (input->mouse.buttons[0].isDown))
+        gameState->cameraYaw += mouseYaw;
+        
+        // Clamp to prevent gimbal lock at the poles. When we pitch up or down past 90 degrees, 
+        // the camera flips because there's no restriction on how far you can pitch.
+        gameState->cameraPitch += Clampf32(mousePitch, -89.0f, 89.0f);
+
+        // We rotate with mouse only if the mouse right-click is down.
+        if ((mouseYaw != 0 || mousePitch != 0) && (input->mouse.isRotating))
         {
-            Rotate(gameState->transforms, gameState->hCamera, { mousePitch, mouseYaw, 0 });
+            // Rebuild quat from the two angles.
+            SetRotation(gameState->transforms, gameState->hCamera,
+                { gameState->cameraPitch, gameState->cameraYaw, 0 });
         }
 
         if (controllerInput->back.isDown)
