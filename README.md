@@ -8,7 +8,8 @@ The engine is heavily data oriented; we have a bunch of structs, and create func
 ![Description](media/showcase.gif)
 
 ### Latest Features
-- Movable camera using a handle for an array of Transforms (AoS) (working on rotation with quaternions).
+- Rotating camera with Quaternions.
+- Movable camera using a handle for an array of Transforms (AoS).
 - Multiple controllers support. 
 - Implemented a Memory Arena system that allocates memeory only at startup and use it throughout the session.
 - Fully resizable and full-screen toggle-supported window.
