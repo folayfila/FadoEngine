@@ -938,18 +938,21 @@ internal bool32 SetLightShaderParameters(FTextureLightShader* lightShader, ID3D1
 	return true;
 }
 
-internal void RenderLightShader(FTextureLightShader* lightShader, ID3D11DeviceContext* deviceContext, i32 indexCount,
-	DirectX::XMMATRIX world, DirectX::XMMATRIX view, DirectX::XMMATRIX projection,
-	ID3D11ShaderResourceView* texture, DirectX::XMFLOAT3 lightDirection, DirectX::XMFLOAT4 diffuseColor, DirectX::XMFLOAT4 ambientColor)
+internal void RenderLightShader(FRenderWorld* world, HTexture hTexture, u32 indexCount)
 {
+	FD3D* d3d = &world->d3d;
+	ID3D11DeviceContext* deviceContext = d3d->deviceContext;
+	FTextureLightShader* lightShader = &world->texLightShader;
+
 	// Set the shader parameters that it will use for rendering.
-	if (!SetLightShaderParameters(lightShader, deviceContext, world, view, projection, texture, lightDirection, diffuseColor, ambientColor))
+	if (!SetLightShaderParameters(lightShader, deviceContext, d3d->worldMatrix, world->camera.viewMatrix, d3d->projectionMatrix,
+		world->textures[hTexture].textureView, lightShader->lightDirection, lightShader->diffuseColor, lightShader->ambientColor))
 	{
 		return;
 	}
 
 	// Set the vertex input layout.
-	deviceContext->IASetInputLayout(lightShader->layout);
+	d3d->deviceContext->IASetInputLayout(lightShader->layout);
 
 	// Set the vertex and pixel shaders that will be used to render this triangle.
 	deviceContext->VSSetShader(lightShader->vertexShader, NULL, 0);
@@ -1254,6 +1257,27 @@ internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
+internal void RenderMeshAndTexture(FRenderWorld* world, HMesh hMesh, HTexture hTexture)
+{
+	// Set vertex buffer stride and offset.
+	u32 stride = sizeof(FTextureLightVertex);
+	u32 offset = 0;
+
+	FMeshBuffer* mesh = &world->meshes[hMesh];
+	ID3D11DeviceContext* deviceContext = world->d3d.deviceContext;
+
+	// Set the vertex buffer to active in the input assembler so it can be rendered.
+	deviceContext->IASetVertexBuffers(0, 1, &mesh->vertexBuffer, &stride, &offset);
+
+	// Set the index buffer to active in the input assembler so it can be rendered.
+	deviceContext->IASetIndexBuffer(mesh->indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+	// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
+	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	RenderLightShader(world, hTexture, mesh->indexCount);
+}
+
 internal u32 LoadGLBIntoWorld(FMemoryArena* scratchArena, FRenderWorld* world, const char* filename, HMesh* outHandles, u32 maxHandles, u32 instances = 1)
 {
 	FGLBAsset* asset = ArenaPushSize(scratchArena, FGLBAsset);
@@ -1425,17 +1449,11 @@ bool32 Render(FRenderWorld* world, FTransformTable* transforms)
 	transMatrix = DirectX::XMMatrixTranslation(-1.5f, -1.5f, 0.0f);
 	d3d->worldMatrix = DirectX::XMMatrixMultiply(rotMatrix, transMatrix);
 
-	RenderMesh(&world->meshes[0], d3d->deviceContext);
-	RenderLightShader(&world->texLightShader, d3d->deviceContext, world->meshes[0].indexCount,
-		d3d->worldMatrix, world->camera.viewMatrix, d3d->projectionMatrix, tex->textureView,
-		world->texLightShader.lightDirection, world->texLightShader.diffuseColor, world->texLightShader.ambientColor);
+	RenderMeshAndTexture(world, 0, 0);
 
 	transMatrix = DirectX::XMMatrixTranslation(0.0f, 1.5f, 0.0f);
 	d3d->worldMatrix = DirectX::XMMatrixMultiply(rotMatrix, transMatrix);
-	RenderMesh(&world->meshes[2], d3d->deviceContext);
-	RenderLightShader(&world->texLightShader, d3d->deviceContext, world->meshes[2].indexCount,
-		d3d->worldMatrix, world->camera.viewMatrix, d3d->projectionMatrix, tex->textureView,
-		world->texLightShader.lightDirection, world->texLightShader.diffuseColor, world->texLightShader.ambientColor);
+	RenderMeshAndTexture(world, 2, 0);
 
 	// Render the second mesh, offseted to the right and scaled down
 	scaleMatrix = DirectX::XMMatrixScaling(0.75f, 0.75f, 0.75f);
@@ -1444,10 +1462,8 @@ bool32 Render(FRenderWorld* world, FTransformTable* transforms)
 	srMatrix = DirectX::XMMatrixMultiply(scaleMatrix, rotMatrix);
 	d3d->worldMatrix = DirectX::XMMatrixMultiply(srMatrix, transMatrix);
 
-	RenderMesh(&world->meshes[1], d3d->deviceContext);
-	RenderLightShader(&world->texLightShader, d3d->deviceContext, world->meshes[1].indexCount,
-		d3d->worldMatrix, world->camera.viewMatrix, d3d->projectionMatrix, tex->textureView,
-		world->texLightShader.lightDirection, world->texLightShader.diffuseColor, world->texLightShader.ambientColor);
+	RenderMeshAndTexture(world, 1, 0);
+
 #endif
 
 	// Present the rendered scene to the screen.
