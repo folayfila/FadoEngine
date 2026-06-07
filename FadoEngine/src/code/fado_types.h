@@ -63,7 +63,7 @@ typedef i32 bool32;
 *   1 - Build for public release.
 */
 
-#if FADO_DEBUG
+#if 1
 #define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
 #else
 #define Assert(Expression)
@@ -77,6 +77,8 @@ typedef i32 bool32;
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
+#define ZeroStruct(Struct) memset((Struct), 0, sizeof(*(Struct)))
+
 //////////////////////////////////////////
 
 struct v2
@@ -86,7 +88,18 @@ struct v2
 
 struct v3
 {
-    f32 x, y, z;
+    union
+    {
+        struct
+        {
+            f32 x, y, z;
+        };
+
+        struct
+        {
+            f32 r, g, b;
+        };
+    };
 
     inline v3& operator+=(v3 a)
     {
@@ -106,28 +119,24 @@ struct v3
 
 struct v4
 {
-    f32 x, y, z, w;
+    union
+    {
+        struct
+        {
+            f32 x, y, z, w;
+        };
+        struct
+        {
+            f32 r, g, b, a;
+        };
+        f32 e[4];
+    };
 };
 typedef v4 quat;
 
 struct matrix
 {
     f32 m[16];
-};
-
-struct color_rgba
-{
-    union
-    {
-        f32 rgba[4];
-        struct
-        {
-            f32 r;
-            f32 g;
-            f32 b;
-            f32 a;
-        };
-    };
 };
 
 /////////////////// Transform ///////////////////////
@@ -145,6 +154,7 @@ struct FTransformTable
 };
 
 /////////////////// Arena ///////////////////////
+
 struct FMemoryArena
 {
     u32 used;

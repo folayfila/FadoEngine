@@ -134,7 +134,7 @@ internal i32 json_alloc_node(FJSONParser* p)
         return GLB_INVALID;
     }
     i32 idx = p->doc->poolUsed++;
-    memset(&p->doc->pool[idx], 0, sizeof(FJSONValue));
+    ZeroStruct(&p->doc->pool[idx]);
     return idx;
 }
 
@@ -722,7 +722,7 @@ bool32 GLB_Load(FMemoryArena* scratchArena, const char* filename, FGLBAsset* out
     // json_parse modifies jsonText in place (null-terminates strings),
     // which is fine because we own fileData.
     FJSONDoc* doc = ArenaPushSize(scratchArena, FJSONDoc);
-    memset(doc, 0, sizeof(FJSONDoc));
+    ZeroStruct(doc);
 
     if (!json_parse(doc, jsonText, jsonLen))
     {
@@ -741,7 +741,8 @@ bool32 GLB_Load(FMemoryArena* scratchArena, const char* filename, FGLBAsset* out
     // 5.6  Parse bufferViews
     // ----------------------------------------------------------------
     FGLBBufferView* bufferViews = ArenaPushArray(scratchArena, GLB_MAX_BUFFERVIEWS, FGLBBufferView);
-    memset(bufferViews, 0, sizeof(FGLBBufferView)* GLB_MAX_BUFFERVIEWS);
+    ZeroStruct(bufferViews);
+
     u32 bufferViewCount = 0;
 
     i32 bvArrayIdx = json_child_idx(doc, rootIdx, "bufferViews");
@@ -773,7 +774,7 @@ bool32 GLB_Load(FMemoryArena* scratchArena, const char* filename, FGLBAsset* out
     // 5.7  Parse accessors
     // ----------------------------------------------------------------
     FGLBAccessor* accessors = ArenaPushArray(scratchArena, GLB_MAX_ACCESSORS, FGLBAccessor);
-    memset(accessors, 0, sizeof(FGLBAccessor) * GLB_MAX_ACCESSORS);
+    ZeroStruct(accessors);
 
     u32 accessorCount = 0;
 

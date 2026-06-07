@@ -7,9 +7,15 @@
 /////////////
 cbuffer MatrixBuffer
 {
-	matrix worldMatrix;
-	matrix viewMatrix;
-	matrix projectionMatrix;
+    matrix worldMatrix;
+    matrix viewMatrix;
+    matrix projectionMatrix;
+};
+
+// ColorBuffer is on register(b1) because MatrixBuffer occupies b0.
+cbuffer ColorBuffer : register(b1)
+{
+    float4 tintColor;
 };
 
 /////////////
@@ -17,14 +23,12 @@ cbuffer MatrixBuffer
 /////////////
 struct VertexInputType
 {
-	float4 position : POSITION;
-    float4 color : COLOR;
+    float4 position : POSITION;
 };
 
 struct PixelInputType
 {
-    float4 position : SV_POSITION;	// SV = System Value
-    float4 color : COLOR;
+    float4 position : SV_POSITION;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,9 +47,6 @@ PixelInputType VertexShaderEntry(VertexInputType input)
     output.position = mul(output.position, viewMatrix);
     output.position = mul(output.position, projectionMatrix);
     
-    // Store the input color for the pixel shader to use.
-    output.color = input.color;
-    
     return output;
 }
 
@@ -54,8 +55,7 @@ PixelInputType VertexShaderEntry(VertexInputType input)
 ////////////////////////////////////////////////////////////////////////////////
 float4 PixelShaderEntry(PixelInputType input) : SV_TARGET
 {
-    float4 color = input.color;
-    return color;
+    return tintColor;
 }
 
 /* Note to future me:

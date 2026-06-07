@@ -355,8 +355,19 @@ internal void Win32Initialize(FEngineMemory* memory, Win32System* win32System)
 		CW_USEDEFAULT, CW_USEDEFAULT, screenWidth, screenHeight,
 		0, 0, win32System->instance, 0);
 
+	FD3DInitParams d3dInitParams = {};
+	d3dInitParams.d3d = &win32System->world.d3d;
+	d3dInitParams.window = win32System->window;
+	d3dInitParams.screenWidth = screenWidth;
+	d3dInitParams.screenHeight = screenHeight;
+	d3dInitParams.vsync = VSYNC_ENABLED;
+	d3dInitParams.fullScreen = FULL_SCREEN;
+	d3dInitParams.screenDepth = SCREEN_DEPTH;
+	d3dInitParams.screenNear = SCREEN_NEAR;
+
 	// Initialize Dx11.
-	Initialize(&win32System->world, screenWidth, screenHeight, VSYNC_ENABLED, win32System->window, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR, &memory->scratch, win32System->transforms);
+	win32System->world.scratchArena = &memory->scratch;
+	Initialize(&win32System->world, &d3dInitParams, win32System->transforms);
 }
 
 //////////////////////////////////////////////////

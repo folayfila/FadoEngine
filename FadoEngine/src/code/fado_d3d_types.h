@@ -20,15 +20,18 @@
 #include <fstream>
 #include "fado_types.h"
 
+typedef DirectX::XMMATRIX DXMatrix;
+typedef DirectX::XMFLOAT4 DXFloat4;
+
 ////////////////////////////////////
 /// FD3D
 /// The Direct3D struct is what we will use to invoke our HLSL shaders for drawing the 3D models that are on the GPU.
 ////////////////////////////////////
 struct FD3D
 {
-	DirectX::XMMATRIX projectionMatrix;
-	DirectX::XMMATRIX worldMatrix;
-	DirectX::XMMATRIX orthoMatrix;
+	DXMatrix projectionMatrix;
+	DXMatrix worldMatrix;
+	DXMatrix orthoMatrix;
 	IDXGISwapChain* swapChain;
 	ID3D11Device* device;
 	ID3D11DeviceContext* deviceContext;
@@ -43,14 +46,27 @@ struct FD3D
 	char videoCardDescription[128];
 };
 
+struct FD3DInitParams
+{
+	FD3D* d3d;
+	HWND window;
+	i32 screenWidth;
+	i32 screenHeight;
+	bool32 vsync;
+	bool32 fullScreen;
+	f32 screenDepth;
+	f32 screenNear;
+};
+
 ////////////////////////////////////
 /// Shaders
 ////////////////////////////////////
+
 struct FMatrixBuffer
 {
-	DirectX::XMMATRIX world;
-	DirectX::XMMATRIX view;
-	DirectX::XMMATRIX projection;
+	DXMatrix world;
+	DXMatrix view;
+	DXMatrix projection;
 };
 
 ///////////////
@@ -61,12 +77,12 @@ struct FColorShader
 	ID3D11PixelShader* pixelShader;
 	ID3D11InputLayout* layout;
 	ID3D11Buffer* matrixBuffer;
+	ID3D11Buffer* colorBuffer;
 };
 
-struct FColorVertex
+struct FColorBuffer
 {
-	DirectX::XMFLOAT3 position;
-	DirectX::XMFLOAT4 color;
+	DXFloat4 color;
 };
 
 
@@ -81,16 +97,9 @@ struct FTextureShader
 	ID3D11SamplerState* sampleState;	// This pointer will be used to interface with the texture shader.
 };
 
-struct FTextureVertex
-{
-	DirectX::XMFLOAT3 position;
-	DirectX::XMFLOAT2 texture;
-};
-
 ///////////////
-// Textured Lit Shader (texture shader that also calcules light)
-///////////////
-struct FTextureLightShader
+// Lit Textured Shader (texture shader that also calcules light)
+struct FLitTextureShader
 {
 	ID3D11VertexShader* vertexShader;
 	ID3D11PixelShader* pixelShader;
@@ -98,12 +107,12 @@ struct FTextureLightShader
 	ID3D11SamplerState* sampleState;
 	ID3D11Buffer* matrixBuffer;
 	ID3D11Buffer* lightBuffer;
-	DirectX::XMFLOAT4 ambientColor;
-	DirectX::XMFLOAT4 diffuseColor;
+	DXFloat4 ambientColor;
+	DXFloat4 diffuseColor;
 	DirectX::XMFLOAT3 lightDirection;
 };
 
-struct FTextureLightVertex
+struct FLitTextureVertex
 {
 	DirectX::XMFLOAT3 position;
 	DirectX::XMFLOAT3 normal;
@@ -112,8 +121,8 @@ struct FTextureLightVertex
 
 struct FLightBuffer
 {
-	DirectX::XMFLOAT4 ambientColor;
-	DirectX::XMFLOAT4 diffuseColor;
+	DXFloat4 ambientColor;
+	DXFloat4 diffuseColor;
 	DirectX::XMFLOAT3 lightDirection;
 	f32 padding;  // Added extra padding so structure is a multiple of 16 for CreateBuffer function requirements.
 };
@@ -154,6 +163,7 @@ struct FMeshBuffer
 	ID3D11Buffer* indexBuffer;
 	u32 vertexCount;
 	u32 indexCount;
+	u32 vertexStride;
 };
 
 ////////////////////////////////////
@@ -162,7 +172,7 @@ struct FMeshBuffer
 ////////////////////////////////////
 struct FCamera
 {
-	DirectX::XMMATRIX viewMatrix;
+	DXMatrix viewMatrix;
 	HTransform hTransform;
 };
 
@@ -171,20 +181,48 @@ struct FCamera
 /// FRenderWorld
 /// The appilcaton that holds all d3d required stuff, texturtes and meshes.
 ////////////////////////////////////
-#define MAX_MESHES 1024
-#define MAX_TEXTURES 1024
-#define INVALID_HANDLE 0xFFFFFFFF
 
 // Handlers
 typedef u32 HMesh;
 typedef u32 HTexture;
 
+#define MAX_DRAW_CALLS 265
+#define MAX_MESHES 265
+#define MAX_TEXTURES 265
+#define INVALID_HANDLE 0xFFFFFFFF
+
+// > TODO: Remove the color from here once we introduce materials.
+struct FDrawCall
+{
+	HMesh hMesh;
+	HTexture hTexture;
+	DXMatrix worldMatrix;
+	DXFloat4 color;
+};
+
+struct FRenderBucket
+{
+	FDrawCall calls[MAX_DRAW_CALLS];
+	u32 count;
+};
+
 struct FRenderWorld
 {
 	FD3D d3d;
 	FCamera camera;
-	FTextureLightShader texLightShader;
+	FMemoryArena* scratchArena;
 
+	// Shaders — one of each, initialized once.
+	FColorShader colorShader;
+	FTextureShader textureShader;
+	FLitTextureShader litTextureShader;
+
+	// Render buckets — sorted by shader type, no branching at draw time.
+	FRenderBucket colorBucket;
+	FRenderBucket textureBucket;
+	FRenderBucket litTextureBucket;
+
+	// Mesh and texture pools.
 	FMeshBuffer meshes[MAX_MESHES];		// models
 	FTexture textures[MAX_TEXTURES];	
 	u32 meshCount;

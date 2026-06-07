@@ -58,6 +58,23 @@ inline v3 operator*(v3 a, f32 b)
 	return result;
 }
 
+// > TODO: Replace with our own rand()
+#include <stdlib.h>
+inline float Randomf32InRange(f32 min, f32 max)
+{
+	f32 result = min + (max - min) * ((f32)rand() / (f32)RAND_MAX);
+	return result;
+}
+
+inline v4 GetRandomColor()
+{
+	v4 color = { 0 , 0, 0, 1 };
+	color.r = Randomf32InRange(0.0f, 1.0f);
+	color.g = Randomf32InRange(0.0f, 1.0f);
+	color.b = Randomf32InRange(0.0f, 1.0f);
+	return color;
+}
+
 //////////////////////////////////////////////////////////////////////////
 ///////////////////// Quaternions ///////////////////////////////////////
 // -----------------------------------------------------------------------
