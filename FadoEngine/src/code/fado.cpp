@@ -1,6 +1,20 @@
 #include "fado.h"
 #include "fado_math.h"
 
+internal HEntity SpawnEntity(FEntityTable* entities, FTransformTable* transforms, HMesh hMesh, HTexture hTex, v4 color, EShaderTypes shaderType)
+{
+    HEntity handle = entities->count++;
+    FEntity* e = &entities->entities[handle];
+    e->hMesh = hMesh;
+    e->hTexture = hTex;
+    e->hTransform = transforms->count++;
+    e->color = color;
+    e->shaderType = shaderType;
+    transforms->scales[e->hTransform] = V3One();
+    transforms->rotations[e->hTransform] = QuatIndentity();
+    return handle;
+}
+
 internal bool32 IsStickHeld(v2 stickAverage, EStickDirection direction)
 {
     bool32 result = false;
@@ -129,9 +143,39 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
     }
 }
 
+internal void Initialize(FGameState* gameState)
+{
+    gameState->initialized = true;
+
+    // >> IMPORTANT: Camera MUST be handle 0!
+    gameState->hCamera = SpawnEntity(gameState->entityTable, gameState->transforms, INVALID_HANDLE, INVALID_HANDLE, {}, EShaderTypes::Shader_None);
+    gameState->transforms->positions[gameState->hCamera] = { 0.0f, 0.0f, -10.0f };
+
+    gameState->cube1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCube, 0, { 0.63f, 1, 0.21f, 1 }, EShaderTypes::Color);
+    gameState->cube2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCube, 0, { 1, 0.21f, 0.63f, 1 }, EShaderTypes::Color);
+    gameState->sphere1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphere, gameState->hMosaicTexture, {}, EShaderTypes::LitTexture);
+    gameState->sphere2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphere, gameState->hMosaicTexture, {}, EShaderTypes::UnlitTexture);
+
+    gameState->transforms->positions[gameState->cube1] = { -1.5f, 1.5f, 0 };
+    gameState->transforms->scales[gameState->cube1] = { 1.5f, 0.5f, 1.0f };
+    gameState->transforms->positions[gameState->cube2] = { 1.5f, 1.5f, 0 };
+    gameState->transforms->positions[gameState->sphere1] = { -1.5f, -1.5f, 0 };
+    gameState->transforms->positions[gameState->sphere2] = { 1.5f, -1.5f, 0 };
+}
+
 void GameUpdate(FEngineMemory* memory, FGameState* gameState, FGameInput* input)
 {
+    if (!gameState->initialized)
+    {
+        Initialize(gameState);
+    }
+
 	HandleGameInput(gameState, input);
+
+    Rotate(gameState->transforms, gameState->cube1, { 50.0f*input->deltaTime, 0.0f, 0.0f });
+    Rotate(gameState->transforms, gameState->cube2, { -50.0f * input->deltaTime, 0.0f, 0.0f });
+    Rotate(gameState->transforms, gameState->sphere1, { 0.0f, 50.0f * input->deltaTime, 0.0f });
+    Rotate(gameState->transforms, gameState->sphere2, { 0.0f, -50.0f * input->deltaTime, 0.0f });
 }
 
 /*

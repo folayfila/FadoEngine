@@ -14,7 +14,9 @@
 #include "fado_d3d_types.h"
 
 // Global functions called from the win32 platform layer.
-bool32 Initialize(FRenderWorld* world, FD3DInitParams* d3dInitParams, FTransformTable* transforms);
-bool32 Render(FRenderWorld* world, FTransformTable* transforms);
+bool32 InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams, FTransformTable* transforms);
+void Render(FRenderWorld* world, FEntityTable* entities, FTransformTable* transforms);
+HTexture LoadTexture(FRenderWorld* world, const char* filename);
+HMesh LoadGLBModel(FRenderWorld* world, const char* filename);
 
 #endif	// FADO_D3D_H

@@ -18,16 +18,17 @@
 
 struct Win32System
 {
-	FRenderWorld world;
 	HINSTANCE instance;
 	HWND window;
+	FRenderWorld world;
 	FTransformTable* transforms;
+	FEntityTable* entityTable;
 };
 
 ///////////////////////////////
 // Globals //
 ///////////////////////////////
-global_variable Win32System* GlobalApplicationHandle;
+global_variable Win32System* GlobalWin32System;
 global_variable WINDOWPLACEMENT GlobalWindowPosition = { sizeof(GlobalWindowPosition) };
 global_variable bool32 GlobalShowCursor = true;
 global_variable bool32 GlobalRunning = true;

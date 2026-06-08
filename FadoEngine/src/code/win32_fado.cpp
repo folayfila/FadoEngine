@@ -299,7 +299,7 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPA
 
 		case WM_PAINT:
 		{
-			Render(&GlobalApplicationHandle->world, GlobalApplicationHandle->transforms);
+			Render(&GlobalWin32System->world, GlobalWin32System->entityTable, GlobalWin32System->transforms);
 		} break;
 
 		case WM_SYSKEYDOWN:
@@ -321,9 +321,11 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPA
 //////////////////////////////////////////////////
 // Win32System
 //////////////////////////////////////////////////
-internal void Win32Initialize(FEngineMemory* memory, Win32System* win32System)
+
+// Initialize and create the game's Window and initialze DX11.
+internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* win32System)
 {
-	GlobalApplicationHandle = win32System;
+	GlobalWin32System = win32System;
 
 	// Get the instance of this application.
 	win32System->instance = GetModuleHandleW(0);
@@ -367,7 +369,18 @@ internal void Win32Initialize(FEngineMemory* memory, Win32System* win32System)
 
 	// Initialize Dx11.
 	win32System->world.scratchArena = &memory->scratch;
-	Initialize(&win32System->world, &d3dInitParams, win32System->transforms);
+	InitializeFD3D(&win32System->world, &d3dInitParams, win32System->transforms);
+}
+
+// Called before starting the game loop.
+// Loads all models and textures at startup.
+internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
+{
+	gameState->hCube = LoadGLBModel(world, "src\\models\\cube.glb");
+	gameState->hSphere = LoadGLBModel(world, "src\\models\\sphere.glb");
+	//HMesh hMonkey = LoadGLBIntoWorld(world, "src\\models\\monkey.glb");
+
+	 gameState->hMosaicTexture = LoadTexture(world, "src\\textures\\mosaic_diffuseoriginal.tga");
 }
 
 //////////////////////////////////////////////////
@@ -385,6 +398,7 @@ int WINAPI wWinMain(
 	LARGE_INTEGER lastCounter;
 	QueryPerformanceCounter(&lastCounter);
 
+	// Create all memory for the game upfront, and use it across the game.
 	FEngineMemory engineMemory = {};
 	u32 totalSize = Megabytes(64) + Megabytes(8);
 	void* base = VirtualAlloc(0, totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
@@ -393,39 +407,38 @@ int WINAPI wWinMain(
 
 	Win32System* win32System = ArenaPushSize(&engineMemory.permanent, Win32System);
 	win32System->transforms = ArenaPushSize(&engineMemory.permanent, FTransformTable);
-	Win32Initialize(&engineMemory, win32System);
-	win32System->world.camera.hTransform = 0;
-	win32System->transforms->rotations[win32System->world.camera.hTransform] = QuatIndentity();
+	win32System->entityTable = ArenaPushSize(&engineMemory.permanent, FEntityTable);
+	Win32InitializeWindowAndD3D(&engineMemory, win32System);
 	
 	Win32LoadXInput();
 	FGameState* gameState = ArenaPushSize(&engineMemory.permanent, FGameState);
 	gameState->transforms = win32System->transforms;
-	gameState->hCamera = win32System->world.camera.hTransform;
+	gameState->entityTable = win32System->entityTable;
 	FGameInput* input = ArenaPushSize(&engineMemory.permanent, FGameInput);
+
+	InitLoadAssets(&win32System->world, gameState);
 
 	// Game loop.
 	gameState->running = true;
 	while (GlobalRunning && gameState->running)
 	{
+		// Update delta time
 		LARGE_INTEGER currentCounter;
 		QueryPerformanceCounter(&currentCounter);
-		f32 deltaTime =
-			(f32)(currentCounter.QuadPart - lastCounter.QuadPart) /
-			(f32)perfFrequency.QuadPart;
-
+		f32 deltaTime = (f32)(currentCounter.QuadPart - lastCounter.QuadPart) / (f32)perfFrequency.QuadPart;
 		input->deltaTime = deltaTime;
 
-		// Handle windows messages.
+		// Handle keyboard and controller input.
 		FGameControllerInput* keyboardInput = &input->controllers[0];
 		keyboardInput->isConnected = true;
 		Win32HandleWindowsMessageLoop(keyboardInput, deltaTime);
 		Win32HandleControllerInput(win32System->window, input);
 
-		// Update and render.
+		// Update game and render.
 		GameUpdate(&engineMemory, gameState, input);
-		Render(&win32System->world, win32System->transforms);
+		Render(&win32System->world, win32System->entityTable, win32System->transforms);
 
-		// Update the previous buttons state.
+		// Update the previous buttons states.
 		for (u32 controllerIndex = 0; controllerIndex < ArrayCount(input->controllers); ++controllerIndex)
 		{
 			for (u32 buttonIndex = 0; buttonIndex < ArrayCount(input->controllers[0].buttons); ++buttonIndex)

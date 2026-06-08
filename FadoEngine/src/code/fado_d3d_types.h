@@ -22,6 +22,8 @@
 
 typedef DirectX::XMMATRIX DXMatrix;
 typedef DirectX::XMFLOAT4 DXFloat4;
+typedef DirectX::XMFLOAT3 DXFloat3;
+typedef DirectX::XMFLOAT2 DXFloat2;
 
 ////////////////////////////////////
 /// FD3D
@@ -88,7 +90,7 @@ struct FColorBuffer
 
 ///////////////
 // Texture Shader
-struct FTextureShader
+struct FUnlitTextureShader
 {
 	ID3D11VertexShader* vertexShader;
 	ID3D11PixelShader* pixelShader;
@@ -109,21 +111,21 @@ struct FLitTextureShader
 	ID3D11Buffer* lightBuffer;
 	DXFloat4 ambientColor;
 	DXFloat4 diffuseColor;
-	DirectX::XMFLOAT3 lightDirection;
+	DXFloat3 lightDirection;
 };
 
 struct FLitTextureVertex
 {
-	DirectX::XMFLOAT3 position;
-	DirectX::XMFLOAT3 normal;
-	DirectX::XMFLOAT2 texture;
+	DXFloat3 position;
+	DXFloat3 normal;
+	DXFloat2 texture;
 };
 
 struct FLightBuffer
 {
 	DXFloat4 ambientColor;
 	DXFloat4 diffuseColor;
-	DirectX::XMFLOAT3 lightDirection;
+	DXFloat3 lightDirection;
 	f32 padding;  // Added extra padding so structure is a multiple of 16 for CreateBuffer function requirements.
 };
 
@@ -168,8 +170,6 @@ struct FMeshBuffer
 
 ////////////////////////////////////
 /// FCameraD3D
-/// The ColorShader is what we will use to invoke our HLSL shaders for drawing the 3D models that are on the GPU.
-////////////////////////////////////
 struct FCamera
 {
 	DXMatrix viewMatrix;
@@ -182,14 +182,7 @@ struct FCamera
 /// The appilcaton that holds all d3d required stuff, texturtes and meshes.
 ////////////////////////////////////
 
-// Handlers
-typedef u32 HMesh;
-typedef u32 HTexture;
-
 #define MAX_DRAW_CALLS 265
-#define MAX_MESHES 265
-#define MAX_TEXTURES 265
-#define INVALID_HANDLE 0xFFFFFFFF
 
 // > TODO: Remove the color from here once we introduce materials.
 struct FDrawCall
@@ -214,12 +207,12 @@ struct FRenderWorld
 
 	// Shaders — one of each, initialized once.
 	FColorShader colorShader;
-	FTextureShader textureShader;
+	FUnlitTextureShader unlitTextureShader;
 	FLitTextureShader litTextureShader;
 
 	// Render buckets — sorted by shader type, no branching at draw time.
 	FRenderBucket colorBucket;
-	FRenderBucket textureBucket;
+	FRenderBucket unlitTextureBucket;
 	FRenderBucket litTextureBucket;
 
 	// Mesh and texture pools.

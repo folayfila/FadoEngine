@@ -21,7 +21,7 @@ struct FMouseInput
 
 enum EStickDirection
 {
-    None,
+    StickDirection_None,
     Up,
     Down,
     Left,
@@ -79,12 +79,27 @@ struct FGameInput
 struct FGameState
 {
     bool32 running;
+    bool32 initialized;
 
+    HEntity hCamera; // Camera MUST always be handle 0!
     f32 cameraYaw;   // degrees, accumulates freely
     f32 cameraPitch; // degrees, clamped to [-89, 89]
 
     FTransformTable* transforms;
-    HTransform hCamera;
+    FEntityTable* entityTable;
+
+    // Entites
+    HEntity cube1;
+    HEntity cube2;
+    HEntity sphere1;
+    HEntity sphere2;
+
+    // Mesh handles
+    HMesh hCube;
+    HMesh hSphere;
+
+    // Texture handles
+    HTexture hMosaicTexture;
 };
 
 ///////////////////////////////////////////////////////////////////

@@ -140,16 +140,51 @@ struct matrix
 };
 
 /////////////////// Transform ///////////////////////
-#define MAX_TRANSFORMS 1024
-#define INVALID_TRANSFORM 0xFFFFFFFF
 
 typedef u32 HTransform; // Transform handle.
+
+#define MAX_TRANSFORMS 1024
+#define INVALID_HANDLE 0xFFFFFFFF
+
 
 struct FTransformTable
 {
     v3 positions[MAX_TRANSFORMS];
     v3 scales[MAX_TRANSFORMS];
     quat rotations[MAX_TRANSFORMS];
+    u32 count;
+};
+
+/////////////////// Entities ///////////////////////
+
+typedef u32 HEntity;
+typedef u32 HMesh;
+typedef u32 HTexture;
+
+#define MAX_ENTITIES 1024
+#define MAX_MESHES 265
+#define MAX_TEXTURES 265
+
+enum EShaderTypes
+{
+    Shader_None,
+    Color,
+    UnlitTexture,
+    LitTexture
+};
+
+struct FEntity
+{
+    HTransform hTransform;
+    HMesh hMesh;
+    HTexture hTexture;
+    v4 color;
+    EShaderTypes shaderType;
+};
+
+struct FEntityTable
+{
+    FEntity entities[MAX_ENTITIES];
     u32 count;
 };
 

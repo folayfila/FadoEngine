@@ -12,7 +12,7 @@ const char* k_psEntryFuncName = "PixelShaderEntry";
 ////////////////////////////////////////////////////////////////////////////////
 // FD3D
 ////////////////////////////////////////////////////////////////////////////////
-internal bool32 InitializeFD3D(FD3DInitParams* d3dInitParams, FMemoryArena* scratchArena)
+internal bool32 InitializeDX11(FD3DInitParams* d3dInitParams, FMemoryArena* scratchArena)
 {
 	FD3D* d3d = d3dInitParams->d3d;
 
@@ -506,9 +506,9 @@ internal void SetColorShaderParameters(FRenderWorld* world, u32 hColorDrawCall)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// FTextureShader
+// FUnlitTextureShader
 ////////////////////////////////////////////////////////////////////////////////
-internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Device* device, HWND window)
+internal bool32 InitializeUnlitTextureShader(FUnlitTextureShader* unlitTexShader, ID3D11Device* device, HWND window)
 {
 	// Set the filename of the hlsl shader.
 	wchar hlslFileName[128];
@@ -545,14 +545,14 @@ internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Dev
 	}
 
 	// Create the vertex shader from the buffer.
-	result = device->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &textureShader->vertexShader);
+	result = device->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &unlitTexShader->vertexShader);
 	if (FAILED(result))
 	{
 		return false;
 	}
 
 	// Create the pixel shader from the buffer.
-	result = device->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &textureShader->pixelShader);
+	result = device->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &unlitTexShader->pixelShader);
 	if (FAILED(result))
 	{
 		return false;
@@ -582,7 +582,7 @@ internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Dev
 
 	// Create the vertex input layout.
 	result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
-		vertexShaderBuffer->GetBufferSize(), &textureShader->layout);
+		vertexShaderBuffer->GetBufferSize(), &unlitTexShader->layout);
 	if (FAILED(result))
 	{
 		return false;
@@ -605,7 +605,7 @@ internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Dev
 	matrixBufferDesc.StructureByteStride = 0;
 
 	// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
-	result = device->CreateBuffer(&matrixBufferDesc, NULL, &textureShader->matrixBuffer);
+	result = device->CreateBuffer(&matrixBufferDesc, NULL, &unlitTexShader->matrixBuffer);
 	if (FAILED(result))
 	{
 		return false;
@@ -628,7 +628,7 @@ internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Dev
 	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
 	// Create the texture sampler state.
-	result = device->CreateSamplerState(&samplerDesc, &textureShader->sampleState);
+	result = device->CreateSamplerState(&samplerDesc, &unlitTexShader->sampleState);
 	if (FAILED(result))
 	{
 		return false;
@@ -637,7 +637,7 @@ internal bool32 InitializeTextureShader(FTextureShader* textureShader, ID3D11Dev
 	return true;
 }
 
-internal void SetTextureShaderParameters(FRenderWorld* world, HTexture hTexture)
+internal void SetUnlitTextureShaderParameters(FRenderWorld* world, HTexture hTexture)
 {
 	// Transpose the matrices to prepare them for the shader.
 	DXMatrix worldMatrix = XMMatrixTranspose(world->d3d.worldMatrix);
@@ -645,7 +645,7 @@ internal void SetTextureShaderParameters(FRenderWorld* world, HTexture hTexture)
 	DXMatrix projectionMatrix = XMMatrixTranspose(world->d3d.projectionMatrix);
 
 	ID3D11DeviceContext* deviceContext = world->d3d.deviceContext;
-	FTextureShader* textureShader = &world->textureShader;
+	FUnlitTextureShader* textureShader = &world->unlitTextureShader;
 
 	// Lock the constant buffer so it can be written to.
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -674,9 +674,9 @@ internal void SetTextureShaderParameters(FRenderWorld* world, HTexture hTexture)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// FLightShader
+// FLitTextureShader
 ////////////////////////////////////////////////////////////////////////////////
-internal bool32 InitializeLitTextureShader(FLitTextureShader* litShader, ID3D11Device* device, HWND window)
+internal bool32 InitializeLitTextureShader(FLitTextureShader* litTexShader, ID3D11Device* device, HWND window)
 {
 	// Set the filename of the hlsl shader.
 	wchar hlslFileName[128];
@@ -713,14 +713,14 @@ internal bool32 InitializeLitTextureShader(FLitTextureShader* litShader, ID3D11D
 	}
 
 	// Create the vertex shader from the buffer.
-	result = device->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &litShader->vertexShader);
+	result = device->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &litTexShader->vertexShader);
 	if (FAILED(result))
 	{
 		return false;
 	}
 
 	// Create the pixel shader from the buffer.
-	result = device->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &litShader->pixelShader);
+	result = device->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &litTexShader->pixelShader);
 	if (FAILED(result))
 	{
 		return false;
@@ -758,7 +758,7 @@ internal bool32 InitializeLitTextureShader(FLitTextureShader* litShader, ID3D11D
 
 	// Create the vertex input layout.
 	result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
-		vertexShaderBuffer->GetBufferSize(), &litShader->layout);
+		vertexShaderBuffer->GetBufferSize(), &litTexShader->layout);
 	if (FAILED(result))
 	{
 		return false;
@@ -781,7 +781,7 @@ internal bool32 InitializeLitTextureShader(FLitTextureShader* litShader, ID3D11D
 	matrixBufferDesc.StructureByteStride = 0;
 
 	// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
-	result = device->CreateBuffer(&matrixBufferDesc, NULL, &litShader->matrixBuffer);
+	result = device->CreateBuffer(&matrixBufferDesc, NULL, &litTexShader->matrixBuffer);
 	if (FAILED(result))
 	{
 		return false;
@@ -804,7 +804,7 @@ internal bool32 InitializeLitTextureShader(FLitTextureShader* litShader, ID3D11D
 	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
 	// Create the texture sampler state.
-	result = device->CreateSamplerState(&samplerDesc, &litShader->sampleState);
+	result = device->CreateSamplerState(&samplerDesc, &litTexShader->sampleState);
 	if (FAILED(result))
 	{
 		return false;
@@ -821,7 +821,7 @@ internal bool32 InitializeLitTextureShader(FLitTextureShader* litShader, ID3D11D
 	lightBufferDesc.StructureByteStride = 0;
 
 	// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
-	result = device->CreateBuffer(&lightBufferDesc, NULL, &litShader->lightBuffer);
+	result = device->CreateBuffer(&lightBufferDesc, NULL, &litTexShader->lightBuffer);
 	if (FAILED(result))
 	{
 		return false;
@@ -1111,13 +1111,6 @@ internal void UploadMesh(FMeshBuffer *mesh, ID3D11Device* device, void* vertices
 	}
 }
 
-internal HTexture LoadTexture(FRenderWorld* world, ID3D11Device* device, ID3D11DeviceContext* context, const char* fileName)
-{
-	HTexture handle = world->texturesCount++;
-	InitializeTexture(&world->textures[handle], device, context, fileName);
-	return handle;
-}
-
 internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 {
 	// Set the vertex buffer to active in the input assembler so it can be rendered.
@@ -1145,11 +1138,11 @@ internal void DrawColor(FRenderWorld* world, HMesh hMesh, DXFloat4 color, DXMatr
 {
 	PushDrawCall(&world->colorBucket, hMesh, INVALID_HANDLE, worldMatrix, color);
 }
-internal void DrawTexture(FRenderWorld* world, HMesh hMesh, HTexture hTex, DXMatrix worldMatrix)
+internal void DrawUnlitTextrue(FRenderWorld* world, HMesh hMesh, HTexture hTex, DXMatrix worldMatrix)
 {
-	PushDrawCall(&world->textureBucket, hMesh, hTex, worldMatrix);
+	PushDrawCall(&world->unlitTextureBucket, hMesh, hTex, worldMatrix);
 }
-internal void DrawLit(FRenderWorld* world, HMesh hMesh, HTexture hTex, DXMatrix worldMatrix)
+internal void DrawLitTexture(FRenderWorld* world, HMesh hMesh, HTexture hTex, DXMatrix worldMatrix)
 {
 	PushDrawCall(&world->litTextureBucket, hMesh, hTex, worldMatrix);
 }
@@ -1179,24 +1172,24 @@ internal void FlushColorBucket(FRenderWorld* world)
 internal void FlushTextureBucket(FRenderWorld* world)
 {
 	FD3D* d3d = &world->d3d;
-	FTextureShader* shader = &world->textureShader;
+	FUnlitTextureShader* shader = &world->unlitTextureShader;
 
 	d3d->deviceContext->IASetInputLayout(shader->layout);
 	d3d->deviceContext->VSSetShader(shader->vertexShader, NULL, 0);
 	d3d->deviceContext->PSSetShader(shader->pixelShader, NULL, 0);
 	d3d->deviceContext->PSSetSamplers(0, 1, &shader->sampleState);
 
-	for (u32 i = 0; i < world->textureBucket.count; i++)
+	for (u32 i = 0; i < world->unlitTextureBucket.count; i++)
 	{
-		FDrawCall* call = &world->textureBucket.calls[i];
+		FDrawCall* call = &world->unlitTextureBucket.calls[i];
 		d3d->worldMatrix = call->worldMatrix;
 		FMeshBuffer* mesh = &world->meshes[call->hMesh];
 		RenderMesh(mesh, d3d->deviceContext);
-		SetTextureShaderParameters(world, call->hTexture);
+		SetUnlitTextureShaderParameters(world, call->hTexture);
 		d3d->deviceContext->DrawIndexed(mesh->indexCount, 0, 0);
 	}
 
-	world->textureBucket.count = 0;
+	world->unlitTextureBucket.count = 0;
 }
 
 internal void FlushLitTextureBucket(FRenderWorld* world)
@@ -1222,7 +1215,152 @@ internal void FlushLitTextureBucket(FRenderWorld* world)
 	world->litTextureBucket.count = 0;
 }
 
-internal HMesh LoadGLBIntoWorld(FRenderWorld* world, const char* filename)
+////////////////////////////////////////////////////////////////////////////////
+// FCamera
+////////////////////////////////////////////////////////////////////////////////
+internal void RenderCamera(FCamera* camera, FTransformTable* transforms)
+{
+	quat q = transforms->rotations[camera->hTransform];
+
+	// Load quaternion directly into DirectXMath.
+	DirectX::XMVECTOR quatVector = DirectX::XMVectorSet(q.x, q.y, q.z, q.w);
+
+	// Build rotation matrix from quaternion.
+	DXMatrix rotationMatrix = DirectX::XMMatrixRotationQuaternion(quatVector);
+
+	// Position
+	v3 pos = transforms->positions[camera->hTransform];
+	DirectX::XMVECTOR positionVector = DirectX::XMVectorSet(pos.x, pos.y, pos.z, 0.0f);
+
+	// Default forward and up, rotated by the quaternion matrix.
+	DirectX::XMVECTOR lookAtVector = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+	DirectX::XMVECTOR upVector = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+	lookAtVector = XMVector3TransformCoord(lookAtVector, rotationMatrix);
+	upVector = XMVector3TransformCoord(upVector, rotationMatrix);
+
+	lookAtVector = DirectX::XMVectorAdd(positionVector, lookAtVector);
+
+	camera->viewMatrix = DirectX::XMMatrixLookAtLH(positionVector, lookAtVector, upVector);
+}
+
+// Returns a DXMatrix by building it from the Entity's transform.
+internal DXMatrix BuildEntityWorldMatrix(HEntity hEntity, FEntityTable* entityTable, FTransformTable* transforms)
+{
+	FEntity* entity = &entityTable->entities[hEntity];
+	
+	v3 scale = transforms->scales[entity->hTransform];
+	DXMatrix scaleMatrix = DirectX::XMMatrixScaling(scale.x, scale.y, scale.z);
+
+	quat rot = transforms->rotations[entity->hTransform];
+	DirectX::XMVECTOR quatVector = DirectX::XMVectorSet(rot.x, rot.y, rot.z, rot.w);
+	DXMatrix rotMatrix = DirectX::XMMatrixRotationQuaternion(quatVector);
+
+	v3 pos = transforms->positions[entity->hTransform];
+	DXMatrix transMatrix = DirectX::XMMatrixTranslation(pos.x, pos.y, pos.z);
+
+	DXMatrix resultMatrix = DirectX::XMMatrixMultiply(scaleMatrix, rotMatrix);
+	resultMatrix = DirectX::XMMatrixMultiply(resultMatrix, transMatrix);
+	return resultMatrix;
+}
+
+////////////////////////////////////
+/// Global Functions
+////////////////////////////////////
+
+bool32 InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams, FTransformTable* transforms)
+{
+	bool32 result = true;
+
+	result = InitializeDX11(d3dInitParams, world->scratchArena);
+	if (!result)
+	{
+		MessageBoxW(d3dInitParams->window, L"Could not initialize Direct3D", L"Error", MB_OK);
+		return result;
+	}
+
+	// Init shaders
+	result = InitializeColorShader(&world->colorShader, world->d3d.device, d3dInitParams->window);
+	if (!result)
+	{
+		MessageBoxW(d3dInitParams->window, L"Could not initialize the color shader.", L"Error", MB_OK);
+		return result;
+	}
+	result = InitializeUnlitTextureShader(&world->unlitTextureShader, world->d3d.device, d3dInitParams->window);
+	if (!result)
+	{
+		MessageBoxW(d3dInitParams->window, L"Could not initialize the texture shader.", L"Error", MB_OK);
+		return result;
+	}
+	result = InitializeLitTextureShader(&world->litTextureShader, world->d3d.device, d3dInitParams->window);
+	if (!result)
+	{
+		MessageBoxW(d3dInitParams->window, L"Could not initialize the lit texture shader.", L"Error", MB_OK);
+		return result;
+	}
+
+	world->litTextureShader.ambientColor = DXFloat4(0.5f, 0.35f, 0.25f, 1.0f);
+	world->litTextureShader.diffuseColor = DXFloat4(0.75f, 0.75f, 1.0f, 1.0f);
+	world->litTextureShader.lightDirection = DXFloat3(1.75f, 0.0f, 1.0f);
+
+	return result;
+}
+
+void Render(FRenderWorld* world, FEntityTable* entityTable, FTransformTable* transforms)
+{
+	FD3D* d3d = &world->d3d;
+
+	// Clear the buffers to begin the scene.
+	BeginScene(d3d, v4{ 0.0f, 0.0f, 0.0f, 3.0f });
+
+	// Generate the view matrix based on the camera's position.
+	RenderCamera(&world->camera, transforms);
+
+	for (u32 i = 0; i < entityTable->count; ++i)
+	{
+		FEntity* e = &entityTable->entities[i];
+		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, entityTable, transforms);
+
+		switch (e->shaderType)
+		{
+			case EShaderTypes::Color:
+			{
+				DXFloat4 color = { e->color.r , e->color.g , e->color.b , e->color.a };
+				DrawColor(world, e->hMesh, color, worldMatrix);
+			} break;
+
+			case EShaderTypes::UnlitTexture:
+			{
+				DrawUnlitTextrue(world, e->hMesh, e->hTexture, worldMatrix);
+			} break;
+
+			case EShaderTypes::LitTexture:
+			{
+				DrawLitTexture(world, e->hMesh, e->hTexture, worldMatrix);
+			} break;
+
+			default:
+			{} break;
+		}
+	}
+
+	// Flush all buckets — shader bound once per bucket, zero branching.
+	FlushColorBucket(world);
+	FlushTextureBucket(world);
+	FlushLitTextureBucket(world);
+
+	// Present the rendered scene to the screen.
+	EndScene(d3d);
+}
+
+HTexture LoadTexture(FRenderWorld* world, const char* filename)
+{
+	HTexture handle = world->texturesCount++;
+	InitializeTexture(&world->textures[handle], world->d3d.device, world->d3d.deviceContext, filename);
+	return handle;
+}
+
+HMesh LoadGLBModel(FRenderWorld* world, const char* filename)
 {
 	FGLBAsset* asset = ArenaPushSize(world->scratchArena, FGLBAsset);
 	ZeroStruct(asset);
@@ -1269,127 +1407,4 @@ internal HMesh LoadGLBIntoWorld(FRenderWorld* world, const char* filename)
 	ArenaReset(world->scratchArena);
 	GLB_Free(asset);
 	return handle;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// FCamera
-////////////////////////////////////////////////////////////////////////////////
-internal void RenderCamera(FCamera* camera, FTransformTable* transforms)
-{
-	quat q = transforms->rotations[camera->hTransform];
-
-	// Load quaternion directly into DirectXMath.
-	DirectX::XMVECTOR quatVector = DirectX::XMVectorSet(q.x, q.y, q.z, q.w);
-
-	// Build rotation matrix from quaternion.
-	DXMatrix rotationMatrix = DirectX::XMMatrixRotationQuaternion(quatVector);
-
-	// Position
-	v3 pos = transforms->positions[camera->hTransform];
-	DirectX::XMVECTOR positionVector = DirectX::XMVectorSet(pos.x, pos.y, pos.z, 0.0f);
-
-	// Default forward and up, rotated by the quaternion matrix.
-	DirectX::XMVECTOR lookAtVector = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-	DirectX::XMVECTOR upVector = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-	lookAtVector = XMVector3TransformCoord(lookAtVector, rotationMatrix);
-	upVector = XMVector3TransformCoord(upVector, rotationMatrix);
-
-	lookAtVector = DirectX::XMVectorAdd(positionVector, lookAtVector);
-
-	camera->viewMatrix = DirectX::XMMatrixLookAtLH(positionVector, lookAtVector, upVector);
-}
-
-////////////////////////////////////
-/// Global Functions
-////////////////////////////////////
-bool32 Initialize(FRenderWorld* world, FD3DInitParams* d3dInitParams, FTransformTable* transforms)
-{
-	bool32 result = true;
-
-	result = InitializeFD3D(d3dInitParams, world->scratchArena);
-	if (!result)
-	{
-		MessageBoxW(d3dInitParams->window, L"Could not initialize Direct3D", L"Error", MB_OK);
-		return result;
-	}
-
-	transforms->positions[world->camera.hTransform] = { 0.0f, 0.0f, -10.0f };
-
-	HMesh hCube = LoadGLBIntoWorld(world, "src\\models\\cube.glb");
-	HMesh hMonkey = LoadGLBIntoWorld(world, "src\\models\\monkey.glb");
-	HMesh hSphere = LoadGLBIntoWorld(world, "src\\models\\sphere.glb");
-
-	const char* textureFileName = "src\\textures\\mosaic_diffuseoriginal.tga";
-	HTexture mosaicTexHandle = LoadTexture(world, world->d3d.device, world->d3d.deviceContext, textureFileName);
-
-	// Init shaders
-	result = InitializeColorShader(&world->colorShader, world->d3d.device, d3dInitParams->window);
-	if (!result)
-	{
-		MessageBoxW(d3dInitParams->window, L"Could not initialize the color shader.", L"Error", MB_OK);
-		return result;
-	}
-	result = InitializeTextureShader(&world->textureShader, world->d3d.device, d3dInitParams->window);
-	if (!result)
-	{
-		MessageBoxW(d3dInitParams->window, L"Could not initialize the texture shader.", L"Error", MB_OK);
-		return result;
-	}
-	result = InitializeLitTextureShader(&world->litTextureShader, world->d3d.device, d3dInitParams->window);
-	if (!result)
-	{
-		MessageBoxW(d3dInitParams->window, L"Could not initialize the lit texture shader.", L"Error", MB_OK);
-		return result;
-	}
-
-	world->litTextureShader.ambientColor = DXFloat4(0.5f, 0.35f, 0.25f, 1.0f);
-	world->litTextureShader.diffuseColor = DXFloat4(0.75f, 0.75f, 1.0f, 1.0f);
-	world->litTextureShader.lightDirection = DirectX::XMFLOAT3(1.75f, 0.0f, 1.0f);
-
-	return result;
-}
-
-bool32 Render(FRenderWorld* world, FTransformTable* transforms)
-{
-	FD3D* d3d = &world->d3d;
-
-	// Clear the buffers to begin the scene.
-	BeginScene(d3d, v4{ 0.0f, 0.0f, 0.0f, 3.0f });
-
-	// Generate the view matrix based on the camera's position.
-	RenderCamera(&world->camera, transforms);
-
-	FTexture* tex = &world->textures[0];
-
-	local_presist f32 rot = 0.0f;
-	rot -= 0.01f;
-
-	DXMatrix rotMatrix = DirectX::XMMatrixRotationY(rot);
-	DXMatrix transMatrix;
-
-	// Render the first mesh, offseted to the left
-	transMatrix = DirectX::XMMatrixTranslation(-1.5f, -1.5f, 0.0f);
-	DrawTexture(world, 2, 0, DirectX::XMMatrixMultiply(rotMatrix, transMatrix));
-
-	// Render the second mesh, offseted to the right and scaled down
-	transMatrix = DirectX::XMMatrixTranslation(-1.5f, 1.5f, 0.0f);
-	DrawColor(world, 0, {0.63f, 1, 0.21f, 1}, DirectX::XMMatrixMultiply(rotMatrix, transMatrix));
-
-	transMatrix = DirectX::XMMatrixTranslation(1.5f, 1.5f, 0.0f);
-	DrawColor(world, 0, { 1, 0.21f, 0.63f, 1 }, DirectX::XMMatrixMultiply(rotMatrix, transMatrix));
-
-	DXMatrix scaleMatrix = DirectX::XMMatrixScaling(0.75f, 0.75f, 0.75f);
-	transMatrix = DirectX::XMMatrixTranslation(1.5f, -1.5f, 0.0f);
-	DrawLit(world, 2, 0, DirectX::XMMatrixMultiply(rotMatrix, transMatrix));
-
-	// Flush all buckets — shader bound once per bucket, zero branching.
-	FlushColorBucket(world);
-	FlushTextureBucket(world);
-	FlushLitTextureBucket(world);
-
-	// Present the rendered scene to the screen.
-	EndScene(d3d);
-
-	return true;
 }
