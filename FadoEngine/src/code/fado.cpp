@@ -149,18 +149,21 @@ internal void Initialize(FGameState* gameState)
 
     // >> IMPORTANT: Camera MUST be handle 0!
     gameState->hCamera = SpawnEntity(gameState->entityTable, gameState->transforms, INVALID_HANDLE, INVALID_HANDLE, {}, EShaderTypes::Shader_None);
-    gameState->transforms->positions[gameState->hCamera] = { 0.0f, 0.0f, -10.0f };
+    gameState->transforms->positions[gameState->hCamera] = { 0.0f, 1.0f, -10.0f };
+
+    gameState->infinitePlane = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hPlane, gameState->hGridTexture, {}, EShaderTypes::UnlitTexture);
+    gameState->transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f};
 
     gameState->cube1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCube, 0, { 0.63f, 1, 0.21f, 1 }, EShaderTypes::Color);
     gameState->cube2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCube, 0, { 1, 0.21f, 0.63f, 1 }, EShaderTypes::Color);
     gameState->sphere1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphere, gameState->hMosaicTexture, {}, EShaderTypes::LitTexture);
     gameState->sphere2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphere, gameState->hMosaicTexture, {}, EShaderTypes::UnlitTexture);
 
-    gameState->transforms->positions[gameState->cube1] = { -1.5f, 1.5f, 0 };
+    gameState->transforms->positions[gameState->cube1] = { -1.5f, 5.0f, 0 };
     gameState->transforms->scales[gameState->cube1] = { 1.5f, 0.5f, 1.0f };
-    gameState->transforms->positions[gameState->cube2] = { 1.5f, 1.5f, 0 };
-    gameState->transforms->positions[gameState->sphere1] = { -1.5f, -1.5f, 0 };
-    gameState->transforms->positions[gameState->sphere2] = { 1.5f, -1.5f, 0 };
+    gameState->transforms->positions[gameState->cube2] = { 1.5f, 5.0f, 0 };
+    gameState->transforms->positions[gameState->sphere1] = { -1.5f, 2.0f, 0 };
+    gameState->transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
 }
 
 void GameUpdate(FEngineMemory* memory, FGameState* gameState, FGameInput* input)
@@ -171,6 +174,9 @@ void GameUpdate(FEngineMemory* memory, FGameState* gameState, FGameInput* input)
     }
 
 	HandleGameInput(gameState, input);
+
+    gameState->transforms->positions[gameState->infinitePlane].x = gameState->transforms->positions[gameState->hCamera].x;
+    gameState->transforms->positions[gameState->infinitePlane].z = gameState->transforms->positions[gameState->hCamera].z;
 
     Rotate(gameState->transforms, gameState->cube1, { 50.0f*input->deltaTime, 0.0f, 0.0f });
     Rotate(gameState->transforms, gameState->cube2, { -50.0f * input->deltaTime, 0.0f, 0.0f });

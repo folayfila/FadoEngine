@@ -108,11 +108,20 @@ struct v3
         z += a.z;
         return *this;
     }
+
     inline v3& operator-=(v3 a)
     {
         x -= a.x;
         y -= a.y;
         z -= a.z;
+        return *this;
+    }
+
+    inline v3& operator+=(f32 a)
+    {
+        x += a;
+        y += a;
+        z += a;
         return *this;
     }
 };

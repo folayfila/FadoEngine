@@ -89,16 +89,19 @@ struct FGameState
     FEntityTable* entityTable;
 
     // Entites
+    HEntity infinitePlane;
     HEntity cube1;
     HEntity cube2;
     HEntity sphere1;
     HEntity sphere2;
 
     // Mesh handles
+    HEntity hPlane;
     HMesh hCube;
     HMesh hSphere;
 
     // Texture handles
+    HTexture hGridTexture;
     HTexture hMosaicTexture;
 };
 

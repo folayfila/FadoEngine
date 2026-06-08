@@ -376,10 +376,12 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 // Loads all models and textures at startup.
 internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
 {
+	gameState->hPlane = LoadGLBModel(world, "src\\models\\plane.glb");
 	gameState->hCube = LoadGLBModel(world, "src\\models\\cube.glb");
 	gameState->hSphere = LoadGLBModel(world, "src\\models\\sphere.glb");
 	//HMesh hMonkey = LoadGLBIntoWorld(world, "src\\models\\monkey.glb");
 
+	 gameState->hGridTexture = LoadTexture(world, "src\\textures\\grid.tga");
 	 gameState->hMosaicTexture = LoadTexture(world, "src\\textures\\mosaic_diffuseoriginal.tga");
 }
 
