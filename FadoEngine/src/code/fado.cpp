@@ -156,7 +156,7 @@ internal void Initialize(FGameState* gameState)
 
     gameState->cube1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCube, 0, { 0.63f, 1, 0.21f, 1 }, EShaderTypes::Color);
     gameState->cube2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCube, 0, { 1, 0.21f, 0.63f, 1 }, EShaderTypes::Color);
-    gameState->sphere1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphere, gameState->hMosaicTexture, {}, EShaderTypes::LitTexture);
+    gameState->sphere1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphere, gameState->hGridTexture, {}, EShaderTypes::LitTexture);
     gameState->sphere2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphere, gameState->hMosaicTexture, {}, EShaderTypes::UnlitTexture);
 
     gameState->transforms->positions[gameState->cube1] = { -1.5f, 5.0f, 0 };

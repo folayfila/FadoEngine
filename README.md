@@ -8,6 +8,7 @@ The engine is heavily data oriented; we have a bunch of structs, and create func
 ![Description](media/showcase.gif)
 
 ### Latest Features
+- Entities in an Entity Component System. Transforms, meshes and textures are set in arrays through handles. 
 - Multiple shaders support (currenlty: simple unlit colors, lit/unlit textures).
 - Rotating camera with Quaternions.
 - Movable camera using a handle for an array of Transforms (AoS).
