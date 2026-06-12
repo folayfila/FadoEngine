@@ -12,7 +12,7 @@ internal HEntity SpawnEntity(FEntityTable* entities, FTransformTable* transforms
     e->color = color;
     e->shaderType = shaderType;
     transforms->scales[e->hTransform] = V3One();
-    transforms->rotations[e->hTransform] = QuatIndentity();
+    transforms->rotations[e->hTransform] = QuatIdentity();
     return handle;
 }
 

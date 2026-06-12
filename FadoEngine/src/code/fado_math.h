@@ -44,6 +44,12 @@ inline i32 Clampi32(i32 value, i32 min, i32 max)
 	}
 }
 
+inline f32 Absf32(f32 value)
+{
+	f32 result = (value < 0.0f) ? -value : value;
+	return result;
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // ──────────────── Vectors ───────────────────────────────────────────────
 
@@ -51,6 +57,15 @@ inline v3 V3One()
 {
 	v3 v = { 1.0f, 1.0f, 1.0f };
 	return v;
+}
+
+inline bool32 operator==(const v4& va, const v4& vb)
+{
+	return
+		(va.x == vb.x) &&
+		(va.y == vb.y) &&
+		(va.z == vb.z) &&
+		(va.w == vb.w);
 }
 
 inline v3 operator*(v3 a, f32 b)
@@ -88,10 +103,16 @@ inline v4 GetRandomColor()
 // Identity = { 0, 0, 0, 1 }
 // ────────────────────────────────────────────────────────────────────────
 
-inline quat QuatIndentity()
+inline quat QuatIdentity()
 {
 	quat q = { 0.0f, 0.0f, 0.0f, 1.0f };
 	return q;
+}
+
+inline bool32 IsQuatIdentity(quat& q)
+{
+	bool32 result = (q == QuatIdentity());
+	return result;
 }
 
 // Build a quaternion from a single axis + angle (radians).
@@ -114,7 +135,7 @@ inline quat QuatFromAxisAngle(v3 axis, f32 angleRad)
 // Result = a * b (Order matters!).
 inline quat QuatMultiply(quat a, quat b)
 {
-	quat result = QuatIndentity();
+	quat result = QuatIdentity();
 
 	result.x = (a.w * b.x) + (a.x * b.w) + (a.y * b.z) - (a.z * b.y);
 	result.y = (a.w * b.y) - (a.x * b.z) + (a.y * b.w) + (a.z * b.x);
@@ -138,6 +159,36 @@ inline void QuatNormalize(quat* q)
 	}
 }
 
+// Convert quaternion to a 3x3 column-major rotation matrix.
+// The columns of this matrix ARE the right/up/forward axes.
+// After this:
+// right   = { m[0], m[1], m[2] }   (column 0)
+// up      = { m[3], m[4], m[5] }   (column 1)
+// forward = { m[6], m[7], m[8] }   (column 2)
+inline mat3 QuatToMat3(quat q)
+{
+	mat3 m = {};
+
+	f32 x = q.x, y = q.y, z = q.z, w = q.w;
+
+	// Column 0
+	m.m[0] = 1 - 2 * (y * y + z * z);
+	m.m[1] = 2 * (x * y + w * z);
+	m.m[2] = 2 * (x * z - w * y);
+
+	// Column 1
+	m.m[3] = 2 * (x * y - w * z);
+	m.m[4] = 1 - 2 * (x * x + z * z);
+	m.m[5] = 2 * (y * z + w * x);
+
+	// Column 2
+	m.m[6] = 2 * (x * z + w * y);
+	m.m[7] = 2 * (y * z - w * x);
+	m.m[8] = 1 - 2 * (x * x + y * y);
+
+	return m;
+}
+
 // Convert quaternion to a 4x4 column-major rotation matrix.
 // This is what we pass to the GPU / view matrix math.
 // The columns of this matrix ARE the right/up/forward axes.
@@ -145,9 +196,9 @@ inline void QuatNormalize(quat* q)
 // right   = { m[0], m[1], m[2]  }   (column 0)
 // up      = { m[4], m[5], m[6]  }   (column 1)
 // forward = { m[8], m[9], m[10] }   (column 2)
-inline matrix QuatToMatrix(quat q)
+inline mat4 QuatToMatrix(quat q)
 {
-	matrix m = {};
+	mat4 m = {};
 
 	f32 x = q.x, y = q.y, z = q.z, w = q.w;	// for readablity.
 
@@ -184,7 +235,7 @@ inline matrix QuatToMatrix(quat q)
 // This order gives standard FPS behavior.
 inline quat QuatFromEuler(v3 eulerDegrees)
 {
-	quat result = QuatIndentity();
+	quat result = QuatIdentity();
 
 	quat yaw =   QuatFromAxisAngle({ 0, 1, 0 }, Deg2Rad(eulerDegrees.y));
 	quat pitch = QuatFromAxisAngle({ 1, 0, 0 }, Deg2Rad(eulerDegrees.x));

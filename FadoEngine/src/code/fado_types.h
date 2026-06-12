@@ -142,7 +142,12 @@ struct v4
 };
 typedef v4 quat;
 
-struct matrix
+struct mat3
+{
+    f32 m[9];
+};
+
+struct mat4
 {
     f32 m[16];
 };
