@@ -36,6 +36,9 @@
     <ClCompile Include="src\code\fado.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\code\fado_collision.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\fado_d3d.h">
@@ -57,6 +60,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\code\fado_math.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\code\fado_collision.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

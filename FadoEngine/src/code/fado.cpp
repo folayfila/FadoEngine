@@ -1,5 +1,6 @@
 #include "fado.h"
 #include "fado_math.h"
+#include "fado_collision.h"
 
 internal HEntity SpawnEntity(FEntityTable* entities, FTransformTable* transforms, HMesh hMesh, HTexture hTex, v4 color, EShaderTypes shaderType)
 {
@@ -13,6 +14,49 @@ internal HEntity SpawnEntity(FEntityTable* entities, FTransformTable* transforms
     transforms->scales[e->hTransform] = V3One();
     transforms->rotations[e->hTransform] = QuatIndentity();
     return handle;
+}
+
+internal void Initialize(FGameState* gameState)
+{
+    gameState->initialized = true;
+
+    // >> IMPORTANT: Camera MUST be handle 0!
+    gameState->hCamera = SpawnEntity(gameState->entityTable, gameState->transforms, INVALID_HANDLE, INVALID_HANDLE, {}, EShaderTypes::Shader_None);
+    gameState->transforms->positions[gameState->hCamera] = { 0.0f, 1.0f, -10.0f };
+
+    gameState->infinitePlane = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hPlaneMesh, gameState->hGridTexture, {}, EShaderTypes::UnlitTexture);
+    gameState->transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f };
+
+    gameState->cube1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCubeMesh, 0, { 0.63f, 1, 0.21f, 1 }, EShaderTypes::Color);
+    gameState->cube2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCubeMesh, 0, { 1, 0.21f, 0.63f, 1 }, EShaderTypes::Color);
+    gameState->sphere1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphereMesh, gameState->hGraniteTexture, {}, EShaderTypes::LitTexture);
+    gameState->sphere2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphereMesh, gameState->hMosaicTexture, {}, EShaderTypes::LitTexture);
+
+    gameState->transforms->positions[gameState->cube1] = { -1.5f, 5.0f, 0 };
+    gameState->transforms->scales[gameState->cube1] = { 1.5f, 0.5f, 1.0f };
+    gameState->transforms->positions[gameState->cube2] = { 1.5f, 5.0f, 0 };
+    gameState->transforms->positions[gameState->sphere1] = { -1.5f, 2.0f, 0 };
+    gameState->transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
+
+    CollisionInitialize(gameState->collisionWorld);
+
+    CollisionAddCollider(gameState->collisionWorld, gameState->hCamera,
+        gameState->entityTable->entities[gameState->hCamera].hTransform,
+        { 1.0f, 1.0f, 1.0f }, ECollisionFlags::Dynamic);
+
+    CollisionAddCollider(gameState->collisionWorld, gameState->infinitePlane,
+        gameState->entityTable->entities[gameState->infinitePlane].hTransform,
+        { 1.0f, 0.01f, 1.0f }, ECollisionFlags::Static);
+
+    v3 extents = {1.0f, 1.0f, 1.0f};
+    CollisionAddCollider(gameState->collisionWorld, gameState->sphere1,
+        gameState->entityTable->entities[gameState->sphere1].hTransform, extents, ECollisionFlags::Dynamic);
+    CollisionAddCollider(gameState->collisionWorld, gameState->sphere2,
+        gameState->entityTable->entities[gameState->sphere2].hTransform, extents, ECollisionFlags::Physics);
+    CollisionAddCollider(gameState->collisionWorld, gameState->cube1,
+        gameState->entityTable->entities[gameState->cube1].hTransform, extents, ECollisionFlags::Kinematic);
+    CollisionAddCollider(gameState->collisionWorld, gameState->cube2,
+        gameState->entityTable->entities[gameState->cube2].hTransform, extents, ECollisionFlags::Static);
 }
 
 internal bool32 IsStickHeld(v2 stickAverage, EStickDirection direction)
@@ -63,6 +107,8 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
         quat camRot = gameState->transforms->rotations[gameState->hCamera];
         v3* camPos = &gameState->transforms->positions[gameState->hCamera];
 
+        v3* sphere1Pos = &gameState->transforms->positions[gameState->sphere1];
+
         v3 forward = QuatForward(camRot);
         v3 right = QuatRight(camRot);
         v3 up = QuatUp(camRot);
@@ -72,26 +118,32 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
         if ((controllerInput->dpadUp.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Up)))
         {
             *camPos += forward * moveSpeed;
+            //*sphere1Pos += forward * moveSpeed;
         }
         if ((controllerInput->dpadDown.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Down)))
         {
             *camPos -= forward * moveSpeed;
+            //*sphere1Pos -= forward * moveSpeed;
         }
         if ((controllerInput->dpadRight.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Right)))
         {
             *camPos += right * moveSpeed;
+            //*sphere1Pos += right * moveSpeed;
         }
         if ((controllerInput->dpadLeft.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Left)))
         {
             *camPos -= right * moveSpeed;
+            //*sphere1Pos -= right * moveSpeed;
         }
         if (controllerInput->rightShoulder.isDown)
         {
             *camPos += up * moveSpeed;
+            //*sphere1Pos += up * moveSpeed;
         }
         if (controllerInput->leftShoulder.isDown)
         {
             *camPos -= up * moveSpeed;
+            //*sphere1Pos -= up * moveSpeed;
         }
         
         // Rotation
@@ -143,29 +195,6 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
     }
 }
 
-internal void Initialize(FGameState* gameState)
-{
-    gameState->initialized = true;
-
-    // >> IMPORTANT: Camera MUST be handle 0!
-    gameState->hCamera = SpawnEntity(gameState->entityTable, gameState->transforms, INVALID_HANDLE, INVALID_HANDLE, {}, EShaderTypes::Shader_None);
-    gameState->transforms->positions[gameState->hCamera] = { 0.0f, 1.0f, -10.0f };
-
-    gameState->infinitePlane = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hPlane, gameState->hGridTexture, {}, EShaderTypes::UnlitTexture);
-    gameState->transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f};
-
-    gameState->cube1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCube, 0, { 0.63f, 1, 0.21f, 1 }, EShaderTypes::Color);
-    gameState->cube2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCube, 0, { 1, 0.21f, 0.63f, 1 }, EShaderTypes::Color);
-    gameState->sphere1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphere, gameState->hGridTexture, {}, EShaderTypes::LitTexture);
-    gameState->sphere2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphere, gameState->hMosaicTexture, {}, EShaderTypes::UnlitTexture);
-
-    gameState->transforms->positions[gameState->cube1] = { -1.5f, 5.0f, 0 };
-    gameState->transforms->scales[gameState->cube1] = { 1.5f, 0.5f, 1.0f };
-    gameState->transforms->positions[gameState->cube2] = { 1.5f, 5.0f, 0 };
-    gameState->transforms->positions[gameState->sphere1] = { -1.5f, 2.0f, 0 };
-    gameState->transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
-}
-
 void GameUpdate(FEngineMemory* memory, FGameState* gameState, FGameInput* input)
 {
     if (!gameState->initialized)
@@ -182,6 +211,25 @@ void GameUpdate(FEngineMemory* memory, FGameState* gameState, FGameInput* input)
     Rotate(gameState->transforms, gameState->cube2, { -50.0f * input->deltaTime, 0.0f, 0.0f });
     Rotate(gameState->transforms, gameState->sphere1, { 0.0f, 50.0f * input->deltaTime, 0.0f });
     Rotate(gameState->transforms, gameState->sphere2, { 0.0f, -50.0f * input->deltaTime, 0.0f });
+
+    // Test and update collisions.
+    // 1. Calculate and detect.
+    CollisionUpdate(gameState->collisionWorld, gameState->transforms, &memory->scratch);
+    // 2. Resolve (push solid objects apart).
+    CollisionResolve(gameState->collisionWorld, gameState->transforms);
+    // 3. React (Iterate contacts for game logic).
+    for (u32 i = 0; i < gameState->collisionWorld->contactCount; ++i)
+    {
+        FContactInfo* c = &gameState->collisionWorld->contacts[i];
+        if (c->isTrigger)
+        {
+            // Example: Doing something specific if sphere1 collides with sphere2
+            if (AreEntitiesColliding(c, gameState->sphere1, gameState->sphere2))
+            {
+
+            }
+        }
+    }
 }
 
 /*

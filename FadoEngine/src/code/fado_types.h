@@ -4,7 +4,7 @@
 #define FADO_TYPES_H
 
 #include <stdint.h>
-/************** Types ***************/
+// ─────────────────────────────────────────────
 typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
@@ -22,13 +22,14 @@ typedef wchar_t wchar;
 
 typedef i32 bool32;
 
-/**************************************/
+// ─────────────────────────────────────────────
 
 #define internal static
 #define global_variable static
 #define local_presist static
 
-/************** Compilers ***************/
+// ─────────────────────────────────────────────
+// Compilers
 #ifndef COMPILER_MSVC
 #define COMPILER_MSVC 0
 #endif	// COMPILER_MSVC
@@ -50,7 +51,7 @@ typedef i32 bool32;
 #if COMPILER_MSVC
 #include <intrin.h>
 #endif // COMPILER_MSVC
-/**************************************/
+// ─────────────────────────────────────────────
 
 
 /*
@@ -58,12 +59,10 @@ typedef i32 bool32;
 ** FADO_DEBUG
 *   0 - Build for public release.
 *   1 - Build for developer only.
-
-* ** FADO_RELEASE
-*   1 - Build for public release.
 */
+#define FADO_DEBUG 1
 
-#if 1
+#if FADO_DEBUG
 #define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
 #else
 #define Assert(Expression)
@@ -79,7 +78,7 @@ typedef i32 bool32;
 
 #define ZeroStruct(Struct) memset((Struct), 0, sizeof(*(Struct)))
 
-//////////////////////////////////////////
+// ─────────────────────────────────────────────
 
 struct v2
 {
@@ -148,7 +147,8 @@ struct matrix
     f32 m[16];
 };
 
-/////////////////// Transform ///////////////////////
+// ─────────────────────────────────────────────
+// ──────────────── Transform ──────────────────
 
 typedef u32 HTransform; // Transform handle.
 
@@ -164,7 +164,8 @@ struct FTransformTable
     u32 count;
 };
 
-/////////////////// Entities ///////////////////////
+// ─────────────────────────────────────────────
+// ──────────────── Entities ──────────────────
 
 typedef u32 HEntity;
 typedef u32 HMesh;
@@ -197,7 +198,8 @@ struct FEntityTable
     u32 count;
 };
 
-/////////////////// Arena ///////////////////////
+// ─────────────────────────────────────────────
+// ──────────────── Arena ──────────────────────
 
 struct FMemoryArena
 {
@@ -209,9 +211,9 @@ struct FMemoryArena
 struct FEngineMemory
 {
     // Permanent — lives for the entire session.
-    // Scratch — reset every asset load (or every frame for temp work).
+    // Scratch — resets every asset load.
     FMemoryArena permanent;
-    FMemoryArena scratch;
+    FMemoryArena scratch;   // ! MUST reset manually after using with ArenaReset()
 };
 
 #define ArenaPushSize(Arena, type) (type *)AreaPushSize_(Arena, sizeof(type))
@@ -237,6 +239,6 @@ inline void ArenaReset(FMemoryArena* arena)
 {
     arena->used = 0;
 }
-////////////////////////////////////////////////
+// ─────────────────────────────────────────────
 
 #endif // FADO_TYPES_H

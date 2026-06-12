@@ -2,16 +2,16 @@
 #include "../code/glb/fado_glb.h"
 #include "fado_math.h"
 
-///////////////////////////
+// ───────────────────────────
 // Constants
-///////////////////////////
+// ───────────────────────────
 // Unified vertex and pixel shaders entry points.
 const char* k_vsEntryFuncName = "VertexShaderEntry";
 const char* k_psEntryFuncName = "PixelShaderEntry";
 
-////////////////////////////////////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 // FD3D
-////////////////////////////////////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 internal bool32 InitializeDX11(FD3DInitParams* d3dInitParams, FMemoryArena* scratchArena)
 {
 	FD3D* d3d = d3dInitParams->d3d;
@@ -351,9 +351,9 @@ internal void EndScene(FD3D* d3d)
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// FColorShaderD3D
-////////////////////////////////////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
+// FColorShader
+// ────────────────────────────────────────────────────────────────────────
 internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* device, HWND window)
 {
 	// Set the filename of the hlsl shader.
@@ -505,9 +505,9 @@ internal void SetColorShaderParameters(FRenderWorld* world, u32 hColorDrawCall)
 	deviceContext->PSSetConstantBuffers(1, 1, &colorShader->colorBuffer);
 }
 
-////////////////////////////////////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 // FUnlitTextureShader
-////////////////////////////////////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 internal bool32 InitializeUnlitTextureShader(FUnlitTextureShader* unlitTexShader, ID3D11Device* device, HWND window)
 {
 	// Set the filename of the hlsl shader.
@@ -673,9 +673,9 @@ internal void SetUnlitTextureShaderParameters(FRenderWorld* world, HTexture hTex
 	deviceContext->PSSetShaderResources(0, 1, &world->textures[hTexture].textureView);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// FLitTextureShader
-////////////////////////////////////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
+// FLitTexture
+// ────────────────────────────────────────────────────────────────────────
 internal bool32 InitializeLitTextureShader(FLitTextureShader* litTexShader, ID3D11Device* device, HWND window)
 {
 	// Set the filename of the hlsl shader.
@@ -893,10 +893,9 @@ internal void SetLitTextureShaderParameters(FRenderWorld* world, HTexture hTextu
 	deviceContext->PSSetConstantBuffers(bufferNumber, 1, &lightShader->lightBuffer);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// FTexture / Targa
-////////////////////////////////////////////////////////////////////////////////
-
+// ────────────────────────────────────────────────────────────────────────
+// FTexture / Targe
+// ────────────────────────────────────────────────────────────────────────
 bool32 LoadTarga32BitIntoTexture(const char* filename, FTexture* tex)
 {
 	// Open the targa file for reading in binary.
@@ -1056,9 +1055,9 @@ bool32 InitializeTexture(FTexture* tex, ID3D11Device* device, ID3D11DeviceContex
 	return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 // Model
-////////////////////////////////////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 
 internal void UploadMesh(FMeshBuffer *mesh, ID3D11Device* device, void* vertices, u32 vCount, u32 vertexStride, u32* indices, u32 iCount)
 {
@@ -1215,9 +1214,9 @@ internal void FlushLitTextureBucket(FRenderWorld* world)
 	world->litTextureBucket.count = 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 // FCamera
-////////////////////////////////////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 internal void RenderCamera(FCamera* camera, FTransformTable* transforms)
 {
 	quat q = transforms->rotations[camera->hTransform];
@@ -1264,9 +1263,9 @@ internal DXMatrix BuildEntityWorldMatrix(HEntity hEntity, FEntityTable* entityTa
 	return resultMatrix;
 }
 
-////////////////////////////////////
-/// Global Functions
-////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
+// Glovbal Functions
+// ────────────────────────────────────────────────────────────────────────
 
 bool32 InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams, FTransformTable* transforms)
 {
@@ -1300,8 +1299,24 @@ bool32 InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams, FTrans
 	}
 
 	world->litTextureShader.ambientColor = DXFloat4(0.5f, 0.35f, 0.25f, 1.0f);
-	world->litTextureShader.diffuseColor = DXFloat4(0.75f, 0.75f, 1.0f, 1.0f);
+	world->litTextureShader.diffuseColor = DXFloat4(1.75f, 0.75f, 1.0f, 1.0f);
 	world->litTextureShader.lightDirection = DXFloat3(1.75f, 0.0f, 1.0f);
+
+#if FADO_DEBUG
+	// 2 verts per line, MAX_DEBUG_LINES lines
+	D3D11_BUFFER_DESC desc = {};
+	desc.Usage = D3D11_USAGE_DYNAMIC;
+	desc.ByteWidth = sizeof(FDebugVertex) * MAX_DEBUG_LINES * 2;
+	desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	result = world->d3d.device->CreateBuffer(&desc, NULL, &world->debugBucket.vertexBuffer);
+	if (FAILED(result))
+	{
+		Assert(0);
+	}
+	world->debugBucket.count = 0;
+#endif // FADO_DEBUG
 
 	return result;
 }
@@ -1408,3 +1423,179 @@ HMesh LoadGLBModel(FRenderWorld* world, const char* filename)
 	GLB_Free(asset);
 	return handle;
 }
+
+
+// ─────────────────────────────────
+/// Debug Only
+#include "fado_collision.h"
+
+#if FADO_DEBUG
+// Call from game code to queue a line for this frame
+internal void DebugDrawLine(FRenderWorld* world, v3 start, v3 end, v4 color)
+{
+	FDebugLineBucket* bucket = &world->debugBucket;
+	if (bucket->count >= MAX_DEBUG_LINES) { return; }
+	FDebugLine* line = &bucket->lines[bucket->count++];
+	line->start = start;
+	line->end = end;
+	line->color = color;
+}
+
+// Draw an AABB as 12 coloured edges
+internal void DebugDrawAABB(FRenderWorld* world, const FAABB& box, v4 color)
+{
+	v3 c[8] =
+	{
+		{ box.min.x, box.min.y, box.min.z }, // 0 left  bottom front
+		{ box.max.x, box.min.y, box.min.z }, // 1 right bottom front
+		{ box.max.x, box.min.y, box.max.z }, // 2 right bottom back
+		{ box.min.x, box.min.y, box.max.z }, // 3 left  bottom back
+		{ box.min.x, box.max.y, box.min.z }, // 4 left  top    front
+		{ box.max.x, box.max.y, box.min.z }, // 5 right top    front
+		{ box.max.x, box.max.y, box.max.z }, // 6 right top    back
+		{ box.min.x, box.max.y, box.max.z }, // 7 left  top    back
+	};
+
+	// Bottom ring
+	DebugDrawLine(world, c[0], c[1], color);
+	DebugDrawLine(world, c[1], c[2], color);
+	DebugDrawLine(world, c[2], c[3], color);
+	DebugDrawLine(world, c[3], c[0], color);
+	// Top ring
+	DebugDrawLine(world, c[4], c[5], color);
+	DebugDrawLine(world, c[5], c[6], color);
+	DebugDrawLine(world, c[6], c[7], color);
+	DebugDrawLine(world, c[7], c[4], color);
+	// Verticals
+	DebugDrawLine(world, c[0], c[4], color);
+	DebugDrawLine(world, c[1], c[5], color);
+	DebugDrawLine(world, c[2], c[6], color);
+	DebugDrawLine(world, c[3], c[7], color);
+}
+
+internal void FlushDebugLineBucket(FRenderWorld* world)
+{
+	FDebugLineBucket* bucket = &world->debugBucket;
+	if (bucket->count == 0) { return; }
+
+	FD3D* d3d = &world->d3d;
+
+	// Upload all line verts into the dynamic buffer
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	HRESULT result = d3d->deviceContext->Map(bucket->vertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+	Assert(!FAILED(result));
+
+	FDebugVertex* verts = (FDebugVertex*)mapped.pData;
+	for (u32 i = 0; i < bucket->count; ++i)
+	{
+		verts[i * 2 + 0].position = bucket->lines[i].start;
+		verts[i * 2 + 1].position = bucket->lines[i].end;
+	}
+	d3d->deviceContext->Unmap(bucket->vertexBuffer, 0);
+
+	// Reuse the color shader — it only needs POSITION
+	FColorShader* shader = &world->colorShader;
+	d3d->deviceContext->IASetInputLayout(shader->layout);
+	d3d->deviceContext->VSSetShader(shader->vertexShader, NULL, 0);
+	d3d->deviceContext->PSSetShader(shader->pixelShader, NULL, 0);
+
+	// Switch topology to lines
+	d3d->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+
+	u32 stride = sizeof(FDebugVertex);
+	u32 offset = 0;
+	d3d->deviceContext->IASetVertexBuffers(0, 1, &bucket->vertexBuffer, &stride, &offset);
+
+	// Draw each line with its own colour via the color constant buffer
+	d3d->worldMatrix = DirectX::XMMatrixIdentity();
+	for (u32 i = 0; i < bucket->count; ++i)
+	{
+		// Upload color for this line
+		D3D11_MAPPED_SUBRESOURCE colorMapped;
+		d3d->deviceContext->Map(shader->colorBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &colorMapped);
+		FColorBuffer* cb = (FColorBuffer*)colorMapped.pData;
+		cb->color = { bucket->lines[i].color.r, bucket->lines[i].color.g,
+					  bucket->lines[i].color.b, bucket->lines[i].color.a };
+		d3d->deviceContext->Unmap(shader->colorBuffer, 0);
+		d3d->deviceContext->PSSetConstantBuffers(1, 1, &shader->colorBuffer);
+
+		// Upload identity world matrix (lines are already in world space)
+		D3D11_MAPPED_SUBRESOURCE matMapped;
+		d3d->deviceContext->Map(shader->matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &matMapped);
+		FMatrixBuffer* mb = (FMatrixBuffer*)matMapped.pData;
+		mb->world = XMMatrixTranspose(d3d->worldMatrix);
+		mb->view = XMMatrixTranspose(world->camera.viewMatrix);
+		mb->projection = XMMatrixTranspose(d3d->projectionMatrix);
+		d3d->deviceContext->Unmap(shader->matrixBuffer, 0);
+		d3d->deviceContext->VSSetConstantBuffers(0, 1, &shader->matrixBuffer);
+
+		d3d->deviceContext->Draw(2, i * 2);
+	}
+
+	// Restore triangle topology for next bucket
+	d3d->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	bucket->count = 0;
+}
+
+void DebugRender(FRenderWorld* world, FEntityTable* entityTable, FTransformTable* transforms, FCollisionWorld* collisionWorld)
+{
+	FD3D* d3d = &world->d3d;
+
+	// Clear the buffers to begin the scene.
+	BeginScene(d3d, v4{ 0.0f, 0.0f, 0.0f, 3.0f });
+
+	// Generate the view matrix based on the camera's position.
+	RenderCamera(&world->camera, transforms);
+
+	for (u32 i = 0; i < entityTable->count; ++i)
+	{
+		FEntity* e = &entityTable->entities[i];
+		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, entityTable, transforms);
+
+		switch (e->shaderType)
+		{
+		case EShaderTypes::Color:
+		{
+			DXFloat4 color = { e->color.r , e->color.g , e->color.b , e->color.a };
+			DrawColor(world, e->hMesh, color, worldMatrix);
+		} break;
+
+		case EShaderTypes::UnlitTexture:
+		{
+			DrawUnlitTextrue(world, e->hMesh, e->hTexture, worldMatrix);
+		} break;
+
+		case EShaderTypes::LitTexture:
+		{
+			DrawLitTexture(world, e->hMesh, e->hTexture, worldMatrix);
+		} break;
+
+		default:
+		{} break;
+		}
+	}
+
+	// Flush all buckets — shader bound once per bucket, zero branching.
+	FlushColorBucket(world);
+	FlushTextureBucket(world);
+	FlushLitTextureBucket(world);
+
+	for (u32 i = 0; i < collisionWorld->colliders.count; ++i)
+	{
+		FCollider* c = &collisionWorld->colliders.colliders[i];
+		v4 color = (c->flags & ECollisionFlags::Trigger)   ? v4{ 0, 1, 0, 1 }    // green
+				 : (c->flags & ECollisionFlags::Static)	   ? v4{ 0, 0, 1, 1 }	 // blue
+				 : (c->flags & ECollisionFlags::Kinematic) ? v4{ 1, 0, 1, 1 }	 // purple
+				 : (c->flags & ECollisionFlags::Dynamic)   ? v4{ 1, 0.5, 0, 1 }  // orange
+				 : (c->flags & ECollisionFlags::Physics)   ? v4{ 1, 0, 0, 1 }	 // red
+														   : v4{ 1, 1, 1, 1 };	 // white
+		DebugDrawAABB(world, c->worldAABB, color);
+	}
+	FlushDebugLineBucket(world);
+
+	// Present the rendered scene to the screen.
+	EndScene(d3d);
+}
+
+#endif // FADO_DEBUG

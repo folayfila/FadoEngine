@@ -11,9 +11,9 @@
 */
 
 
-/////////////
+// ───────────
 // Includes //
-/////////////
+// ───────────
 #include <d3d11.h>
 #include <directxmath.h>
 #include <d3dcompiler.h>
@@ -25,10 +25,10 @@ typedef DirectX::XMFLOAT4 DXFloat4;
 typedef DirectX::XMFLOAT3 DXFloat3;
 typedef DirectX::XMFLOAT2 DXFloat2;
 
-////////////////////////////////////
+// ─────────────────────────────────
 /// FD3D
 /// The Direct3D struct is what we will use to invoke our HLSL shaders for drawing the 3D models that are on the GPU.
-////////////////////////////////////
+// ─────────────────────────────────
 struct FD3D
 {
 	DXMatrix projectionMatrix;
@@ -60,9 +60,35 @@ struct FD3DInitParams
 	f32 screenNear;
 };
 
-////////////////////////////////////
+#if FADO_DEBUG
+// ─────────────────────────────────
+/// Debug lines
+#define MAX_DEBUG_LINES 4096
+
+struct FDebugLine
+{
+	v3    start;
+	v3    end;
+	v4    color;
+};
+
+struct FDebugVertex
+{
+	v3 position;
+};
+
+struct FDebugLineBucket
+{
+	FDebugLine  lines[MAX_DEBUG_LINES];
+	u32         count;
+
+	ID3D11Buffer* vertexBuffer;   // dynamic, re-uploaded each frame
+};
+#endif // FADO_DEBUG
+
+// ─────────────────────────────────
 /// Shaders
-////////////////////////////////////
+// ─────────────────────────────────
 
 struct FMatrixBuffer
 {
@@ -71,7 +97,7 @@ struct FMatrixBuffer
 	DXMatrix projection;
 };
 
-///////////////
+// ────────────
 // Color Shader
 struct FColorShader
 {
@@ -87,8 +113,7 @@ struct FColorBuffer
 	DXFloat4 color;
 };
 
-
-///////////////
+// ────────────
 // Texture Shader
 struct FUnlitTextureShader
 {
@@ -99,7 +124,7 @@ struct FUnlitTextureShader
 	ID3D11SamplerState* sampleState;	// This pointer will be used to interface with the texture shader.
 };
 
-///////////////
+// ───────────
 // Lit Textured Shader (texture shader that also calcules light)
 struct FLitTextureShader
 {
@@ -157,7 +182,7 @@ struct FTargaHeader
 };
 #pragma pack(pop)
 
-///////////////
+// ─────────────────────────────────
 // Model
 struct FMeshBuffer
 {
@@ -168,7 +193,7 @@ struct FMeshBuffer
 	u32 vertexStride;
 };
 
-////////////////////////////////////
+// ──────────────────────────────────
 /// FCameraD3D
 struct FCamera
 {
@@ -177,10 +202,10 @@ struct FCamera
 };
 
 
-////////////////////////////////////
+// ──────────────────────────────────
 /// FRenderWorld
 /// The appilcaton that holds all d3d required stuff, texturtes and meshes.
-////////////////////////////////////
+// ──────────────────────────────────
 
 #define MAX_DRAW_CALLS 265
 
@@ -214,6 +239,10 @@ struct FRenderWorld
 	FRenderBucket colorBucket;
 	FRenderBucket unlitTextureBucket;
 	FRenderBucket litTextureBucket;
+
+#if FADO_DEBUG
+	FDebugLineBucket debugBucket;
+#endif
 
 	// Mesh and texture pools.
 	FMeshBuffer meshes[MAX_MESHES];		// models

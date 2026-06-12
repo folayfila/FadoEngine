@@ -3,6 +3,10 @@
 
 #include "fado_types.h"
 
+// Forward declaractions:
+struct FCollisionWorld;
+
+// ──────────────────────────────────────────────────────────────────────────────────────────
 
 struct FGameButtonState
 {
@@ -85,8 +89,9 @@ struct FGameState
     f32 cameraYaw;   // degrees, accumulates freely
     f32 cameraPitch; // degrees, clamped to [-89, 89]
 
-    FTransformTable* transforms;
     FEntityTable* entityTable;
+    FTransformTable* transforms;
+    FCollisionWorld* collisionWorld;
 
     // Entites
     HEntity infinitePlane;
@@ -96,16 +101,17 @@ struct FGameState
     HEntity sphere2;
 
     // Mesh handles
-    HEntity hPlane;
-    HMesh hCube;
-    HMesh hSphere;
+    HEntity hPlaneMesh;
+    HMesh hCubeMesh;
+    HMesh hSphereMesh;
 
     // Texture handles
     HTexture hGridTexture;
     HTexture hMosaicTexture;
+    HTexture hGraniteTexture;
 };
 
-///////////////////////////////////////////////////////////////////
+// ──────────────────────────────────────────────────────────────────────────────────────────
 void GameUpdate(FEngineMemory* memory, FGameState* gameState, FGameInput* input);
 
 #endif FADO_H

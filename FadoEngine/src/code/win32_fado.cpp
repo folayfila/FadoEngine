@@ -1,6 +1,7 @@
 #include "win32_fado.h"
 #include <xinput.h>
 #include "fado_math.h"
+#include "fado_collision.h"
 
 internal void ToggleFullscreen(HWND Window)
 {
@@ -29,9 +30,9 @@ internal void ToggleFullscreen(HWND Window)
 	}
 }
 
-//////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 // Input
-//////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE *pState)
 typedef X_INPUT_GET_STATE(x_input_get_state);
 X_INPUT_GET_STATE(XInputGetStateStub)
@@ -318,9 +319,9 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPA
 	return result;
 }
 
-//////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 // Win32System
-//////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 
 // Initialize and create the game's Window and initialze DX11.
 internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* win32System)
@@ -376,18 +377,19 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 // Loads all models and textures at startup.
 internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
 {
-	gameState->hPlane = LoadGLBModel(world, "src\\models\\plane.glb");
-	gameState->hCube = LoadGLBModel(world, "src\\models\\cube.glb");
-	gameState->hSphere = LoadGLBModel(world, "src\\models\\sphere.glb");
+	gameState->hPlaneMesh = LoadGLBModel(world, "src\\models\\plane.glb");
+	gameState->hCubeMesh = LoadGLBModel(world, "src\\models\\cube.glb");
+	gameState->hSphereMesh = LoadGLBModel(world, "src\\models\\sphere.glb");
 	//HMesh hMonkey = LoadGLBIntoWorld(world, "src\\models\\monkey.glb");
 
 	 gameState->hGridTexture = LoadTexture(world, "src\\textures\\grid.tga");
-	 gameState->hMosaicTexture = LoadTexture(world, "src\\textures\\mosaic_diffuseoriginal.tga");
+	 gameState->hMosaicTexture = LoadTexture(world, "src\\textures\\mosaic.tga");
+	 gameState->hGraniteTexture = LoadTexture(world, "src\\textures\\granite.tga");
 }
 
-//////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────
 // Main
-//////////////////////////////////////////////////
+// ────────────────────────────────────────────────────────────────────────/
 int WINAPI wWinMain(
 	HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
@@ -416,6 +418,7 @@ int WINAPI wWinMain(
 	FGameState* gameState = ArenaPushSize(&engineMemory.permanent, FGameState);
 	gameState->transforms = win32System->transforms;
 	gameState->entityTable = win32System->entityTable;
+	gameState->collisionWorld = ArenaPushSize(&engineMemory.permanent, FCollisionWorld);
 	FGameInput* input = ArenaPushSize(&engineMemory.permanent, FGameInput);
 
 	InitLoadAssets(&win32System->world, gameState);
@@ -438,7 +441,12 @@ int WINAPI wWinMain(
 
 		// Update game and render.
 		GameUpdate(&engineMemory, gameState, input);
+
+#if FADO_DEBUG
+		DebugRender(&win32System->world, win32System->entityTable, win32System->transforms, gameState->collisionWorld);
+#else
 		Render(&win32System->world, win32System->entityTable, win32System->transforms);
+#endif // FADO_DEBUG
 
 		// Update the previous buttons states.
 		for (u32 controllerIndex = 0; controllerIndex < ArrayCount(input->controllers); ++controllerIndex)
