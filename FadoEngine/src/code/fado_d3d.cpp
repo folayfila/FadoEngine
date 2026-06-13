@@ -1424,6 +1424,62 @@ HMesh LoadGLBModel(FRenderWorld* world, const char* filename)
 	return handle;
 }
 
+void D3DResize(FD3D* d3d, i32 width, i32 height, f32 screenNear, f32 screenDepth)
+{
+	if (!d3d->swapChain)
+	{
+		return;
+	}
+
+	// Release old views/buffers — they hold references to the old back buffer.
+	d3d->deviceContext->OMSetRenderTargets(0, nullptr, nullptr);
+	d3d->renderTargetView->Release();
+	d3d->depthStencilView->Release();
+	d3d->depthStencilBuffer->Release();
+
+	// Resize the swap chain's buffers to the new size.
+	d3d->swapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
+
+	// Recreate render target view from the new back buffer.
+	ID3D11Texture2D* backBuffer;
+	d3d->swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+	d3d->device->CreateRenderTargetView(backBuffer, nullptr, &d3d->renderTargetView);
+	backBuffer->Release();
+
+	// Recreate depth/stencil buffer at the new size.
+	D3D11_TEXTURE2D_DESC depthDesc = {};
+	depthDesc.Width = width;
+	depthDesc.Height = height;
+	depthDesc.MipLevels = 1;
+	depthDesc.ArraySize = 1;
+	depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	depthDesc.SampleDesc.Count = 1;
+	depthDesc.Usage = D3D11_USAGE_DEFAULT;
+	depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	d3d->device->CreateTexture2D(&depthDesc, nullptr, &d3d->depthStencilBuffer);
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+	dsvDesc.Format = depthDesc.Format;
+	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	d3d->device->CreateDepthStencilView(d3d->depthStencilBuffer, &dsvDesc, &d3d->depthStencilView);
+
+	d3d->deviceContext->OMSetRenderTargets(1, &d3d->renderTargetView, d3d->depthStencilView);
+
+	// Update viewport.
+	d3d->viewport.Width = (f32)width;
+	d3d->viewport.Height = (f32)height;
+	d3d->viewport.TopLeftX = 0;
+	d3d->viewport.TopLeftY = 0;
+	d3d->viewport.MinDepth = 0.0f;
+	d3d->viewport.MaxDepth = 1.0f;
+	d3d->deviceContext->RSSetViewports(1, &d3d->viewport);
+
+	// Update projection matrix aspect ratio.
+	f32 aspect = (f32)width / (f32)height;
+	f32 fovY = DirectX::XM_PIDIV4; // match whatever FOV you used at init
+	d3d->projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(fovY, aspect, 0.3f, 1000.0f);
+}
+
 
 // ─────────────────────────────────
 /// Debug Only

@@ -261,27 +261,29 @@ internal void Win32HandleKeyboardInput(MSG* msg, WPARAM wParam, LPARAM lParam, F
 internal void Win32HandleWindowsMessageLoop(FGameControllerInput* keyboard, f32 deltaTime)
 {
 	MSG message;
-	PeekMessage(&message, 0, 0, 0, PM_REMOVE);
-	switch (message.message)
+	while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
 	{
-		case WM_SYSKEYDOWN:
-		case WM_SYSKEYUP:
-		case WM_KEYDOWN:
-		case WM_KEYUP:
+		switch (message.message)
 		{
-			Win32HandleKeyboardInput(&message, message.wParam, message.lParam, keyboard, deltaTime);
-		} break;
+			case WM_SYSKEYDOWN:
+			case WM_SYSKEYUP:
+			case WM_KEYDOWN:
+			case WM_KEYUP:
+			{
+				Win32HandleKeyboardInput(&message, message.wParam, message.lParam, keyboard, deltaTime);
+			} break;
 
-		case WM_DESTROY:
-		case WM_CLOSE:
-		{
-			GlobalRunning = false;
-		} break;
+			case WM_DESTROY:
+			case WM_CLOSE:
+			{
+				GlobalRunning = false;
+			} break;
 
-		default:
-		{
-			TranslateMessage(&message);
-			DispatchMessageW(&message);
+			default:
+			{
+				TranslateMessage(&message);
+				DispatchMessageW(&message);
+			}
 		}
 	}
 }
@@ -297,10 +299,45 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPA
 		{
 			GlobalRunning = false;
 		} break;
+		
 
-		case WM_PAINT:
+		// On resize/move we start a timer that updates the game and renders so we don't get a frozen screen.
+		case WM_ENTERSIZEMOVE:
 		{
-			Render(&GlobalWin32System->world, GlobalWin32System->entityTable, GlobalWin32System->transforms);
+			SetTimer(Window, 1, 16, NULL);
+		} break;
+
+		case WM_EXITSIZEMOVE:
+		{
+			KillTimer(Window, 1);
+		} break;
+
+		case WM_TIMER:
+		{
+			if (GlobalWin32System->gameState && GlobalWin32System->gameState->initialized)
+			{
+				FGameInput input = {};
+				input.deltaTime = 0.016f;
+				GameUpdate(GlobalWin32System->engineMemory, GlobalWin32System->gameState, &input);
+#if FADO_DEBUG
+				DebugRender(GlobalWin32System->world, GlobalWin32System->gameState->entityTable, GlobalWin32System->gameState->transforms, GlobalWin32System->gameState->collisionWorld);
+#else
+				Render(GlobalWin32System->world, GlobalWin32System->gameState->entityTable, GlobalWin32System->gameState->transforms);
+#endif // FADO_DEBUG
+			}
+		} break;
+
+		case WM_SIZE:
+		{
+			if (GlobalWin32System && GlobalWin32System->world)
+			{
+				i32 newWidth = LOWORD(LParam);
+				i32 newHeight = HIWORD(LParam);
+				if (newWidth > 0 && newHeight > 0)
+				{
+					D3DResize(&GlobalWin32System->world->d3d, newWidth, newHeight, SCREEN_NEAR, SCREEN_DEPTH);
+				}
+			}
 		} break;
 
 		case WM_SYSKEYDOWN:
@@ -359,7 +396,7 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 		0, 0, win32System->instance, 0);
 
 	FD3DInitParams d3dInitParams = {};
-	d3dInitParams.d3d = &win32System->world.d3d;
+	d3dInitParams.d3d = &win32System->world->d3d;
 	d3dInitParams.window = win32System->window;
 	d3dInitParams.screenWidth = screenWidth;
 	d3dInitParams.screenHeight = screenHeight;
@@ -369,8 +406,8 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 	d3dInitParams.screenNear = SCREEN_NEAR;
 
 	// Initialize Dx11.
-	win32System->world.scratchArena = &memory->scratch;
-	InitializeFD3D(&win32System->world, &d3dInitParams, win32System->transforms);
+	win32System->world->scratchArena = &memory->scratch;
+	InitializeFD3D(win32System->world, &d3dInitParams, win32System->gameState->transforms);
 }
 
 // Called before starting the game loop.
@@ -408,20 +445,21 @@ int WINAPI wWinMain(
 	void* base = VirtualAlloc(0, totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	engineMemory.permanent = ArenaMake((u8*)base, Megabytes(64));
 	engineMemory.scratch = ArenaMake((u8*)base + Megabytes(64), Megabytes(8));
-
-	Win32System* win32System = ArenaPushSize(&engineMemory.permanent, Win32System);
-	win32System->transforms = ArenaPushSize(&engineMemory.permanent, FTransformTable);
-	win32System->entityTable = ArenaPushSize(&engineMemory.permanent, FEntityTable);
-	Win32InitializeWindowAndD3D(&engineMemory, win32System);
 	
 	Win32LoadXInput();
 	FGameState* gameState = ArenaPushSize(&engineMemory.permanent, FGameState);
-	gameState->transforms = win32System->transforms;
-	gameState->entityTable = win32System->entityTable;
+	gameState->transforms = ArenaPushSize(&engineMemory.permanent, FTransformTable);
+	gameState->entityTable = ArenaPushSize(&engineMemory.permanent, FEntityTable);
 	gameState->collisionWorld = ArenaPushSize(&engineMemory.permanent, FCollisionWorld);
-	FGameInput* input = ArenaPushSize(&engineMemory.permanent, FGameInput);
 
-	InitLoadAssets(&win32System->world, gameState);
+	Win32System win32System = {};
+	win32System.world = ArenaPushSize(&engineMemory.permanent, FRenderWorld);
+	win32System.gameState = gameState;
+	win32System.engineMemory = &engineMemory;
+	Win32InitializeWindowAndD3D(&engineMemory, &win32System);
+	InitLoadAssets(win32System.world, gameState);
+
+	FGameInput* input = ArenaPushSize(&engineMemory.permanent, FGameInput);
 
 	// Game loop.
 	gameState->running = true;
@@ -431,21 +469,26 @@ int WINAPI wWinMain(
 		LARGE_INTEGER currentCounter;
 		QueryPerformanceCounter(&currentCounter);
 		f32 deltaTime = (f32)(currentCounter.QuadPart - lastCounter.QuadPart) / (f32)perfFrequency.QuadPart;
+		// Clamp to avoid huge dt after modal resize/move loop blocks for a long time.
+		if (deltaTime > (1.0f / 15.0f))
+		{ 
+			deltaTime = 1.0f / 60.0f;
+		}
 		input->deltaTime = deltaTime;
 
 		// Handle keyboard and controller input.
 		FGameControllerInput* keyboardInput = &input->controllers[0];
 		keyboardInput->isConnected = true;
 		Win32HandleWindowsMessageLoop(keyboardInput, deltaTime);
-		Win32HandleControllerInput(win32System->window, input);
+		Win32HandleControllerInput(win32System.window, input);
 
 		// Update game and render.
 		GameUpdate(&engineMemory, gameState, input);
 
 #if FADO_DEBUG
-		DebugRender(&win32System->world, win32System->entityTable, win32System->transforms, gameState->collisionWorld);
+		DebugRender(win32System.world, win32System.gameState->entityTable, win32System.gameState->transforms, gameState->collisionWorld);
 #else
-		Render(&win32System->world, win32System->entityTable, win32System->transforms);
+		Render(win32System.world, win32System.gameState->entityTable, win32System.gameState->transforms);
 #endif // FADO_DEBUG
 
 		// Update the previous buttons states.

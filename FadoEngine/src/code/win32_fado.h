@@ -20,9 +20,9 @@ struct Win32System
 {
 	HINSTANCE instance;
 	HWND window;
-	FRenderWorld world;
-	FTransformTable* transforms;
-	FEntityTable* entityTable;
+	FEngineMemory* engineMemory;
+	FGameState* gameState;
+	FRenderWorld* world;
 };
 
 ///////////////////////////////
