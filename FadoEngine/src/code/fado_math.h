@@ -53,12 +53,6 @@ inline f32 Absf32(f32 value)
 // ────────────────────────────────────────────────────────────────────────
 // ──────────────── Vectors ───────────────────────────────────────────────
 
-inline v3 V3One()
-{
-	v3 v = { 1.0f, 1.0f, 1.0f };
-	return v;
-}
-
 inline bool32 operator==(const v4& va, const v4& vb)
 {
 	return
@@ -79,11 +73,55 @@ inline v3 operator*(v3 a, f32 b)
 	return result;
 }
 
+inline v3 V3One()
+{
+	v3 v = { 1.0f, 1.0f, 1.0f };
+	return v;
+}
+
+inline f32 V3Dot(v3 a, v3 b)
+{
+    return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
+}
+
+inline v3 V3Cross(v3 a, v3 b)
+{
+    v3 result;
+    result.x = (a.y * b.z) - (a.z * b.y);
+    result.y = (a.z * b.x) - (a.x * b.z);
+    result.z = (a.x * b.y) - (a.y * b.x);
+    return result;
+}
+
+inline v3 V3Sub(v3 a, v3 b)
+{
+    v3 result = { (a.x - b.x), (a.y - b.y), (a.z - b.z) };
+    return result;
+}
+
+inline f32 V3Length(v3 a)
+{
+	f32 result = sqrtf(V3Dot(a, a));
+    return result;
+}
+
+inline v3 V3Normalize(v3 a)
+{
+	v3 result = { 0.0f, 0.0f, 0.0f };
+
+    f32 len = V3Length(a);
+    if (len > 0.00001f)
+    {
+		result = { (a.x / len), (a.y / len), (a.z / len) };
+    }
+    return result;
+}
+
 // > TODO: Replace with our own rand()
 #include <stdlib.h>
 inline float Randomf32InRange(f32 min, f32 max)
 {
-	f32 result = min + (max - min) * ((f32)rand() / (f32)RAND_MAX);
+	f32 result = min + ((max - min) * ((f32)rand() / (f32)RAND_MAX));
 	return result;
 }
 

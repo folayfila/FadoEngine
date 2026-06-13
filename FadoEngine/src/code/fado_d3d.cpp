@@ -1473,6 +1473,42 @@ internal void DebugDrawAABB(FRenderWorld* world, const FAABB& box, v4 color)
 	DebugDrawLine(world, c[3], c[7], color);
 }
 
+// Draw an OBB as 12 coloured edges
+internal void DebugDrawOBB(FRenderWorld* world, const FOBB& box, v4 color)
+{
+	v3 ex = box.axes[0] * box.halfExtents.x;
+	v3 ey = box.axes[1] * box.halfExtents.y;
+	v3 ez = box.axes[2] * box.halfExtents.z;
+
+	v3 c[8] =
+	{
+		{ box.center.x - ex.x - ey.x - ez.x, box.center.y - ex.y - ey.y - ez.y, box.center.z - ex.z - ey.z - ez.z }, // 0
+		{ box.center.x + ex.x - ey.x - ez.x, box.center.y + ex.y - ey.y - ez.y, box.center.z + ex.z - ey.z - ez.z }, // 1
+		{ box.center.x + ex.x - ey.x + ez.x, box.center.y + ex.y - ey.y + ez.y, box.center.z + ex.z - ey.z + ez.z }, // 2
+		{ box.center.x - ex.x - ey.x + ez.x, box.center.y - ex.y - ey.y + ez.y, box.center.z - ex.z - ey.z + ez.z }, // 3
+		{ box.center.x - ex.x + ey.x - ez.x, box.center.y - ex.y + ey.y - ez.y, box.center.z - ex.z + ey.z - ez.z }, // 4
+		{ box.center.x + ex.x + ey.x - ez.x, box.center.y + ex.y + ey.y - ez.y, box.center.z + ex.z + ey.z - ez.z }, // 5
+		{ box.center.x + ex.x + ey.x + ez.x, box.center.y + ex.y + ey.y + ez.y, box.center.z + ex.z + ey.z + ez.z }, // 6
+		{ box.center.x - ex.x + ey.x + ez.x, box.center.y - ex.y + ey.y + ez.y, box.center.z - ex.z + ey.z + ez.z }, // 7
+	};
+
+	// Bottom ring
+	DebugDrawLine(world, c[0], c[1], color);
+	DebugDrawLine(world, c[1], c[2], color);
+	DebugDrawLine(world, c[2], c[3], color);
+	DebugDrawLine(world, c[3], c[0], color);
+	// Top ring
+	DebugDrawLine(world, c[4], c[5], color);
+	DebugDrawLine(world, c[5], c[6], color);
+	DebugDrawLine(world, c[6], c[7], color);
+	DebugDrawLine(world, c[7], c[4], color);
+	// Verticals
+	DebugDrawLine(world, c[0], c[4], color);
+	DebugDrawLine(world, c[1], c[5], color);
+	DebugDrawLine(world, c[2], c[6], color);
+	DebugDrawLine(world, c[3], c[7], color);
+}
+
 internal void FlushDebugLineBucket(FRenderWorld* world)
 {
 	FDebugLineBucket* bucket = &world->debugBucket;
@@ -1590,7 +1626,15 @@ void DebugRender(FRenderWorld* world, FEntityTable* entityTable, FTransformTable
 				 : (c->flags & ECollisionFlags::Dynamic)   ? v4{ 1, 0.5, 0, 1 }  // orange
 				 : (c->flags & ECollisionFlags::Physics)   ? v4{ 1, 0, 0, 1 }	 // red
 														   : v4{ 1, 1, 1, 1 };	 // white
-		DebugDrawAABB(world, c->worldAABB, color);
+
+		if(c->useOBB)
+		{
+			DebugDrawOBB(world, c->worldOBB, color);
+		}
+		else
+		{
+			DebugDrawAABB(world, c->worldAABB, color);
+		}
 	}
 	FlushDebugLineBucket(world);
 

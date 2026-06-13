@@ -6,7 +6,7 @@
 //  Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-bool32 AABBOverlap(const FAABB& a, const FAABB& b)
+internal bool32 AABBOverlap(const FAABB& a, const FAABB& b)
 {
     if ((a.max.x < b.min.x) || (a.min.x > b.max.x)) { return false; }
     if ((a.max.y < b.min.y) || (a.min.y > b.max.y)) { return false; }
@@ -14,7 +14,7 @@ bool32 AABBOverlap(const FAABB& a, const FAABB& b)
     return true;
 }
 
-FAABB AABBFromTransform(v3 position, v3 scale, v3 halfExtents)
+internal FAABB AABBFromTransform(v3 position, v3 scale, v3 halfExtents)
 {
     v3 scaledHalf = { halfExtents.x * scale.x,
                       halfExtents.y * scale.y,
@@ -26,6 +26,135 @@ FAABB AABBFromTransform(v3 position, v3 scale, v3 halfExtents)
     result.max = { position.x + scaledHalf.x,
                    position.y + scaledHalf.y,
                    position.z + scaledHalf.z };
+    return result;
+}
+
+// Project an OBB's half-extents onto axis (returns the OBB's "radius" along axis).
+inline f32 OBBProjectedRadius(const FOBB& box, v3 axis)
+{
+    f32 r = (Absf32(V3Dot(axis, box.axes[0])) * box.halfExtents.x) +
+            (Absf32(V3Dot(axis, box.axes[1])) * box.halfExtents.y) +
+            (Absf32(V3Dot(axis, box.axes[2])) * box.halfExtents.z);
+    return r;
+}
+
+/*
+ * Check if 2 OBBs are overlapping using the Separating Axis Theorem(SAT) test for two oriented bounding boxes.
+ * Tests 15 candidate separating axes: each box's 3 face normals (6 total),
+ * plus all 9 cross products between A's and B's face normals (catches edge-edge separation cases that face axes alone miss).
+ * If any axis shows separation, the boxes don't overlap -> return false.
+ * Otherwise, tracks the axis with the SMALLEST overlap (the MTV axis),
+ * and outputs a normal pointing A -> B plus the penetration depth along it. 
+ */
+internal bool32 OBBOverlap(const FOBB& a, const FOBB& b, v3* outNormal, f32* outPenetration)
+{
+    v3 axes[15];
+    u32 axisCount = 0;
+
+    // 3 face axes of A
+    axes[axisCount++] = a.axes[0];
+    axes[axisCount++] = a.axes[1];
+    axes[axisCount++] = a.axes[2];
+
+    // 3 face axes of B
+    axes[axisCount++] = b.axes[0];
+    axes[axisCount++] = b.axes[1];
+    axes[axisCount++] = b.axes[2];
+
+    // Cross products of each A axis with each B axis (9). Catches edge-vs-edge separation.
+    for (u32 i = 0; i < 3; ++i)
+    {
+        for (u32 j = 0; j < 3; ++j)
+        {
+            axes[axisCount++] = V3Cross(a.axes[i], b.axes[j]);
+        }
+    }
+
+    // Vector from A's center to B's center — used to measure how far apart
+    // the boxes are along each candidate axis, and to orient the final normal.
+    v3  centerDelta = V3Sub(b.center, a.center); // A -> B
+
+    f32 minPenetration = 0.0f;
+    v3  minAxis = {};
+    bool32 first = true;
+
+    for (u32 i = 0; i < axisCount; ++i)
+    {
+        v3 axis = axes[i];
+
+        // Parallel face axes (e.g. both boxes axis-aligned the same way) produce
+        // zero-length cross products. Skip these degenerate axes.
+        f32 axisLenSq = V3Dot(axis, axis);
+        if (axisLenSq < 0.0001f)
+        {
+            continue;
+        }
+        axis = V3Normalize(axis);
+
+        // Project each box's half-extents onto this axis ("radius" of the box along this direction),
+        // and measure the distance between centers along the same axis.
+        f32 ra = OBBProjectedRadius(a, axis);
+        f32 rb = OBBProjectedRadius(b, axis);
+        f32 dist = Absf32(V3Dot(centerDelta, axis));
+
+        // If the combined radii are smaller than the center distance, there's
+        // a gap on this axis -> the boxes don't overlap at all.
+        f32 overlap = (ra + rb) - dist;
+        if (overlap <= 0.0f)
+        {
+            // Separating axis found — no collision.
+            return false;
+        }
+
+        // Keep track of the axis with the smallest overlap — this is the
+        // direction of minimum translation needed to separate the boxes.
+        if (first || (overlap < minPenetration))
+        {
+            minPenetration = overlap;
+            minAxis = axis;
+            first = false;
+        }
+    }
+
+    // minAxis points along the MTV line, but its sign is arbitrary (SAT axes
+    // have no inherent direction). Orient it so it points from A toward B,
+    // matching the convention CollisionResolve expects (A is pushed opposite
+    // to normal, B is pushed along normal).
+    if (V3Dot(centerDelta, minAxis) < 0.0f)
+    {
+        minAxis = { -minAxis.x, -minAxis.y, -minAxis.z };
+    }
+
+    *outNormal = minAxis;
+    *outPenetration = minPenetration;
+    return true;
+}
+
+internal FOBB OBBFromTransform(v3 position, quat rotation, v3 scale, v3 halfExtents)
+{
+    FOBB result;
+    result.center = position;
+    result.halfExtents = { halfExtents.x * scale.x,
+                            halfExtents.y * scale.y,
+                            halfExtents.z * scale.z };
+    result.axes[0] = QuatRight(rotation);
+    result.axes[1] = QuatUp(rotation);
+    result.axes[2] = QuatForward(rotation);
+    return result;
+}
+
+internal FOBB OBBFromAABB(const FAABB& aabb)
+{
+    FOBB result;
+    result.center = { (aabb.min.x + aabb.max.x) * 0.5f,
+                       (aabb.min.y + aabb.max.y) * 0.5f,
+                       (aabb.min.z + aabb.max.z) * 0.5f };
+    result.halfExtents = { (aabb.max.x - aabb.min.x) * 0.5f,
+                            (aabb.max.y - aabb.min.y) * 0.5f,
+                            (aabb.max.z - aabb.min.z) * 0.5f };
+    result.axes[0] = { 1, 0, 0 };
+    result.axes[1] = { 0, 1, 0 };
+    result.axes[2] = { 0, 0, 1 };
     return result;
 }
 
@@ -68,7 +197,11 @@ internal void GridInsert(FUniformGrid* grid, i32 cellX, i32 cellZ, u32 colliderI
 // ─────────────────────────────────────────────────────────────────────────────
 //  Stage 1 — Build world-space AABBs
 // ─────────────────────────────────────────────────────────────────────────────
-internal void CollisionBuildAABBs(FCollisionWorld* collisionWorld, FTransformTable* transforms)
+
+// Always builds an AABB that is used for broad faze,
+// and builds an OBB if the rotation isn't identity and the collision is solid,
+// otherwise use AABB also for the narrow faze.
+internal void CollisionBuildAABBsAndOBBs(FCollisionWorld* collisionWorld, FTransformTable* transforms)
 {
     for (u32 i = 0; i < collisionWorld->colliders.count; ++i)
     {
@@ -76,6 +209,7 @@ internal void CollisionBuildAABBs(FCollisionWorld* collisionWorld, FTransformTab
 
         v3 pos = transforms->positions[collider->hTransform];
         v3 scale = transforms->scales[collider->hTransform];
+        quat rot = transforms->rotations[collider->hTransform];
 
         // Side-scroller: flatten Z so everything sits on XY plane
         if (collider->flags & ECollisionFlags::Is2D)
@@ -84,6 +218,14 @@ internal void CollisionBuildAABBs(FCollisionWorld* collisionWorld, FTransformTab
         }
 
         collider->worldAABB = AABBFromTransform(pos, scale, collider->halfExtents);
+        
+        // Decide if this collider should use OBB in narrow phase.
+        collider->useOBB = ((collider->flags & COLLISION_SOLID_MASK) && !IsQuatIdentity(rot));
+
+        if (collider->useOBB)
+        {
+            collider->worldOBB = OBBFromTransform(pos, rot, scale, collider->halfExtents);
+        }
     }
 }
 
@@ -169,7 +311,7 @@ internal void CollisionBroadPhase(FCollisionWorld* collisionWorld, FMemoryArena*
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Stage 3 — Narrow phase  (exact AABB vs AABB + contact generation)
+//  Stage 3 — Narrow phase  (AABB on non rotating objects, OBB on rotating ones)
 // ─────────────────────────────────────────────────────────────────────────────
 internal void CollisionNarrowPhase(FCollisionWorld* collisionWorld)
 {
@@ -195,38 +337,51 @@ internal void CollisionNarrowPhase(FCollisionWorld* collisionWorld)
             continue;
         }
 
-        // --- Compute overlap on each axis ---
-        f32 overlapX_pos = ca->worldAABB.max.x - cb->worldAABB.min.x;
-        f32 overlapX_neg = cb->worldAABB.max.x - ca->worldAABB.min.x;
-        f32 overlapY_pos = ca->worldAABB.max.y - cb->worldAABB.min.y;
-        f32 overlapY_neg = cb->worldAABB.max.y - ca->worldAABB.min.y;
-        f32 overlapZ_pos = ca->worldAABB.max.z - cb->worldAABB.min.z;
-        f32 overlapZ_neg = cb->worldAABB.max.z - ca->worldAABB.min.z;
-
-        // Pick the minimum penetration axis (SAT on AABB = just find smallest overlap).
-        f32 minOverlapX = (overlapX_pos < overlapX_neg) ? overlapX_pos : overlapX_neg;
-        f32 minOverlapY = (overlapY_pos < overlapY_neg) ? overlapY_pos : overlapY_neg;
-        f32 minOverlapZ = (overlapZ_pos < overlapZ_neg) ? overlapZ_pos : overlapZ_neg;
-
         v3  normal = {};
         f32 penetration = 0.0f;
 
-        if ((minOverlapX <= minOverlapY) && (minOverlapX <= minOverlapZ))
+        if (ca->useOBB || cb->useOBB)
         {
-            penetration = minOverlapX;
-            normal.x = (overlapX_pos < overlapX_neg) ? 1.0f : -1.0f;
-        }
-        else if ((minOverlapY <= minOverlapX) && (minOverlapY <= minOverlapZ))
-        {
-            penetration = minOverlapY;
-            normal.y = (overlapY_pos < overlapY_neg) ? 1.0f : -1.0f;
-        }
-        else
-        {
-            penetration = minOverlapZ;
-            normal.z = (overlapZ_pos < overlapZ_neg) ? 1.0f : -1.0f;
+            FOBB obbA = ca->useOBB ? ca->worldOBB : OBBFromAABB(ca->worldAABB);
+            FOBB obbB = cb->useOBB ? cb->worldOBB : OBBFromAABB(cb->worldAABB);
+
+            if (!OBBOverlap(obbA, obbB, &normal, &penetration))
+            {
+                continue;
+            }
         }
 
+        else
+        {
+            // --- Compute overlap on each axis ---
+            f32 overlapX_pos = ca->worldAABB.max.x - cb->worldAABB.min.x;
+            f32 overlapX_neg = cb->worldAABB.max.x - ca->worldAABB.min.x;
+            f32 overlapY_pos = ca->worldAABB.max.y - cb->worldAABB.min.y;
+            f32 overlapY_neg = cb->worldAABB.max.y - ca->worldAABB.min.y;
+            f32 overlapZ_pos = ca->worldAABB.max.z - cb->worldAABB.min.z;
+            f32 overlapZ_neg = cb->worldAABB.max.z - ca->worldAABB.min.z;
+
+            // Pick the minimum penetration axis (SAT on AABB = just find smallest overlap).
+            f32 minOverlapX = (overlapX_pos < overlapX_neg) ? overlapX_pos : overlapX_neg;
+            f32 minOverlapY = (overlapY_pos < overlapY_neg) ? overlapY_pos : overlapY_neg;
+            f32 minOverlapZ = (overlapZ_pos < overlapZ_neg) ? overlapZ_pos : overlapZ_neg;
+
+            if ((minOverlapX <= minOverlapY) && (minOverlapX <= minOverlapZ))
+            {
+                penetration = minOverlapX;
+                normal.x = (overlapX_pos < overlapX_neg) ? 1.0f : -1.0f;
+            }
+            else if ((minOverlapY <= minOverlapX) && (minOverlapY <= minOverlapZ))
+            {
+                penetration = minOverlapY;
+                normal.y = (overlapY_pos < overlapY_neg) ? 1.0f : -1.0f;
+            }
+            else
+            {
+                penetration = minOverlapZ;
+                normal.z = (overlapZ_pos < overlapZ_neg) ? 1.0f : -1.0f;
+            }
+        }
         if (collisionWorld->contactCount < MAX_CONTACTS)
         {
             FContactInfo* contact = &collisionWorld->contacts[collisionWorld->contactCount++];
@@ -235,7 +390,7 @@ internal void CollisionNarrowPhase(FCollisionWorld* collisionWorld)
             contact->normal = normal;
             contact->penetration = penetration;
             contact->isTrigger = (ca->flags & ECollisionFlags::Trigger) ||
-                                 (cb->flags & ECollisionFlags::Trigger);
+                (cb->flags & ECollisionFlags::Trigger);
         }
     }
 }
@@ -388,7 +543,7 @@ HCollider CollisionAddCollider(FCollisionWorld* collisionWorld, HEntity hEntity,
 
 void CollisionUpdate(FCollisionWorld* collisionWorld, FTransformTable* transforms, FMemoryArena* scracthArena)
 {
-    CollisionBuildAABBs(collisionWorld, transforms);
+    CollisionBuildAABBsAndOBBs(collisionWorld, transforms);
     CollisionBroadPhase(collisionWorld, scracthArena);
     CollisionNarrowPhase(collisionWorld);
 }

@@ -58,6 +58,16 @@ struct FAABB
 };
 
 // ─────────────────────────────────────────────
+//  FOBB — oriented bounding box
+// ─────────────────────────────────────────────
+struct FOBB
+{
+	v3 center;
+	v3 halfExtents;
+	v3 axes[3];   // world-space rotation basis (columns of rotation matrix)
+};
+
+// ─────────────────────────────────────────────
 //  FCollider  — one entry per entity that can collide
 // ─────────────────────────────────────────────
 struct FCollider
@@ -67,6 +77,8 @@ struct FCollider
 	v3 halfExtents;			// LOCAL half-size; set once on spawn (scaled by transform each frame)
 	ECollisionFlags flags;
 	FAABB worldAABB;		// Rebuilt every frame by CollisionBuildAABBs()
+	FOBB  worldOBB;			// valid only when rotation isn't identity and flags are solid
+	bool32 useOBB;			// computed each frame in BuildAABBs
 };
 
 // ─────────────────────────────────────────────
@@ -154,7 +166,7 @@ HCollider CollisionAddCollider(FCollisionWorld* collisionWorld, HEntity hEntity,
 // Main per-frame call — runs all three stages:
 //   1. BuildAABBs   (world-space AABB from transform + halfExtents)
 //   2. BroadPhase   (populate grid, emit candidate pairs)
-//   3. NarrowPhase  (AABB vs AABB, compute contact normals & penetration)
+//   3. NarrowPhase  (AABB on non rotating objects, OBB on rotating ones)
 // Results sit in collisionWorld->contacts[0..contactCount].
 void CollisionUpdate(FCollisionWorld* collisionWorld, FTransformTable* transforms, FMemoryArena* scracthArena);
 
@@ -164,10 +176,5 @@ void CollisionResolve(FCollisionWorld* collisionWorld, FTransformTable* transfor
 
 // Checks if contactInfo->entityA and contactInfo->entityB are the same 2 entity handles passed.
 bool32 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEntityB);
-
-// Helpers:
-bool32 AABBOverlap(const FAABB& a, const FAABB& b);
-FAABB  AABBFromTransform(v3 position, v3 scale, v3 halfExtents);
-
 
 #endif // FADO_COLIISION_H
