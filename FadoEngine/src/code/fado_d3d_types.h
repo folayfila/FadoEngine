@@ -154,33 +154,24 @@ struct FLightBuffer
 	f32 padding;  // Added extra padding so structure is a multiple of 16 for CreateBuffer function requirements.
 };
 
+// ───────────
+// Loaded Texturs
+
+struct FIMLoadResult
+{
+	u32 width;
+	u32 height;
+	u32 channels;
+	u32 format;
+	u8* pixels;		// points into the arena, NOT separately allocated.
+};
+
 struct FTexture
 {
-	ID3D11Texture2D* texture;
 	ID3D11ShaderResourceView* textureView;
 	i32 width;
 	i32 height;
-	u8* targaData;
 };
-
-// > TODO: Replace targa with something more logical :)
-#pragma pack(push, 1)
-struct FTargaHeader
-{
-	u8 idLength;         /* 00h  Size of Image ID field */
-	u8 colorMapType;     /* 01h  Color map type */
-	u8 imageType;        /* 02h  Image type code */
-	u16 cMapStart;       /* 03h  Color map origin */
-	u16 cMapLength;      /* 05h  Color map length */
-	u8 cMapDepth;        /* 07h  Depth of color map entries */
-	u16 xOffset;         /* 08h  X origin of image */
-	u16 yOffset;         /* 0Ah  Y origin of image */
-	u16 width;           /* 0Ch  Width of image */
-	u16 height;          /* 0Eh  Height of image */
-	u8 pixelDepth;       /* 10h  Image pixel size */
-	u8 imageDescriptor;  /* 11h  Image descriptor byte */
-};
-#pragma pack(pop)
 
 // ─────────────────────────────────
 // Model

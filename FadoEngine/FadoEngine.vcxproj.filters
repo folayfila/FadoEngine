@@ -22,6 +22,12 @@
     <Filter Include="Header Files\glb">
       <UniqueIdentifier>{fba2dfcd-115b-422a-b6c7-819b39b7e3d5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="tools">
+      <UniqueIdentifier>{426e2182-92a9-457c-ae93-0c802070fa4e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tools\fim">
+      <UniqueIdentifier>{500bddc5-de80-4af4-8196-36ea76a7e9d7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\code\fado_d3d.cpp">
@@ -38,6 +44,9 @@
     </ClCompile>
     <ClCompile Include="src\code\fado_collision.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\tools\fim\fim_converter.cpp">
+      <Filter>tools\fim</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -64,6 +73,9 @@
     </ClInclude>
     <ClInclude Include="src\code\fado_collision.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tools\fim\fado_image_format.h">
+      <Filter>tools\fim</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -19,6 +19,8 @@ void Render(FRenderWorld* world, FEntityTable* entities, FTransformTable* transf
 HTexture LoadTexture(FRenderWorld* world, const char* filename);
 HMesh LoadGLBModel(FRenderWorld* world, const char* filename);
 
+HTexture LoadFIM(FRenderWorld* world, const char* fileName);
+
 // Resize the swap chain buffers, recreate the render target view (and depth/stencil buffer and view), update the viewport and projection matrix aspect ratio.
 void D3DResize(FD3D* d3d, i32 width, i32 height, f32 screenNear, f32 screenDepth);
 

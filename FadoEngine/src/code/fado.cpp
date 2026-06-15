@@ -117,33 +117,33 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
         f32 moveSpeed = 10.0f * input->deltaTime;
         if ((controllerInput->dpadUp.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Up)))
         {
-            //*camPos += forward * moveSpeed;
-            *sphere1Pos += forward * moveSpeed;
+            *camPos += forward * moveSpeed;
+            //*sphere1Pos += forward * moveSpeed;
         }
         if ((controllerInput->dpadDown.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Down)))
         {
-            //*camPos -= forward * moveSpeed;
-            *sphere1Pos -= forward * moveSpeed;
+            *camPos -= forward * moveSpeed;
+            //*sphere1Pos -= forward * moveSpeed;
         }
         if ((controllerInput->dpadRight.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Right)))
         {
-            //*camPos += right * moveSpeed;
-            *sphere1Pos += right * moveSpeed;
+            *camPos += right * moveSpeed;
+            //*sphere1Pos += right * moveSpeed;
         }
         if ((controllerInput->dpadLeft.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Left)))
         {
-            //*camPos -= right * moveSpeed;
-            *sphere1Pos -= right * moveSpeed;
+            *camPos -= right * moveSpeed;
+            //*sphere1Pos -= right * moveSpeed;
         }
         if (controllerInput->rightShoulder.isDown)
         {
-            //*camPos += up * moveSpeed;
-            *sphere1Pos += up * moveSpeed;
+            *camPos += up * moveSpeed;
+            //*sphere1Pos += up * moveSpeed;
         }
         if (controllerInput->leftShoulder.isDown)
         {
-            //*camPos -= up * moveSpeed;
-            *sphere1Pos -= up * moveSpeed;
+            *camPos -= up * moveSpeed;
+            //*sphere1Pos -= up * moveSpeed;
         }
         
         // Rotation

@@ -1,5 +1,8 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "fado_d3d.h"
 #include "../code/glb/fado_glb.h"
+#include "../tools/fim/fado_image_format.h"
 #include "fado_math.h"
 
 // ───────────────────────────
@@ -613,19 +616,15 @@ internal bool32 InitializeUnlitTextureShader(FUnlitTextureShader* unlitTexShader
 
 	// Create a texture sampler state description.
 	D3D11_SAMPLER_DESC samplerDesc;
-	samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+	samplerDesc.MaxAnisotropy = 8;
 	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
 	samplerDesc.MipLODBias = 0.0f;
-	samplerDesc.MaxAnisotropy = 1;
-	samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-	samplerDesc.BorderColor[0] = 0;
-	samplerDesc.BorderColor[1] = 0;
-	samplerDesc.BorderColor[2] = 0;
-	samplerDesc.BorderColor[3] = 0;
 	samplerDesc.MinLOD = 0;
 	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
 
 	// Create the texture sampler state.
 	result = device->CreateSamplerState(&samplerDesc, &unlitTexShader->sampleState);
@@ -789,19 +788,15 @@ internal bool32 InitializeLitTextureShader(FLitTextureShader* litTexShader, ID3D
 
 	// Create a texture sampler state description.
 	D3D11_SAMPLER_DESC samplerDesc;
-	samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+	samplerDesc.MaxAnisotropy = 8;
 	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
 	samplerDesc.MipLODBias = 0.0f;
-	samplerDesc.MaxAnisotropy = 1;
-	samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-	samplerDesc.BorderColor[0] = 0;
-	samplerDesc.BorderColor[1] = 0;
-	samplerDesc.BorderColor[2] = 0;
-	samplerDesc.BorderColor[3] = 0;
 	samplerDesc.MinLOD = 0;
 	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
 
 	// Create the texture sampler state.
 	result = device->CreateSamplerState(&samplerDesc, &litTexShader->sampleState);
@@ -891,168 +886,6 @@ internal void SetLitTextureShaderParameters(FRenderWorld* world, HTexture hTextu
 
 	// Finally set the light constant buffer in the pixel shader with the updated values.
 	deviceContext->PSSetConstantBuffers(bufferNumber, 1, &lightShader->lightBuffer);
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// FTexture / Targe
-// ────────────────────────────────────────────────────────────────────────
-bool32 LoadTarga32BitIntoTexture(const char* filename, FTexture* tex)
-{
-	// Open the targa file for reading in binary.
-	FILE* filePtr;
-	i32 error = fopen_s(&filePtr, filename, "rb");
-	if (error != 0)
-	{
-		return false;
-	}
-
-	// Read in the file header.
-	FTargaHeader targaFileHeader = {};
-	u32 count = (u32)fread(&targaFileHeader, sizeof(FTargaHeader), 1, filePtr);
-	if (count != 1)
-	{
-		return false;
-	}
-
-	// Get the important information from the header.
-	tex->height = (i32)targaFileHeader.height;
-	tex->width = (i32)targaFileHeader.width;
-	i32 bpp = (i32)targaFileHeader.pixelDepth;
-
-	// Allow both 24 and 32 bit. 24 will have a 255 value for alpha.
-	if (bpp != 24 && bpp != 32)
-	{
-		return false;
-	}
-
-	// Calculate the size of the 32 bit image data.
-	i32 bytesPerPixel = bpp / 8;
-	i32 imageSize = tex->width * tex->height * bytesPerPixel;
-
-	// Allocate memory for the targa image data.
-	u8* targaImage = new u8[imageSize];
-
-	// Read in the targa image data.
-	count = (u32)fread(targaImage, 1, imageSize, filePtr);
-	if (count != imageSize)
-	{
-		delete[] targaImage;
-		return false;
-	}
-
-	// Close the file.
-	error = fclose(filePtr);
-	if (error != 0)
-	{
-		delete[] targaImage;
-		return false;
-	}
-
-	// Allocate memory for the targa destination data.
-	tex->targaData = new u8[tex->width * tex->height * 4];
-
-	// Initialize the index into the targa destination data array.
-	u32 index = 0;
-
-	// Initialize the index into the targa image data.
-	u32 k = (tex->width * tex->height * bytesPerPixel) - (tex->width * bytesPerPixel);
-
-	// Now copy the targa image data into the targa destination array in the correct order since the targa format is stored upside down and also is not in RGBA order.
-	for (i32 v = 0; v < tex->height; v++)
-	{
-		for (i32 u = 0; u < tex->width; u++)
-		{
-			tex->targaData[index + 0] = targaImage[k + 2];  // Red.
-			tex->targaData[index + 1] = targaImage[k + 1];  // Green.
-			tex->targaData[index + 2] = targaImage[k + 0];  // Blue
-			// Alpha
-			if (bytesPerPixel == 4)
-			{
-				tex->targaData[index + 3] = targaImage[k + 3];
-			}
-			else
-			{
-				tex->targaData[index + 3] = 255; // add alpha
-			}
-
-			// Increment the indexes into the targa data.
-			k += bytesPerPixel;
-			index += 4;
-		}
-
-		// Set the targa image data index back to the preceding row at the beginning of the column since its reading it in upside down.
-		k -= (tex->width * bytesPerPixel * 2);
-	}
-
-	// Release the targa image data now that it was copied into the destination array.
-	delete[] targaImage;
-	targaImage = 0;
-
-	return true;
-}
-
-bool32 InitializeTexture(FTexture* tex, ID3D11Device* device, ID3D11DeviceContext* deviceContext, const char* filename)
-{
-	bool32 result;
-	D3D11_TEXTURE2D_DESC textureDesc;
-	HRESULT hResult;
-	u32 rowPitch;
-	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-
-	// Load the targa image data into memory.
-	result = LoadTarga32BitIntoTexture(filename, tex);
-	if (!result)
-	{
-		return false;
-	}
-
-	// Setup the description of the texture.
-	textureDesc.Height = tex->height;
-	textureDesc.Width = tex->width;
-	textureDesc.MipLevels = 0;
-	textureDesc.ArraySize = 1;
-	textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	textureDesc.SampleDesc.Count = 1;
-	textureDesc.SampleDesc.Quality = 0;
-	textureDesc.Usage = D3D11_USAGE_DEFAULT;
-	textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-	textureDesc.CPUAccessFlags = 0;
-	textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
-
-	// Create the empty texture.
-	hResult = device->CreateTexture2D(&textureDesc, NULL, &tex->texture);
-	if (FAILED(hResult))
-	{
-		return false;
-	}
-
-	// Set the row pitch of the targa image data.
-	rowPitch = (tex->width * 4/*bytesPerPixel*/) * sizeof(unsigned char);
-
-	// Copy the targa image data into the texture.
-	deviceContext->UpdateSubresource(tex->texture, 0, NULL, tex->targaData, rowPitch, 0);
-
-	// Setup the shader resource view description.
-	srvDesc.Format = textureDesc.Format;
-	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MostDetailedMip = 0;
-	srvDesc.Texture2D.MipLevels = -1;
-
-	// Create the shader resource view for the texture.
-	hResult = device->CreateShaderResourceView(tex->texture, &srvDesc, &tex->textureView);
-	if (FAILED(hResult))
-	{
-		return false;
-	}
-
-	// Generate mipmaps for this texture.
-	deviceContext->GenerateMips(tex->textureView);
-
-	// Release the targa image data now that the image data has been loaded into the texture.
-	delete[] tex->targaData;
-	tex->targaData = 0;
-
-	return true;
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -1368,13 +1201,6 @@ void Render(FRenderWorld* world, FEntityTable* entityTable, FTransformTable* tra
 	EndScene(d3d);
 }
 
-HTexture LoadTexture(FRenderWorld* world, const char* filename)
-{
-	HTexture handle = world->texturesCount++;
-	InitializeTexture(&world->textures[handle], world->d3d.device, world->d3d.deviceContext, filename);
-	return handle;
-}
-
 HMesh LoadGLBModel(FRenderWorld* world, const char* filename)
 {
 	FGLBAsset* asset = ArenaPushSize(world->scratchArena, FGLBAsset);
@@ -1421,6 +1247,89 @@ HMesh LoadGLBModel(FRenderWorld* world, const char* filename)
 
 	ArenaReset(world->scratchArena);
 	GLB_Free(asset);
+	return handle;
+}
+
+HTexture LoadFIM(FRenderWorld* world, const char* fileName)
+{
+	FILE* file = fopen(fileName, "rb");
+	Assert(file);
+
+	FIMHeader header = {};
+	fread(&header, sizeof(header), 1, file);
+	Assert(header.magic == FIM_MAGIC);
+
+	// Read per-mip offset and size tables.
+	u32* mipOffsets = ArenaPushArray(world->scratchArena, header.mipCount, u32);
+	u32* mipSizes = ArenaPushArray(world->scratchArena, header.mipCount, u32);
+	fread(mipOffsets, sizeof(u32), header.mipCount, file);
+	fread(mipSizes, sizeof(u32), header.mipCount, file);
+
+	// Read all compressed mip data in one shot.
+	u8 * allMipData = ArenaPushArray(world->scratchArena, header.dataSize, u8);
+	fread(allMipData, header.dataSize, 1, file);
+	fclose(file);
+
+	DXGI_FORMAT dxgiFormat = (header.format == FIM_FORMAT_BC3)
+		? DXGI_FORMAT_BC3_UNORM
+		: DXGI_FORMAT_R8G8B8A8_UNORM;
+
+	// Create texture with full mip chain
+	D3D11_TEXTURE2D_DESC texDesc = {};
+	texDesc.Width = header.width;
+	texDesc.Height = header.height;
+	texDesc.MipLevels = header.mipCount;
+	texDesc.ArraySize = 1;
+	texDesc.Format = dxgiFormat;
+	texDesc.SampleDesc.Count = 1;
+	texDesc.Usage = D3D11_USAGE_DEFAULT;
+	texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	texDesc.MiscFlags = 0; // no GENERATE_MIPS flag needed
+
+	// Fill one D3D11_SUBRESOURCE_DATA per mip level.
+	D3D11_SUBRESOURCE_DATA* mipData = ArenaPushArray(world->scratchArena, header.mipCount, D3D11_SUBRESOURCE_DATA);
+
+	u32 mipWidth = header.width;
+	u32 mipHeight = header.height;
+	for (u32 mip = 0; mip < header.mipCount; ++mip)
+	{
+		mipData[mip].pSysMem = allMipData + mipOffsets[mip];
+
+		if (header.format == FIM_FORMAT_BC3)
+		{
+			u32 blockW = (mipWidth + 3) / 4;
+			mipData[mip].SysMemPitch = blockW * 16; // 16 bytes per BC3 block
+			mipData[mip].SysMemSlicePitch = 0;
+		}
+		else
+		{
+			mipData[mip].SysMemPitch = mipWidth * 4;
+			mipData[mip].SysMemSlicePitch = 0;
+		}
+
+		if (mipWidth > 1) { mipWidth >>= 1; }
+		if (mipHeight > 1) { mipHeight >>= 1; }
+	}
+
+	ID3D11Texture2D* tex;
+	HRESULT result = world->d3d.device->CreateTexture2D(&texDesc, mipData, &tex);
+	Assert(!FAILED(result));
+
+	ID3D11ShaderResourceView* srv;
+	result = world->d3d.device->CreateShaderResourceView(tex, nullptr, &srv);
+	Assert(!FAILED(result));
+	tex->Release();
+
+	// Store in world texture pool.
+	Assert(world->texturesCount < MAX_TEXTURES);
+	HTexture handle = world->texturesCount++;
+	world->textures[handle].textureView = srv;
+	world->textures[handle].width = (i32)header.width;
+	world->textures[handle].height = (i32)header.height;
+
+	// All pixel/mip data was only needed for CreateTexture2D — free it now.
+	ArenaReset(world->scratchArena);
+
 	return handle;
 }
 

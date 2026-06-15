@@ -414,14 +414,14 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 // Loads all models and textures at startup.
 internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
 {
-	gameState->hPlaneMesh = LoadGLBModel(world, "src\\models\\plane.glb");
-	gameState->hCubeMesh = LoadGLBModel(world, "src\\models\\cube.glb");
-	gameState->hSphereMesh = LoadGLBModel(world, "src\\models\\sphere.glb");
+	gameState->hPlaneMesh = LoadGLBModel(world, "src\\assets_src\\models\\plane.glb");
+	gameState->hCubeMesh = LoadGLBModel(world, "src\\assets_src\\models\\cube.glb");
+	gameState->hSphereMesh = LoadGLBModel(world, "src\\assets_src\\models\\sphere.glb");
 	//HMesh hMonkey = LoadGLBIntoWorld(world, "src\\models\\monkey.glb");
 
-	 gameState->hGridTexture = LoadTexture(world, "src\\textures\\grid.tga");
-	 gameState->hMosaicTexture = LoadTexture(world, "src\\textures\\mosaic.tga");
-	 gameState->hGraniteTexture = LoadTexture(world, "src\\textures\\granite.tga");
+	 gameState->hGridTexture = LoadFIM(world, "src\\assets\\textures\\grid.fim");
+	 gameState->hMosaicTexture = LoadFIM(world, "src\\assets\\textures\\mosaic.fim");
+	 gameState->hGraniteTexture = LoadFIM(world, "src\\assets\\textures\\granite.fim");
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -441,10 +441,10 @@ int WINAPI wWinMain(
 
 	// Create all memory for the game upfront, and use it across the game.
 	FEngineMemory engineMemory = {};
-	u32 totalSize = Megabytes(64) + Megabytes(8);
+	u32 totalSize = Megabytes(64) + Megabytes(16);
 	void* base = VirtualAlloc(0, totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	engineMemory.permanent = ArenaMake((u8*)base, Megabytes(64));
-	engineMemory.scratch = ArenaMake((u8*)base + Megabytes(64), Megabytes(8));
+	engineMemory.scratch = ArenaMake((u8*)base + Megabytes(64), Megabytes(16));
 	
 	Win32LoadXInput();
 	FGameState* gameState = ArenaPushSize(&engineMemory.permanent, FGameState);
