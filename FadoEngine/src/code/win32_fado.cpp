@@ -419,9 +419,9 @@ internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
 	gameState->hSphereMesh = LoadGLBModel(world, "src\\assets_src\\models\\sphere.glb");
 	//HMesh hMonkey = LoadGLBIntoWorld(world, "src\\models\\monkey.glb");
 
-	 gameState->hGridTexture = LoadFIM(world, "src\\assets\\textures\\grid.fim");
-	 gameState->hMosaicTexture = LoadFIM(world, "src\\assets\\textures\\mosaic.fim");
-	 gameState->hGraniteTexture = LoadFIM(world, "src\\assets\\textures\\granite.fim");
+	gameState->hGridTexture = LoadFImage(world, "src\\assets\\textures\\grid.fasset");
+	gameState->hMosaicTexture = LoadFImage(world, "src\\assets\\textures\\mosaic.fasset");
+	gameState->hGraniteTexture = LoadFImage(world, "src\\assets\\textures\\granite.fasset");
 }
 
 // ────────────────────────────────────────────────────────────────────────

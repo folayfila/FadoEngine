@@ -1,8 +1,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "fado_d3d.h"
-#include "../code/glb/fado_glb.h"
-#include "../tools/fim/fado_image_format.h"
+#include "../tools/fado_converter/fado_asset_format.h"
+#include "glb/fado_glb.h"
 #include "fado_math.h"
 
 // ───────────────────────────
@@ -332,26 +332,18 @@ internal bool32 InitializeDX11(FD3DInitParams* d3dInitParams, FMemoryArena* scra
 
 internal void BeginScene(FD3D *d3d, v4 color)
 {
-	// Clear the back buffer.
+	// Clear the back and depth buffer.
 	d3d->deviceContext->ClearRenderTargetView(d3d->renderTargetView, color.e);
-
-	// Clear the depth buffer.
 	d3d->deviceContext->ClearDepthStencilView(d3d->depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
 internal void EndScene(FD3D* d3d)
 {
 	// Present the back buffer to the screen since rendering is complete.
-	if (d3d->vsyncEnabled)
-	{
-		// Lock to screen refresh rate.
-		d3d->swapChain->Present(1, 0);
-	}
-	else
-	{
-		// Present as fast as possible.
-		d3d->swapChain->Present(0, 0);
-	}
+	// SyncInterval:
+	// - 1: Lock to screen refresh rate.
+	// - 0: Present as fast as possible.
+	d3d->swapChain->Present(d3d->vsyncEnabled ? 1 : 0, 0);
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -373,10 +365,9 @@ internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* d
 		return false;
 	}
 
-	ID3D10Blob* errorMessage;
-
 	// Compile the vertex shader code.
-	ID3D10Blob* vertexShaderBuffer;
+	ID3D10Blob* errorMessage = nullptr;
+	ID3D10Blob* vertexShaderBuffer = nullptr;
 	HRESULT result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&vertexShaderBuffer, &errorMessage);
 	if (FAILED(result))
@@ -386,7 +377,7 @@ internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* d
 	}
 
 	// Compile the pixel shader code.
-	ID3D10Blob* pixelShaderBuffer;
+	ID3D10Blob* pixelShaderBuffer = nullptr;
 	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_psEntryFuncName, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&pixelShaderBuffer, &errorMessage);
 	if (FAILED(result))
@@ -420,11 +411,8 @@ internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* d
 	polygonLayout[0].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 	polygonLayout[0].InstanceDataStepRate = 0;
 
-	// Get a count of the elements in the layout.
-	u32 numElements = 1;
-
 	// Create the vertex input layout.
-	result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
+	result = device->CreateInputLayout(polygonLayout, 1, vertexShaderBuffer->GetBufferPointer(),
 		vertexShaderBuffer->GetBufferSize(), &colorShader->layout);
 	if (FAILED(result))
 	{
@@ -498,6 +486,7 @@ internal void SetColorShaderParameters(FRenderWorld* world, u32 hColorDrawCall)
 	deviceContext->VSSetConstantBuffers(0, 1, &colorShader->matrixBuffer);
 
 	result = deviceContext->Map(colorShader->colorBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	Assert(!FAILED(result));
 	FColorBuffer* colorDataPtr = (FColorBuffer*)mappedResource.pData;
 	colorDataPtr->color = world->colorBucket.calls[hColorDrawCall].color;
 	deviceContext->Unmap(colorShader->colorBuffer, 0);
@@ -527,8 +516,8 @@ internal bool32 InitializeUnlitTextureShader(FUnlitTextureShader* unlitTexShader
 	}
 
 	// Compile the vertex shader code.
-	ID3D10Blob* errorMessage;
-	ID3D10Blob* vertexShaderBuffer;
+	ID3D10Blob* errorMessage = nullptr;
+	ID3D10Blob* vertexShaderBuffer = nullptr;
 	HRESULT result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&vertexShaderBuffer, &errorMessage);
 	if (FAILED(result))
@@ -538,7 +527,7 @@ internal bool32 InitializeUnlitTextureShader(FUnlitTextureShader* unlitTexShader
 	}
 
 	// Compile the pixel shader code.
-	ID3D10Blob* pixelShaderBuffer;
+	ID3D10Blob* pixelShaderBuffer = nullptr;
 	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_psEntryFuncName, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&pixelShaderBuffer, &errorMessage);
 	if (FAILED(result))
@@ -691,8 +680,8 @@ internal bool32 InitializeLitTextureShader(FLitTextureShader* litTexShader, ID3D
 	}
 
 	// Compile the vertex shader code.
-	ID3D10Blob* errorMessage;
-	ID3D10Blob* vertexShaderBuffer;
+	ID3D10Blob* errorMessage = nullptr;
+	ID3D10Blob* vertexShaderBuffer = nullptr;
 	HRESULT result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&vertexShaderBuffer, &errorMessage);
 	if (FAILED(result))
@@ -702,7 +691,7 @@ internal bool32 InitializeLitTextureShader(FLitTextureShader* litTexShader, ID3D
 	}
 
 	// Compile the pixel shader code.
-	ID3D10Blob* pixelShaderBuffer;
+	ID3D10Blob* pixelShaderBuffer = nullptr;
 	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_psEntryFuncName, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&pixelShaderBuffer, &errorMessage);
 	if (FAILED(result))
@@ -881,11 +870,8 @@ internal void SetLitTextureShaderParameters(FRenderWorld* world, HTexture hTextu
 	// Unlock the constant buffer.
 	deviceContext->Unmap(lightShader->lightBuffer, 0);
 
-	// Set the position of the light constant buffer in the pixel shader.
-	bufferNumber = 0;
-
 	// Finally set the light constant buffer in the pixel shader with the updated values.
-	deviceContext->PSSetConstantBuffers(bufferNumber, 1, &lightShader->lightBuffer);
+	deviceContext->PSSetConstantBuffers(0, 1, &lightShader->lightBuffer);
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -915,10 +901,7 @@ internal void UploadMesh(FMeshBuffer *mesh, ID3D11Device* device, void* vertices
 
 	// Now create the vertex buffer.
 	HRESULT result = device->CreateBuffer(&vertexBufferDesc, &vertexData, &mesh->vertexBuffer);
-	if (FAILED(result))
-	{
-		Assert(0);
-	}
+	Assert(!FAILED(result));
 
 	// Set up the description of the static index buffer.
 	D3D11_BUFFER_DESC indexBufferDesc;
@@ -956,6 +939,9 @@ internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Draw call helpers
+// ────────────────────────────────────────────────────────────────────────
 internal void PushDrawCall(FRenderBucket* bucket, HMesh hMesh, HTexture hTexture, DXMatrix worldMatrix, DXFloat4 color = {})
 {
 	Assert(bucket->count < MAX_DRAW_CALLS);
@@ -979,6 +965,9 @@ internal void DrawLitTexture(FRenderWorld* world, HMesh hMesh, HTexture hTex, DX
 	PushDrawCall(&world->litTextureBucket, hMesh, hTex, worldMatrix);
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Flush buckets
+// ────────────────────────────────────────────────────────────────────────
 internal void FlushColorBucket(FRenderWorld* world)
 {
 	FD3D* d3d = &world->d3d;
@@ -992,9 +981,10 @@ internal void FlushColorBucket(FRenderWorld* world)
 	{
 		FDrawCall* call = &world->colorBucket.calls[i];
 		d3d->worldMatrix = call->worldMatrix;
-		RenderMesh(&world->meshes[call->hMesh], d3d->deviceContext);
+		FMeshBuffer* mesh = &world->meshes[call->hMesh];
+		RenderMesh(mesh, d3d->deviceContext);
 		SetColorShaderParameters(world, i);
-		d3d->deviceContext->DrawIndexed(world->meshes[call->hMesh].indexCount, 0, 0);
+		d3d->deviceContext->DrawIndexed(mesh->indexCount, 0, 0);
 	}
 
 	// Clear bucket for next frame.
@@ -1070,7 +1060,6 @@ internal void RenderCamera(FCamera* camera, FTransformTable* transforms)
 
 	lookAtVector = XMVector3TransformCoord(lookAtVector, rotationMatrix);
 	upVector = XMVector3TransformCoord(upVector, rotationMatrix);
-
 	lookAtVector = DirectX::XMVectorAdd(positionVector, lookAtVector);
 
 	camera->viewMatrix = DirectX::XMMatrixLookAtLH(positionVector, lookAtVector, upVector);
@@ -1097,9 +1086,152 @@ internal DXMatrix BuildEntityWorldMatrix(HEntity hEntity, FEntityTable* entityTa
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Glovbal Functions
+// Texture loader — .fasset image
+// ────────────────────────────────────────────────────────────────────────
+HTexture LoadFImage(FRenderWorld* world, const char* fileName)
+{
+	FILE* file = fopen(fileName, "rb");
+	Assert(file);
+
+	// Read and validate generic asset header.
+	FAssetHeader assetHeader = {};
+	fread(&assetHeader, sizeof(assetHeader), 1, file);
+	Assert(assetHeader.magic == FASSET_MAGIC && assetHeader.assetType == FASSET_TYPE_IMAGE);
+
+	// Read image-specific header.
+	FImageHeader header = {};
+	fread(&header, sizeof(header), 1, file);
+
+	// Read per-mip offset and size tables.
+	u32* mipOffsets = ArenaPushArray(world->scratchArena, header.mipCount, u32);
+	u32* mipSizes = ArenaPushArray(world->scratchArena, header.mipCount, u32);
+	fread(mipOffsets, sizeof(u32), header.mipCount, file);
+	fread(mipSizes, sizeof(u32), header.mipCount, file);
+
+	// Read all compressed mip data in one shot.
+	u8* allMipData = ArenaPushArray(world->scratchArena, header.dataSize, u8);
+	fread(allMipData, header.dataSize, 1, file);
+	fclose(file);
+
+	DXGI_FORMAT dxgiFormat = (header.format == FIMAGE_FORMAT_BC3)
+		? DXGI_FORMAT_BC3_UNORM
+		: DXGI_FORMAT_R8G8B8A8_UNORM;
+
+	// Create texture with full mip chain
+	D3D11_TEXTURE2D_DESC texDesc = {};
+	texDesc.Width = header.width;
+	texDesc.Height = header.height;
+	texDesc.MipLevels = header.mipCount;
+	texDesc.ArraySize = 1;
+	texDesc.Format = dxgiFormat;
+	texDesc.SampleDesc.Count = 1;
+	texDesc.Usage = D3D11_USAGE_DEFAULT;
+	texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	texDesc.MiscFlags = 0; // no GENERATE_MIPS flag needed
+
+	// Fill one D3D11_SUBRESOURCE_DATA per mip level.
+	D3D11_SUBRESOURCE_DATA* mipData = ArenaPushArray(world->scratchArena, header.mipCount, D3D11_SUBRESOURCE_DATA);
+
+	u32 mipWidth = header.width;
+	u32 mipHeight = header.height;
+	for (u32 mip = 0; mip < header.mipCount; ++mip)
+	{
+		mipData[mip].pSysMem = allMipData + mipOffsets[mip];
+
+		if (header.format == FIMAGE_FORMAT_BC3)
+		{
+			u32 blockW = (mipWidth + 3) / 4;
+			mipData[mip].SysMemPitch = blockW * 16; // 16 bytes per BC3 block
+			mipData[mip].SysMemSlicePitch = 0;
+		}
+		else
+		{
+			mipData[mip].SysMemPitch = mipWidth * 4;
+			mipData[mip].SysMemSlicePitch = 0;
+		}
+
+		if (mipWidth > 1) { mipWidth >>= 1; }
+		if (mipHeight > 1) { mipHeight >>= 1; }
+	}
+
+	ID3D11Texture2D* tex;
+	HRESULT result = world->d3d.device->CreateTexture2D(&texDesc, mipData, &tex);
+	Assert(!FAILED(result));
+
+	ID3D11ShaderResourceView* srv;
+	result = world->d3d.device->CreateShaderResourceView(tex, nullptr, &srv);
+	Assert(!FAILED(result));
+	tex->Release();
+
+	// Store in world texture pool.
+	Assert(world->texturesCount < MAX_TEXTURES);
+	HTexture handle = world->texturesCount++;
+	world->textures[handle].textureView = srv;
+	world->textures[handle].width = (i32)header.width;
+	world->textures[handle].height = (i32)header.height;
+
+	// All pixel/mip data was only needed for CreateTexture2D — free it now.
+	ArenaReset(world->scratchArena);
+	return handle;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Model loader — .glb model
+// > TODO: Check if we can replace it with a .fasset
 // ────────────────────────────────────────────────────────────────────────
 
+HMesh LoadGLBModel(FRenderWorld* world, const char* fileName)
+{
+	FGLBAsset* asset = ArenaPushSize(world->scratchArena, FGLBAsset);
+	ZeroStruct(asset);
+
+	if (!GLB_Load(fileName, asset))
+	{
+		Assert(0);	// Check filename, it failed to load!
+		return 0;
+	}
+
+	HMesh handle = 0;
+
+	// Walk every mesh -> every primitive
+	for (u32 mi = 0; mi < asset->meshCount; mi++)
+	{
+		FGLBMesh* mesh = &asset->meshes[mi];
+
+		for (u32 pi = 0; pi < mesh->primitiveCount; pi++)
+		{
+			FGLBPrimitive* prim = &mesh->primitives[pi];
+			if (!prim->vertices || !prim->indices || prim->vertexCount == 0)
+			{
+				continue;
+			}
+
+			// NOTE: FGLBVertex and the texture struct need to match in layout.
+			FLitTextureVertex* converted = (FLitTextureVertex*)ArenaPushArray(world->scratchArena, prim->vertexCount, FLitTextureVertex);
+			if (converted)
+			{
+				for (u32 v = 0; v < prim->vertexCount; v++)
+				{
+					converted[v].position = { prim->vertices[v].px, prim->vertices[v].py, prim->vertices[v].pz };
+					converted[v].normal = { prim->vertices[v].nx, prim->vertices[v].ny, prim->vertices[v].nz };
+					converted[v].texture = { prim->vertices[v].u, prim->vertices[v].v };
+				}
+				handle = world->meshCount++;
+				FMeshBuffer* mesh = &world->meshes[handle];
+				mesh->vertexStride = sizeof(FLitTextureVertex);
+				UploadMesh(mesh, world->d3d.device, converted, prim->vertexCount, mesh->vertexStride, prim->indices, prim->indexCount);
+			}
+		}
+	}
+
+	ArenaReset(world->scratchArena);
+	GLB_Free(asset);
+	return handle;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Global Functions
+// ────────────────────────────────────────────────────────────────────────
 bool32 InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams, FTransformTable* transforms)
 {
 	bool32 result = true;
@@ -1201,138 +1333,6 @@ void Render(FRenderWorld* world, FEntityTable* entityTable, FTransformTable* tra
 	EndScene(d3d);
 }
 
-HMesh LoadGLBModel(FRenderWorld* world, const char* filename)
-{
-	FGLBAsset* asset = ArenaPushSize(world->scratchArena, FGLBAsset);
-	ZeroStruct(asset);
-
-	if (!GLB_Load(world->scratchArena, filename, asset))
-	{
-		Assert(0);	// Check filename, it failed to load!
-		return 0;
-	}
-
-	HMesh handle = 0;
-
-	// Walk every mesh -> every primitive
-	for (u32 mi = 0; mi < asset->meshCount; mi++)
-	{
-		FGLBMesh* mesh = &asset->meshes[mi];
-
-		for (u32 pi = 0; pi < mesh->primitiveCount; pi++)
-		{
-			FGLBPrimitive* prim = &mesh->primitives[pi];
-			if (!prim->vertices || !prim->indices || prim->vertexCount == 0)
-			{
-				continue;
-			}
-
-			// NOTE: FGLBVertex and the texture struct need to match in layout.
-			FLitTextureVertex* converted = (FLitTextureVertex*)ArenaPushArray(world->scratchArena, prim->vertexCount, FLitTextureVertex);
-			if (converted)
-			{
-				for (u32 v = 0; v < prim->vertexCount; v++)
-				{
-					converted[v].position = { prim->vertices[v].px, prim->vertices[v].py, prim->vertices[v].pz };
-					converted[v].normal = { prim->vertices[v].nx, prim->vertices[v].ny, prim->vertices[v].nz };
-					converted[v].texture = { prim->vertices[v].u, prim->vertices[v].v };
-				}
-				handle = world->meshCount++;
-				FMeshBuffer* mesh = &world->meshes[handle];
-				mesh->vertexStride = sizeof(FLitTextureVertex);
-				UploadMesh(mesh, world->d3d.device, converted, prim->vertexCount, mesh->vertexStride, prim->indices, prim->indexCount);
-			}
-		}
-	}
-
-	ArenaReset(world->scratchArena);
-	GLB_Free(asset);
-	return handle;
-}
-
-HTexture LoadFIM(FRenderWorld* world, const char* fileName)
-{
-	FILE* file = fopen(fileName, "rb");
-	Assert(file);
-
-	FIMHeader header = {};
-	fread(&header, sizeof(header), 1, file);
-	Assert(header.magic == FIM_MAGIC);
-
-	// Read per-mip offset and size tables.
-	u32* mipOffsets = ArenaPushArray(world->scratchArena, header.mipCount, u32);
-	u32* mipSizes = ArenaPushArray(world->scratchArena, header.mipCount, u32);
-	fread(mipOffsets, sizeof(u32), header.mipCount, file);
-	fread(mipSizes, sizeof(u32), header.mipCount, file);
-
-	// Read all compressed mip data in one shot.
-	u8 * allMipData = ArenaPushArray(world->scratchArena, header.dataSize, u8);
-	fread(allMipData, header.dataSize, 1, file);
-	fclose(file);
-
-	DXGI_FORMAT dxgiFormat = (header.format == FIM_FORMAT_BC3)
-		? DXGI_FORMAT_BC3_UNORM
-		: DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	// Create texture with full mip chain
-	D3D11_TEXTURE2D_DESC texDesc = {};
-	texDesc.Width = header.width;
-	texDesc.Height = header.height;
-	texDesc.MipLevels = header.mipCount;
-	texDesc.ArraySize = 1;
-	texDesc.Format = dxgiFormat;
-	texDesc.SampleDesc.Count = 1;
-	texDesc.Usage = D3D11_USAGE_DEFAULT;
-	texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	texDesc.MiscFlags = 0; // no GENERATE_MIPS flag needed
-
-	// Fill one D3D11_SUBRESOURCE_DATA per mip level.
-	D3D11_SUBRESOURCE_DATA* mipData = ArenaPushArray(world->scratchArena, header.mipCount, D3D11_SUBRESOURCE_DATA);
-
-	u32 mipWidth = header.width;
-	u32 mipHeight = header.height;
-	for (u32 mip = 0; mip < header.mipCount; ++mip)
-	{
-		mipData[mip].pSysMem = allMipData + mipOffsets[mip];
-
-		if (header.format == FIM_FORMAT_BC3)
-		{
-			u32 blockW = (mipWidth + 3) / 4;
-			mipData[mip].SysMemPitch = blockW * 16; // 16 bytes per BC3 block
-			mipData[mip].SysMemSlicePitch = 0;
-		}
-		else
-		{
-			mipData[mip].SysMemPitch = mipWidth * 4;
-			mipData[mip].SysMemSlicePitch = 0;
-		}
-
-		if (mipWidth > 1) { mipWidth >>= 1; }
-		if (mipHeight > 1) { mipHeight >>= 1; }
-	}
-
-	ID3D11Texture2D* tex;
-	HRESULT result = world->d3d.device->CreateTexture2D(&texDesc, mipData, &tex);
-	Assert(!FAILED(result));
-
-	ID3D11ShaderResourceView* srv;
-	result = world->d3d.device->CreateShaderResourceView(tex, nullptr, &srv);
-	Assert(!FAILED(result));
-	tex->Release();
-
-	// Store in world texture pool.
-	Assert(world->texturesCount < MAX_TEXTURES);
-	HTexture handle = world->texturesCount++;
-	world->textures[handle].textureView = srv;
-	world->textures[handle].width = (i32)header.width;
-	world->textures[handle].height = (i32)header.height;
-
-	// All pixel/mip data was only needed for CreateTexture2D — free it now.
-	ArenaReset(world->scratchArena);
-
-	return handle;
-}
-
 void D3DResize(FD3D* d3d, i32 width, i32 height, f32 screenNear, f32 screenDepth)
 {
 	if (!d3d->swapChain)
@@ -1385,7 +1385,7 @@ void D3DResize(FD3D* d3d, i32 width, i32 height, f32 screenNear, f32 screenDepth
 
 	// Update projection matrix aspect ratio.
 	f32 aspect = (f32)width / (f32)height;
-	f32 fovY = DirectX::XM_PIDIV4; // match whatever FOV you used at init
+	f32 fovY = Pi32 / 4.0f; // match whatever FOV you used at init
 	d3d->projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(fovY, aspect, 0.3f, 1000.0f);
 }
 

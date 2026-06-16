@@ -136,20 +136,18 @@
     <ClCompile Include="src\code\fado.cpp" />
     <ClCompile Include="src\code\fado_collision.cpp" />
     <ClCompile Include="src\code\fado_d3d.cpp" />
-    <ClCompile Include="src\code\glb\fado_glb.cpp" />
     <ClCompile Include="src\code\win32_fado.cpp" />
-    <ClCompile Include="src\tools\fim\fim_converter.cpp" />
+    <ClCompile Include="src\tools\fado_converter\fado_converter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\code\fado.h" />
     <ClInclude Include="src\code\fado_collision.h" />
     <ClInclude Include="src\code\fado_d3d.h" />
-    <ClInclude Include="src\code\fado_d3d_types.h" />
     <ClInclude Include="src\code\fado_math.h" />
     <ClInclude Include="src\code\fado_types.h" />
     <ClInclude Include="src\code\glb\fado_glb.h" />
     <ClInclude Include="src\code\win32_fado.h" />
-    <ClInclude Include="src\tools\fim\fado_image_format.h" />
+    <ClInclude Include="src\tools\fado_converter\fado_asset_format.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

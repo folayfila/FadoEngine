@@ -16,17 +16,14 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{918fa7bd-55d0-46ef-8c93-8ae60badca02}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\glb">
-      <UniqueIdentifier>{ff0bcfbb-5705-46fd-a04f-13c9e87b2f42}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\glb">
-      <UniqueIdentifier>{fba2dfcd-115b-422a-b6c7-819b39b7e3d5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="tools">
       <UniqueIdentifier>{426e2182-92a9-457c-ae93-0c802070fa4e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="tools\fim">
+    <Filter Include="tools\fado_converter">
       <UniqueIdentifier>{500bddc5-de80-4af4-8196-36ea76a7e9d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\glb">
+      <UniqueIdentifier>{f7736571-cd2f-41ae-a31d-78233f999448}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -36,17 +33,14 @@
     <ClCompile Include="src\code\win32_fado.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\code\glb\fado_glb.cpp">
-      <Filter>Source Files\glb</Filter>
-    </ClCompile>
     <ClCompile Include="src\code\fado.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\code\fado_collision.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\tools\fim\fim_converter.cpp">
-      <Filter>tools\fim</Filter>
+    <ClCompile Include="src\tools\fado_converter\fado_converter.cpp">
+      <Filter>tools\fado_converter</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -59,12 +53,6 @@
     <ClInclude Include="src\code\win32_fado.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\code\fado_d3d_types.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\code\glb\fado_glb.h">
-      <Filter>Header Files\glb</Filter>
-    </ClInclude>
     <ClInclude Include="src\code\fado.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -74,8 +62,11 @@
     <ClInclude Include="src\code\fado_collision.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\tools\fim\fado_image_format.h">
-      <Filter>tools\fim</Filter>
+    <ClInclude Include="src\tools\fado_converter\fado_asset_format.h">
+      <Filter>tools\fado_converter</Filter>
+    </ClInclude>
+    <ClInclude Include="src\code\glb\fado_glb.h">
+      <Filter>Header Files\glb</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
