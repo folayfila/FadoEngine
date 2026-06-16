@@ -6,8 +6,8 @@ set ROOT=%CD%\
 popd
 
 set CONVERTER=%~dp0fado_converter.exe
-set SRC_DIR=%ROOT%assets_src
-set OUT_DIR=%ROOT%assets
+set SRC_DIR=%ROOT%AssetsSource
+set OUT_DIR=%ROOT%Assets
 
 if not exist "%SRC_DIR%" (
     echo ERROR: assets_src not found at %SRC_DIR%

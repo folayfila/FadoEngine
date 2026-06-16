@@ -1,7 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "fado_d3d.h"
-#include "../tools/fado_converter/fado_asset_format.h"
+#include "Tools/FadoConverter/fado_asset_format.h"
 #include "glb/fado_glb.h"
 #include "fado_math.h"
 
@@ -353,7 +353,7 @@ internal bool32 InitializeColorShader(FColorShader *colorShader, ID3D11Device* d
 {
 	// Set the filename of the hlsl shader.
 	wchar hlslFileName[128];
-	i32 error = wcscpy_s(hlslFileName, 128, L"src\\shaders\\color.hlsl");
+	i32 error = wcscpy_s(hlslFileName, 128, L"FadoEngine\\Shaders\\color.hlsl");
 	if (error != 0)
 	{
 		return false;
@@ -504,7 +504,7 @@ internal bool32 InitializeUnlitTextureShader(FUnlitTextureShader* unlitTexShader
 {
 	// Set the filename of the hlsl shader.
 	wchar hlslFileName[128];
-	i32 error = wcscpy_s(hlslFileName, 128, L"src\\shaders\\texture.hlsl");
+	i32 error = wcscpy_s(hlslFileName, 128, L"FadoEngine\\Shaders\\texture.hlsl");
 	if (error != 0)
 	{
 		return false;
@@ -668,7 +668,7 @@ internal bool32 InitializeLitTextureShader(FLitTextureShader* litTexShader, ID3D
 {
 	// Set the filename of the hlsl shader.
 	wchar hlslFileName[128];
-	i32 error = wcscpy_s(hlslFileName, 128, L"src\\shaders\\light.hlsl");
+	i32 error = wcscpy_s(hlslFileName, 128, L"FadoEngine\\Shaders\\light.hlsl");
 	if (error != 0)
 	{
 		return false;

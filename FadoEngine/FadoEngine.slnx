@@ -4,4 +4,5 @@
     <Platform Name="x86" />
   </Configurations>
   <Project Path="FadoEngine.vcxproj" Id="128e5db6-42b3-4668-b2aa-a9d531d33ad0" />
+  <Project Path="Game/Game.vcxproj" Id="650475a1-5cab-4d93-8005-442204ed3348" />
 </Solution>

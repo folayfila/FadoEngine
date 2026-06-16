@@ -112,6 +112,7 @@ struct FGameState
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
-void GameUpdate(FEngineMemory* memory, FGameState* gameState, FGameInput* input);
+#define GAME_UPDATE(name) void name(FEngineMemory* memory, FGameState* gameState, FGameInput* input)
+typedef GAME_UPDATE(FGameUpdate);
 
 #endif FADO_H

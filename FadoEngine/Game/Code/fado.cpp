@@ -195,7 +195,8 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
     }
 }
 
-void GameUpdate(FEngineMemory* memory, FGameState* gameState, FGameInput* input)
+extern "C" __declspec(dllexport)
+GAME_UPDATE(GameUpdate)
 {
     if (!gameState->initialized)
     {

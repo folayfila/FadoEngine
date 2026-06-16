@@ -31,6 +31,54 @@ internal void ToggleFullscreen(HWND Window)
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// Game Code
+// ────────────────────────────────────────────────────────────────────────
+internal FILETIME Win32GetLastWriteTime(char* fileName)
+{
+	FILETIME lastWriteTime = {};
+
+	WIN32_FILE_ATTRIBUTE_DATA data;
+	if (GetFileAttributesExA(fileName, GetFileExInfoStandard, &data))
+	{
+		lastWriteTime = data.ftLastWriteTime;
+	}
+	return lastWriteTime;
+}
+
+internal Win32GameCode Win32LoadGameCode(char* sourceDLLName, char* tempDLLName)
+{
+	Win32GameCode result = {};
+
+	result.dllLastWriteTime = Win32GetLastWriteTime(sourceDLLName);
+	CopyFileA(sourceDLLName, tempDLLName, FALSE);
+
+	result.gameCodeDLL = LoadLibraryA(tempDLLName);
+	if (result.gameCodeDLL)
+	{
+		result.gameUpdate = (FGameUpdate*)GetProcAddress(result.gameCodeDLL, "GameUpdate");
+		result.isValid = (result.gameUpdate != nullptr);
+	}
+
+	if (!result.isValid)
+	{
+		result.gameUpdate = 0;
+	}
+
+	return result;
+}
+
+internal void Win32UnloadGameCode(Win32GameCode* gameCode)
+{
+	if (gameCode->gameCodeDLL)
+	{
+		FreeLibrary(gameCode->gameCodeDLL);
+	}
+	gameCode->gameCodeDLL = 0;
+	gameCode->isValid = false;
+	gameCode->gameUpdate = 0;
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // Input
 // ────────────────────────────────────────────────────────────────────────
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE *pState)
@@ -318,7 +366,10 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPA
 			{
 				FGameInput input = {};
 				input.deltaTime = 0.016f;
-				GameUpdate(GlobalWin32System->engineMemory, GlobalWin32System->gameState, &input);
+				if (GlobalWin32System->gameCode->isValid)
+				{
+					GlobalWin32System->gameCode->gameUpdate(GlobalWin32System->engineMemory, GlobalWin32System->gameState, &input);
+				}
 #if FADO_DEBUG
 				DebugRender(GlobalWin32System->world, GlobalWin32System->gameState->entityTable, GlobalWin32System->gameState->transforms, GlobalWin32System->gameState->collisionWorld);
 #else
@@ -414,14 +465,14 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 // Loads all models and textures at startup.
 internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
 {
-	gameState->hPlaneMesh = LoadGLBModel(world, "src\\assets_src\\models\\plane.glb");
-	gameState->hCubeMesh = LoadGLBModel(world, "src\\assets_src\\models\\cube.glb");
-	gameState->hSphereMesh = LoadGLBModel(world, "src\\assets_src\\models\\sphere.glb");
-	//HMesh hMonkey = LoadGLBIntoWorld(world, "src\\models\\monkey.glb");
+	gameState->hPlaneMesh = LoadGLBModel(world, "FadoEngine\\AssetsSource\\Models\\plane.glb");
+	gameState->hCubeMesh = LoadGLBModel(world, "FadoEngine\\AssetsSource\\Models\\cube.glb");
+	gameState->hSphereMesh = LoadGLBModel(world, "FadoEngine\\AssetsSource\\Models\\sphere.glb");
+	//HMesh hMonkey = LoadGLBIntoWorld(world, "FadoEngine\\models\\monkey.glb");
 
-	gameState->hGridTexture = LoadFImage(world, "src\\assets\\textures\\grid.fasset");
-	gameState->hMosaicTexture = LoadFImage(world, "src\\assets\\textures\\mosaic.fasset");
-	gameState->hGraniteTexture = LoadFImage(world, "src\\assets\\textures\\granite.fasset");
+	gameState->hGridTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\grid.fasset");
+	gameState->hMosaicTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\mosaic.fasset");
+	gameState->hGraniteTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\granite.fasset");
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -461,6 +512,14 @@ int WINAPI wWinMain(
 
 	FGameInput* input = ArenaPushSize(&engineMemory.permanent, FGameInput);
 
+	char sourceGameCodeDLLFullPath[MAX_PATH] = "x64\\Debug\\Game.dll";
+	//Win32BuildEXEPathFileName(&win32State, "folayfila.dll", sizeof(sourceGameCodeDLLFullPath), sourceGameCodeDLLFullPath);
+
+	char tempGameCodeDLLFullPath[MAX_PATH] = "x64\\Debug\\tempGame.dll";;
+	//Win32BuildEXEPathFileName(&win32State, "folayfila_temp.dll", sizeof(tempGameCodeDLLFullPath), tempGameCodeDLLFullPath);
+	Win32GameCode gameCode = Win32LoadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
+	win32System.gameCode = &gameCode;
+
 	// Game loop.
 	gameState->running = true;
 	while (GlobalRunning && gameState->running)
@@ -476,6 +535,13 @@ int WINAPI wWinMain(
 		}
 		input->deltaTime = deltaTime;
 
+		FILETIME newDLLWriteTime = Win32GetLastWriteTime(sourceGameCodeDLLFullPath);
+		if (CompareFileTime(&newDLLWriteTime, &gameCode.dllLastWriteTime) != 0)
+		{
+			Win32UnloadGameCode(&gameCode);
+			gameCode = Win32LoadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
+		}
+
 		// Handle keyboard and controller input.
 		FGameControllerInput* keyboardInput = &input->controllers[0];
 		keyboardInput->isConnected = true;
@@ -483,7 +549,10 @@ int WINAPI wWinMain(
 		Win32HandleControllerInput(win32System.window, input);
 
 		// Update game and render.
-		GameUpdate(&engineMemory, gameState, input);
+		if (gameCode.gameUpdate)
+		{
+			gameCode.gameUpdate(&engineMemory, gameState, input);
+		}
 
 #if FADO_DEBUG
 		DebugRender(win32System.world, win32System.gameState->entityTable, win32System.gameState->transforms, gameState->collisionWorld);

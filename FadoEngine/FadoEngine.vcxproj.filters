@@ -19,65 +19,56 @@
     <Filter Include="tools">
       <UniqueIdentifier>{426e2182-92a9-457c-ae93-0c802070fa4e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="tools\fado_converter">
-      <UniqueIdentifier>{500bddc5-de80-4af4-8196-36ea76a7e9d7}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\glb">
       <UniqueIdentifier>{f7736571-cd2f-41ae-a31d-78233f999448}</UniqueIdentifier>
     </Filter>
+    <Filter Include="tools\FadoConverter">
+      <UniqueIdentifier>{500bddc5-de80-4af4-8196-36ea76a7e9d7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\code\fado_d3d.cpp">
+    <ClCompile Include="FadoEngine\code\win32_fado.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\code\win32_fado.cpp">
+    <ClCompile Include="FadoEngine\code\fado_d3d.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\code\fado.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\code\fado_collision.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\tools\fado_converter\fado_converter.cpp">
-      <Filter>tools\fado_converter</Filter>
+    <ClCompile Include="FadoEngine\Tools\FadoConverter\fado_converter.cpp">
+      <Filter>tools\FadoConverter</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\code\fado_d3d.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\code\fado_types.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\code\win32_fado.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\code\fado.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\code\fado_math.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\code\fado_collision.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\tools\fado_converter\fado_asset_format.h">
-      <Filter>tools\fado_converter</Filter>
-    </ClInclude>
-    <ClInclude Include="src\code\glb\fado_glb.h">
+    <ClInclude Include="FadoEngine\code\glb\fado_glb.h">
       <Filter>Header Files\glb</Filter>
     </ClInclude>
+    <ClInclude Include="FadoEngine\code\fado_collision.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\code\fado_d3d.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\code\fado_math.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\code\fado_types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\code\win32_fado.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\fado_asset_format.h">
+      <Filter>tools\FadoConverter</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\shaders\color.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="cpp.hint" />
-    <None Include="src\shaders\texture.hlsl">
+    <None Include="FadoEngine\shaders\color.hlsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="src\shaders\light.hlsl">
+    <None Include="FadoEngine\shaders\light.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="FadoEngine\shaders\texture.hlsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

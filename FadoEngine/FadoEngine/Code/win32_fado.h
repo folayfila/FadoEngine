@@ -14,7 +14,16 @@
 // INCLUDES //
 ///////////////////////////////
 #include "fado_d3d.h"
-#include "fado.h"
+#include "../../Game/code/fado.h"
+
+struct Win32GameCode
+{
+	HMODULE gameCodeDLL;
+	FILETIME dllLastWriteTime;
+
+	FGameUpdate* gameUpdate;
+	bool32 isValid;
+};
 
 struct Win32System
 {
@@ -23,6 +32,7 @@ struct Win32System
 	FEngineMemory* engineMemory;
 	FGameState* gameState;
 	FRenderWorld* world;
+	Win32GameCode* gameCode;
 };
 
 ///////////////////////////////
