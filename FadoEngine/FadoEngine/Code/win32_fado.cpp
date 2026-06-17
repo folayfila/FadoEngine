@@ -2,6 +2,10 @@
 #include <xinput.h>
 #include "fado_math.h"
 #include "fado_collision.h"
+#include "imgui/imgui.h"
+#include "imgui/backends/imgui_impl_win32.h"
+#include "imgui/backends/imgui_impl_dx11.h"
+
 
 internal void ToggleFullscreen(HWND Window)
 {
@@ -336,57 +340,32 @@ internal void Win32HandleWindowsMessageLoop(FGameControllerInput* keyboard, f32 
 	}
 }
 
-internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
+extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
+internal LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if (ImGui_ImplWin32_WndProcHandler(window, message, wParam, lParam))
+	{
+		return true;
+	}
 	LRESULT result = 0;
 
-	switch (Message)
+	switch (message)
 	{
 		case WM_DESTROY:
 		case WM_CLOSE:
 		{
 			GlobalRunning = false;
 		} break;
-		
-
-		// On resize/move we start a timer that updates the game and renders so we don't get a frozen screen.
-		case WM_ENTERSIZEMOVE:
-		{
-			SetTimer(Window, 1, 16, NULL);
-		} break;
-
-		case WM_EXITSIZEMOVE:
-		{
-			KillTimer(Window, 1);
-		} break;
-
-		case WM_TIMER:
-		{
-			if (GlobalWin32System->gameState && GlobalWin32System->gameState->initialized)
-			{
-				FGameInput input = {};
-				input.deltaTime = 0.016f;
-				if (GlobalWin32System->gameCode->isValid)
-				{
-					GlobalWin32System->gameCode->gameUpdate(GlobalWin32System->engineMemory, GlobalWin32System->gameState, &input);
-				}
-#if FADO_DEBUG
-				DebugRender(GlobalWin32System->world, GlobalWin32System->gameState->entityTable, GlobalWin32System->gameState->transforms, GlobalWin32System->gameState->collisionWorld);
-#else
-				Render(GlobalWin32System->world, GlobalWin32System->gameState->entityTable, GlobalWin32System->gameState->transforms);
-#endif // FADO_DEBUG
-			}
-		} break;
 
 		case WM_SIZE:
 		{
 			if (GlobalWin32System && GlobalWin32System->world)
 			{
-				i32 newWidth = LOWORD(LParam);
-				i32 newHeight = HIWORD(LParam);
-				if (newWidth > 0 && newHeight > 0)
+				i32 newWidth = LOWORD(lParam);
+				i32 newHeight = HIWORD(lParam);
+				if (newWidth > 0 && newHeight > 0 && ImGui::GetCurrentContext() != nullptr)
 				{
-					D3DResize(&GlobalWin32System->world->d3d, newWidth, newHeight, SCREEN_NEAR, SCREEN_DEPTH);
+					D3DResize(GlobalWin32System->world, newWidth, newHeight, SCREEN_NEAR, SCREEN_DEPTH);
 				}
 			}
 		} break;
@@ -401,7 +380,7 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPA
 
 		default:
 		{
-			result = DefWindowProcW(Window, Message, WParam, LParam);
+			result = DefWindowProcW(window, message, wParam, lParam);
 		} break;
 	}
 	return result;
@@ -459,6 +438,15 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 	// Initialize Dx11.
 	win32System->world->scratchArena = &memory->scratch;
 	InitializeFD3D(win32System->world, &d3dInitParams, win32System->gameState->transforms);
+
+	// Init ImGui
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+
+	ImGui_ImplWin32_Init(win32System->window);
+	ImGui_ImplDX11_Init(win32System->world->d3d.device, win32System->world->d3d.deviceContext);
+	ImGui::StyleColorsDark();
 }
 
 // Called before starting the game loop.
@@ -473,6 +461,8 @@ internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
 	gameState->hGridTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\grid.fasset");
 	gameState->hMosaicTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\mosaic.fasset");
 	gameState->hGraniteTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\granite.fasset");
+	gameState->hSkyBoxTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\sky_box.fasset");
+	gameState->hWhiteTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\white.fasset");
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -502,11 +492,13 @@ int WINAPI wWinMain(
 	gameState->transforms = ArenaPushSize(&engineMemory.permanent, FTransformTable);
 	gameState->entityTable = ArenaPushSize(&engineMemory.permanent, FEntityTable);
 	gameState->collisionWorld = ArenaPushSize(&engineMemory.permanent, FCollisionWorld);
+	gameState->uiCommands = ArenaPushSize(&engineMemory.permanent, FUICommandBucket);
 
 	Win32System win32System = {};
 	win32System.world = ArenaPushSize(&engineMemory.permanent, FRenderWorld);
 	win32System.gameState = gameState;
 	win32System.engineMemory = &engineMemory;
+	win32System.world->uiBucket = gameState->uiCommands;
 	Win32InitializeWindowAndD3D(&engineMemory, &win32System);
 	InitLoadAssets(win32System.world, gameState);
 
@@ -541,6 +533,10 @@ int WINAPI wWinMain(
 			Win32UnloadGameCode(&gameCode);
 			gameCode = Win32LoadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
 		}
+
+		ImGui_ImplDX11_NewFrame();
+		ImGui_ImplWin32_NewFrame();
+		ImGui::NewFrame();
 
 		// Handle keyboard and controller input.
 		FGameControllerInput* keyboardInput = &input->controllers[0];

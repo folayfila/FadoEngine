@@ -8,16 +8,15 @@ The engine is heavily data oriented; we have a bunch of structs, and create func
 ![Description](media/showcase.gif)
 
 ### Latest Features
+- Implemented a UI commands bucket with ImGui.
+- Game hot reloading.
+- Image loading and compressing into custom file format with stb.
 - AABB and OBB collision detection.
 - Entities in an Entity Component System. Transforms, meshes and textures are set in arrays through handles. 
 - Multiple shaders support (currenlty: simple unlit colors, lit/unlit textures).
-- Rotating camera with Quaternions.
-- Movable camera using a handle for an array of Transforms (AoS).
-- Multiple controllers support. 
-- Implemented a Memory Arena system that allocates memeory only at startup and use it throughout the session.
+- Memory Arena system that allocates memeory only at startup and uses it throughout the session.
 - Fully resizable and full-screen toggle-supported window.
-- Implemented XInput to support keyboard and controller input.
-- Transforming models.
+- Keyboard and multiple controllers input support with XInput.
 - Custom .glb parser to load 3D models.
 
 ### Current Structure

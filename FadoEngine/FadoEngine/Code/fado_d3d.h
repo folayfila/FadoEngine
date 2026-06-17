@@ -19,6 +19,7 @@
 #include <d3dcompiler.h>
 #include <fstream>
 #include "fado_types.h"
+#include "fado_ui.h"
 
 // ──────────
 // LINKING //
@@ -31,10 +32,10 @@
 #pragma comment(lib, "d3dcompiler.lib")
 // ──────────
 
-typedef DirectX::XMMATRIX DXMatrix;
-typedef DirectX::XMFLOAT4 DXFloat4;
-typedef DirectX::XMFLOAT3 DXFloat3;
 typedef DirectX::XMFLOAT2 DXFloat2;
+typedef DirectX::XMFLOAT3 DXFloat3;
+typedef DirectX::XMFLOAT4 DXFloat4;
+typedef DirectX::XMMATRIX DXMatrix;
 
 // ─────────────────────────────────
 /// FD3D
@@ -53,6 +54,8 @@ struct FD3D
 	ID3D11DepthStencilState* depthStencilState;
 	ID3D11DepthStencilView* depthStencilView;
 	ID3D11RasterizerState* rasterState;
+	ID3D11Buffer* uiVertexBuffer;
+	ID3D11BlendState* uiBlendState;
 	D3D11_VIEWPORT viewport;
 	bool32 vsyncEnabled;
 	i32 videoCardMemory;
@@ -167,6 +170,31 @@ struct FLightBuffer
 };
 
 // ───────────
+// UI Shader
+#define MAX_UI_VERTS (MAX_UI_COMMANDS * 6) // 6 verts per quad (2 tris)
+
+struct FUIShader
+{
+	ID3D11VertexShader* vertexShader;
+	ID3D11PixelShader* pixelShader;
+	ID3D11InputLayout* layout;
+	ID3D11Buffer* constantBuffer;
+	ID3D11SamplerState* samplerState;
+};
+
+struct FUIVertex
+{
+	v2 pos;
+	v2 coords;
+	v4 color;
+};
+
+struct FUIConstants
+{
+	f32 projection[4][4];
+};
+
+// ───────────
 // Loaded Texturs
 
 struct FImageLoadResult
@@ -240,11 +268,13 @@ struct FRenderWorld
 	FColorShader colorShader;
 	FUnlitTextureShader unlitTextureShader;
 	FLitTextureShader litTextureShader;
+	FUIShader uiShader;
 
 	// Render buckets — sorted by shader type, no branching at draw time.
 	FRenderBucket colorBucket;
 	FRenderBucket unlitTextureBucket;
 	FRenderBucket litTextureBucket;
+	FUICommandBucket* uiBucket;
 
 #if FADO_DEBUG
 	FDebugLineBucket debugBucket;
@@ -262,13 +292,13 @@ struct FRenderWorld
 // ────────────────────────────────────────────────────────────────
 // Public API
 
-bool32	 InitializeFD3D  (FRenderWorld* world, FD3DInitParams* d3dInitParams, FTransformTable* transforms);
+void	 InitializeFD3D  (FRenderWorld* world, FD3DInitParams* d3dInitParams, FTransformTable* transforms);
 void	 Render			 (FRenderWorld* world, FEntityTable* entities, FTransformTable* transforms);
 HTexture LoadFImage		 (FRenderWorld* world, const char* fileName);
 HMesh	 LoadGLBModel	 (FRenderWorld* world, const char* filename);
 
 // Resize the swap chain buffers, recreate the render target view (and depth/stencil buffer and view), update the viewport and projection matrix aspect ratio.
-void D3DResize(FD3D* d3d, i32 width, i32 height, f32 screenNear, f32 screenDepth);
+void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 screenDepth);
 
 #if FADO_DEBUG
 struct FCollisionWorld;

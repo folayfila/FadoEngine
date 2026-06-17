@@ -27,6 +27,9 @@ internal void Initialize(FGameState* gameState)
     gameState->infinitePlane = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hPlaneMesh, gameState->hGridTexture, {}, EShaderTypes::UnlitTexture);
     gameState->transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f };
 
+    gameState->skyBox = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCubeMesh, gameState->hSkyBoxTexture, {}, EShaderTypes::UnlitTexture);
+    gameState->transforms->positions[gameState->skyBox] = { 10.0f, 10.0f, 10.0f };
+
     gameState->cube1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCubeMesh, 0, { 0.63f, 1, 0.21f, 1 }, EShaderTypes::Color);
     gameState->cube2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCubeMesh, 0, { 1, 0.21f, 0.63f, 1 }, EShaderTypes::Color);
     gameState->sphere1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphereMesh, gameState->hGraniteTexture, {}, EShaderTypes::LitTexture);
@@ -114,7 +117,7 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
         v3 up = QuatUp(camRot);
 
         // Movement
-        f32 moveSpeed = 10.0f * input->deltaTime;
+        f32 moveSpeed = 25.0f * input->deltaTime;
         if ((controllerInput->dpadUp.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Up)))
         {
             *camPos += forward * moveSpeed;
@@ -195,6 +198,24 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
     }
 }
 
+internal void UpdateUI(FGameState* gameState)
+{
+    FUICommandBucket* commands = gameState->uiCommands;
+
+    v4 rect = { 100, 100, 200, 100 };
+    v4 rectColor = { 0, 1, 0, 1.0f };
+    v4 coords = { 0, 0, 1, 1 };
+    UIPushRect(commands, rect, coords, rectColor, gameState->hWhiteTexture);
+
+    rect = { 400, 100, 200, 200 };
+    rectColor = { 1, 1, 0, 1.0f };
+    UIPushRect(commands, rect, coords, rectColor, gameState->hGraniteTexture);
+
+    v2 textPos = { 15, 15 };
+    v4 textColor = { 1, 0.5f, 1, 1 };
+    UIPushText(commands, textPos, textColor, "Fado UI Working?!?!");
+}
+
 extern "C" __declspec(dllexport)
 GAME_UPDATE(GameUpdate)
 {
@@ -202,6 +223,9 @@ GAME_UPDATE(GameUpdate)
     {
         Initialize(gameState);
     }
+
+    // Reset UI commands bucket.
+    UpdateUI(gameState);
 
 	HandleGameInput(gameState, input);
 

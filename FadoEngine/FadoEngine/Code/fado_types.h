@@ -80,77 +80,81 @@ typedef i32 bool32;
 
 // ─────────────────────────────────────────────
 
+
 struct v2
 {
-    f32 x, y;
+	f32 x, y;
+
+	inline v2& operator=(const v2& rhs)
+	{
+		x = rhs.x;
+		y = rhs.y;
+		return *this;
+	}
 };
 
 struct v3
 {
-    union
-    {
-        struct
-        {
-            f32 x, y, z;
-        };
+	union
+	{
+		struct { f32 x, y, z; };
+		struct { f32 r, g, b; };
+	};
 
-        struct
-        {
-            f32 r, g, b;
-        };
-    };
+	inline v3& operator=(const v3& rhs)
+	{
+		x = rhs.x;
+		y = rhs.y;
+		z = rhs.z;
+		return *this;
+	}
 
-    inline v3& operator+=(v3 a)
-    {
-        x += a.x;
-        y += a.y;
-        z += a.z;
-        return *this;
-    }
+	inline v3& operator+=(v3 a)
+	{
+		x += a.x;
+		y += a.y;
+		z += a.z;
+		return *this;
+	}
 
-    inline v3& operator-=(v3 a)
-    {
-        x -= a.x;
-        y -= a.y;
-        z -= a.z;
-        return *this;
-    }
+	inline v3& operator-=(v3 a)
+	{
+		x -= a.x;
+		y -= a.y;
+		z -= a.z;
+		return *this;
+	}
 
-    inline v3& operator+=(f32 a)
-    {
-        x += a;
-        y += a;
-        z += a;
-        return *this;
-    }
+	inline v3& operator+=(f32 a)
+	{
+		x += a;
+		y += a;
+		z += a;
+		return *this;
+	}
 };
 
 struct v4
 {
-    union
-    {
-        struct
-        {
-            f32 x, y, z, w;
-        };
-        struct
-        {
-            f32 r, g, b, a;
-        };
-        f32 e[4];
-    };
+	union
+	{
+		struct { f32 x, y, z, w; };
+		struct { f32 r, g, b, a; };
+		struct { f32 r, g, width, heigth; };
+		struct { f32 u0, v0, u1, v1; };
+		f32 e[4];
+	};
+
+	inline v4& operator=(const v4& rhs)
+	{
+		x = rhs.x;
+		y = rhs.y;
+		z = rhs.z;
+		w = rhs.w;
+		return *this;
+	}
 };
 typedef v4 quat;
-
-struct mat3
-{
-    f32 m[9];
-};
-
-struct mat4
-{
-    f32 m[16];
-};
 
 // ─────────────────────────────────────────────
 // ──────────────── Transform ──────────────────
@@ -159,7 +163,6 @@ typedef u32 HTransform; // Transform handle.
 
 #define MAX_TRANSFORMS 1024
 #define INVALID_HANDLE 0xFFFFFFFF
-
 
 struct FTransformTable
 {
@@ -203,6 +206,12 @@ struct FEntityTable
     u32 count;
 };
 
+// Helpers
+inline FEntity* GetEntity(FEntityTable* entityTable, HEntity hEntity)
+{
+	return &entityTable->entities[hEntity];
+}
+
 // ─────────────────────────────────────────────
 // ──────────────── Arena ──────────────────────
 
@@ -245,5 +254,25 @@ inline void ArenaReset(FMemoryArena* arena)
     arena->used = 0;
 }
 // ─────────────────────────────────────────────
+
+// ─────────────────────────────────────────────
+// Strings
+
+inline void CopyCString(char* dst, const char* src)
+{
+    if (!dst || !src)
+    {
+        return;
+    }
+
+    i32 i = 0;
+    for (; src[i] != '\0'; ++i)
+    {
+        dst[i] = src[i];
+    }
+
+    dst[i] = '\0';
+}
+
 
 #endif // FADO_TYPES_H

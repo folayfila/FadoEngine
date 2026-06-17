@@ -115,3 +115,4 @@ Artifacts/
 # *.vcxproj.filters
 # *.vcxproj.user   <-- usually ignore
 FadoEngine/src/code/glb/files.zip
+FadoEngine/imgui.ini

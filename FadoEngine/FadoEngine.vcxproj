@@ -106,7 +106,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <DisableSpecificWarnings>6297;28251;6387;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>$(SolutionDir)FadoEngine\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)FadoEngine\;$(SolutionDir)FadoEngine\Code\imgui\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -135,6 +135,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="FadoEngine\code\fado_d3d.cpp" />
+    <ClCompile Include="FadoEngine\Code\imgui\backends\imgui_impl_dx11.cpp" />
+    <ClCompile Include="FadoEngine\Code\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="FadoEngine\Code\imgui\imgui.cpp" />
+    <ClCompile Include="FadoEngine\Code\imgui\imgui_demo.cpp" />
+    <ClCompile Include="FadoEngine\Code\imgui\imgui_draw.cpp" />
+    <ClCompile Include="FadoEngine\Code\imgui\imgui_tables.cpp" />
+    <ClCompile Include="FadoEngine\Code\imgui\imgui_widgets.cpp" />
     <ClCompile Include="FadoEngine\code\win32_fado.cpp" />
     <ClCompile Include="FadoEngine\Tools\FadoConverter\fado_converter.cpp" />
   </ItemGroup>
@@ -143,7 +150,16 @@
     <ClInclude Include="FadoEngine\code\fado_d3d.h" />
     <ClInclude Include="FadoEngine\code\fado_math.h" />
     <ClInclude Include="FadoEngine\code\fado_types.h" />
+    <ClInclude Include="FadoEngine\Code\fado_ui.h" />
     <ClInclude Include="FadoEngine\code\glb\fado_glb.h" />
+    <ClInclude Include="FadoEngine\Code\imgui\backends\imgui_impl_dx11.h" />
+    <ClInclude Include="FadoEngine\Code\imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="FadoEngine\Code\imgui\imconfig.h" />
+    <ClInclude Include="FadoEngine\Code\imgui\imgui.h" />
+    <ClInclude Include="FadoEngine\Code\imgui\imgui_internal.h" />
+    <ClInclude Include="FadoEngine\Code\imgui\imstb_rectpack.h" />
+    <ClInclude Include="FadoEngine\Code\imgui\imstb_textedit.h" />
+    <ClInclude Include="FadoEngine\Code\imgui\imstb_truetype.h" />
     <ClInclude Include="FadoEngine\code\win32_fado.h" />
     <ClInclude Include="FadoEngine\Tools\FadoConverter\fado_asset_format.h" />
   </ItemGroup>
@@ -156,14 +172,15 @@
       </EntryPointName>
       <FileType>Document</FileType>
     </None>
-    <None Include="FadoEngine\shaders\light.hlsl">
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </EntryPointName>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="FadoEngine\Shaders\lit_texture.hlsl">
       <FileType>Document</FileType>
     </None>
-    <None Include="FadoEngine\shaders\texture.hlsl">
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </EntryPointName>
+    <None Include="FadoEngine\Shaders\ui.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="FadoEngine\Shaders\unlit_texture.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

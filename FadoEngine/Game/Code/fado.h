@@ -2,6 +2,7 @@
 #define FADO_H
 
 #include "fado_types.h"
+#include "fado_ui.h"
 
 // Forward declaractions:
 struct FCollisionWorld;
@@ -92,9 +93,11 @@ struct FGameState
     FEntityTable* entityTable;
     FTransformTable* transforms;
     FCollisionWorld* collisionWorld;
+    FUICommandBucket* uiCommands;
 
     // Entites
     HEntity infinitePlane;
+    HEntity skyBox;
     HEntity cube1;
     HEntity cube2;
     HEntity sphere1;
@@ -107,8 +110,10 @@ struct FGameState
 
     // Texture handles
     HTexture hGridTexture;
+    HTexture hSkyBoxTexture;
     HTexture hMosaicTexture;
     HTexture hGraniteTexture;
+    HTexture hWhiteTexture;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
