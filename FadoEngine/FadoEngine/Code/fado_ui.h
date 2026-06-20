@@ -55,6 +55,12 @@ struct FUIButtonStyle
 	HTexture texture;
 };
 
+struct FUINavState
+{
+	i32 focusedIndex;       // which button is currently selected
+	i32 buttonCount;        // how many buttons were submitted this frame
+};
+
 // ─────────────────────────────────────────────
 //  Public API
 // ────────────────────────────────────────────
@@ -92,11 +98,43 @@ inline void UIPushText(FUICommandBucket* bucket, FFont* font, const char* text, 
 	}
 }
 
-inline bool32 UIPointInRect(v2 mPos, v4 rect)
+inline b8 UIPointInRect(v2 mPos, v4 rect)
 {
-	bool32 result = (mPos.x >= rect.x) && (mPos.x <= rect.x + rect.width) &&
+	b8 result = (mPos.x >= rect.x) && (mPos.x <= rect.x + rect.width) &&
 					(mPos.y >= rect.y) && (mPos.y <= rect.y + rect.height);
 	return result;
+}
+
+inline void UINavigateNext(FUINavState* nav, b8 wrap = true)
+{
+	i32 newIndex = nav->focusedIndex + 1;
+	if (newIndex >= nav->buttonCount)
+	{
+		if (wrap)
+		{
+			nav->focusedIndex = 0;
+		}
+	}
+	else
+	{
+		nav->focusedIndex = newIndex;
+	}
+}
+
+inline void UINavigateBack(FUINavState* nav, b8 wrap = true)
+{
+	i32 newIndex = nav->focusedIndex - 1;
+	if (newIndex < 0)
+	{
+		if (wrap)
+		{
+			nav->focusedIndex = nav->buttonCount - 1;
+		}
+	}
+	else
+	{
+		nav->focusedIndex = newIndex;
+	}
 }
 
 inline void UIGuiPushText(FUICommandBucket* bucket, v2 pos, v4 color, const char* text)

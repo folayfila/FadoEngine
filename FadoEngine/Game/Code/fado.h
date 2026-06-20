@@ -117,6 +117,7 @@ struct FGameState
     HTexture hWhiteTexture;
 
     FFont* font;
+    FUINavState uiNavState;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────

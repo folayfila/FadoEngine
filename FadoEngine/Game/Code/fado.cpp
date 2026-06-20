@@ -69,32 +69,115 @@ internal bool32 IsStickHeld(v2 stickAverage, EStickDirection direction)
 
     switch (direction)
     {
-        case EStickDirection::Up:
-        {
-            result = stickAverage.y > threshHold;
-        } break;
+    case EStickDirection::Up:
+    {
+        result = stickAverage.y > threshHold;
+    } break;
 
-        case EStickDirection::Down:
-        {
-            result = stickAverage.y < -threshHold;
-        } break;
+    case EStickDirection::Down:
+    {
+        result = stickAverage.y < -threshHold;
+    } break;
 
-        case EStickDirection::Left:
-        {
-            result = stickAverage.x < -threshHold;
-        } break;
+    case EStickDirection::Left:
+    {
+        result = stickAverage.x < -threshHold;
+    } break;
 
-        case EStickDirection::Right:
-        {
-            result = stickAverage.x > threshHold;
-        } break;
+    case EStickDirection::Right:
+    {
+        result = stickAverage.x > threshHold;
+    } break;
 
-        default:
-        {
-        } break;
+    default:
+    {
+    } break;
     }
 
     return result;
+}
+
+internal b8 IsInputButtonClick(FGameButtonState* button)
+{
+    b8 isClick = (button->isDown && !button->wasDown);
+    return isClick;
+}
+
+// Returns true on the frame the button was clicked.
+internal b8 UIButton(FUICommandBucket* bucket, FFont* font, FGameInput* input, FUINavState* nav, v4 rect, cc8* text, FUIButtonStyle* style)
+{
+    i32 myIndex = nav->buttonCount++;
+
+    b8 hovered = false;
+    b8 clicked = false;
+
+    if (input->controllers[1].isConnected)
+    {
+        hovered = (myIndex == nav->focusedIndex);
+        clicked = hovered && IsInputButtonClick(&input->controllers[1].actionDown);
+    }
+    else
+    {
+        v2 mousePos = { (f32)input->mouse.x, (f32)input->mouse.y };
+        hovered = UIPointInRect(mousePos, rect);
+        clicked = hovered && input->mouse.buttons[0].isDown && !input->mouse.buttons[0].wasDown;
+    }
+
+    v4 color = style->idleColor;
+    if (clicked)
+    {
+        color = style->pressedColor;
+    }
+    else if (hovered)
+    {
+        color = style->hoverColor;
+    }
+
+    UIPushRect(bucket, rect, { 0, 0, 1, 1 }, color, style->texture);
+
+    // > TODO: Replace with real text measurement later
+    f32 textX = rect.x + 20;
+    f32 textY = rect.y + rect.height * 0.5f;
+    UIPushText(bucket, font, text, { textX, textY }, style->textColor);
+
+    return clicked;
+}
+
+internal void UpdateUI(FGameState* gameState, FGameInput* input)
+{
+    gameState->uiNavState.buttonCount = 0;
+
+    FUICommandBucket* uiBucket = gameState->uiCommands;
+
+    f32 buttonsYOffset = 20.0f;
+    v4 rect = { 350, 450, 200, 75 };
+    FUIButtonStyle buttonStyle = {
+        /*idle*/    { 0.251f, 0.596f, 0.369f, 1.0f },
+        /*hover*/   { 0.82f, 0.796f, 0.584f, 1.0f },
+        /*pressed*/ { 0.102f, 0.392f, 0.306f, 1.0f },
+        /*text*/    { 0.039f, 0.102f, 0.184f, 1 },
+        gameState->hWhiteTexture
+    };
+    if (UIButton(uiBucket, gameState->font, input, &gameState->uiNavState, rect, "Fado Engine", &buttonStyle))
+    {
+        v2 textPos = { 15, 15 };
+        v4 textColor = { 1, 0.5f, 1, 1 };
+        UIGuiPushText(uiBucket, textPos, textColor, "Button Is Working !!! :))");
+    }
+    rect.y += rect.height + buttonsYOffset;
+    if (UIButton(uiBucket, gameState->font, input, &gameState->uiNavState, rect, "Is The", &buttonStyle))
+    {
+        v2 textPos = { 15, 15 };
+        v4 textColor = { 1, 0.5f, 1, 1 };
+        UIGuiPushText(uiBucket, textPos, textColor, "Button Is Working !!! :))");
+    }
+    rect.y += rect.height + buttonsYOffset;
+    if (UIButton(uiBucket, gameState->font, input, &gameState->uiNavState, rect, "Best!!!", &buttonStyle))
+    {
+        v2 textPos = { 15, 15 };
+        v4 textColor = { 1, 0.5f, 1, 1 };
+        UIGuiPushText(uiBucket, textPos, textColor, "Button Is Working !!! :))");
+    }
 }
 
 internal void HandleGameInput(FGameState* gameState, FGameInput* input)
@@ -118,22 +201,22 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
 
         // Movement
         f32 moveSpeed = 10.0f * input->deltaTime;
-        if ((controllerInput->dpadUp.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Up)))
+        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Up))
         {
             *camPos += forward * moveSpeed;
             //*sphere1Pos += forward * moveSpeed;
         }
-        if ((controllerInput->dpadDown.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Down)))
+        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Down))
         {
             *camPos -= forward * moveSpeed;
             //*sphere1Pos -= forward * moveSpeed;
         }
-        if ((controllerInput->dpadRight.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Right)))
+        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Right))
         {
             *camPos += right * moveSpeed;
             //*sphere1Pos += right * moveSpeed;
         }
-        if ((controllerInput->dpadLeft.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Left)))
+        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Left))
         {
             *camPos -= right * moveSpeed;
             //*sphere1Pos -= right * moveSpeed;
@@ -148,7 +231,16 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
             *camPos -= up * moveSpeed;
             //*sphere1Pos -= up * moveSpeed;
         }
-        
+
+        if (IsInputButtonClick(&controllerInput->dpadDown))
+        {
+            UINavigateNext(&gameState->uiNavState, true);
+        }
+        if (IsInputButtonClick(&controllerInput->dpadUp))
+        {
+            UINavigateBack(&gameState->uiNavState, true);
+        }
+
         // Rotation
         f32 sensitivity = 100.0f * input->deltaTime;
         if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Up))
@@ -198,68 +290,6 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
     }
 }
 
-// Returns true on the frame the button was clicked.
-internal b8 UIPushButton(FUICommandBucket* bucket, FFont* font, v4 rect, cc8* text, FUIButtonStyle* style, FGameInput* input)
-{
-    v2 mousePos = { (f32)input->mouse.x, (f32)input->mouse.y };
-    b8 hovered = UIPointInRect(mousePos, rect);
-    b8 pressed = hovered && input->mouse.buttons[0].isDown && !input->mouse.buttons[0].wasDown;
-
-    v4 color = style->idleColor;
-    if (pressed)
-    {
-        color = style->pressedColor;
-    }
-    else if (hovered)
-    {
-        color = style->hoverColor;
-    }
-
-    UIPushRect(bucket, rect, { 0, 0, 1, 1 }, color, style->texture);
-
-    // > TODO: Replace with real text measurement later
-    f32 textX = rect.x + 20;
-    f32 textY = rect.y + rect.height * 0.5f;
-    UIPushText(bucket, font, text, { textX, textY }, style->textColor);
-
-    return pressed;
-}
-
-internal void UpdateUI(FGameState* gameState, FGameInput* input)
-{
-    FUICommandBucket* uiBucket = gameState->uiCommands;
-
-    f32 buttonsYOffset = 20.0f;
-    v4 rect = { 350, 450, 200, 75 };
-    FUIButtonStyle buttonStyle = {
-        /*idle*/    { 0.251f, 0.596f, 0.369f, 1.0f },
-        /*hover*/   { 0.82f, 0.796f, 0.584f, 1.0f },
-        /*pressed*/ { 0.102f, 0.392f, 0.306f, 1.0f },
-        /*text*/    { 0.039f, 0.102f, 0.184f, 1 },
-        gameState->hWhiteTexture
-    };
-    if (UIPushButton(uiBucket, gameState->font, rect, "Fado Engine", &buttonStyle, input))
-    {
-        v2 textPos = { 15, 15 };
-        v4 textColor = { 1, 0.5f, 1, 1 };
-        UIGuiPushText(uiBucket, textPos, textColor, "Button Is Working !!! :))");
-    }
-    rect.y += rect.height + buttonsYOffset;
-    if (UIPushButton(uiBucket, gameState->font, rect, "Is The", &buttonStyle, input))
-    {
-        v2 textPos = { 15, 15 };
-        v4 textColor = { 1, 0.5f, 1, 1 };
-        UIGuiPushText(uiBucket, textPos, textColor, "Button Is Working !!! :))");
-    }
-    rect.y += rect.height + buttonsYOffset;
-    if (UIPushButton(uiBucket, gameState->font, rect, "Best!!!", &buttonStyle, input))
-    {
-        v2 textPos = { 15, 15 };
-        v4 textColor = { 1, 0.5f, 1, 1 };
-        UIGuiPushText(uiBucket, textPos, textColor, "Button Is Working !!! :))");
-    }
-}
-
 extern "C" __declspec(dllexport)
 GAME_UPDATE(GameUpdate)
 {
@@ -268,9 +298,8 @@ GAME_UPDATE(GameUpdate)
         Initialize(gameState);
     }
 
-    UpdateUI(gameState, input);
-
 	HandleGameInput(gameState, input);
+    UpdateUI(gameState, input);
 
     gameState->transforms->positions[gameState->infinitePlane].x = gameState->transforms->positions[gameState->hCamera].x;
     gameState->transforms->positions[gameState->infinitePlane].z = gameState->transforms->positions[gameState->hCamera].z;
