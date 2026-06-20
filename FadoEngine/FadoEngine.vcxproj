@@ -162,6 +162,10 @@
     <ClInclude Include="FadoEngine\Code\imgui\imstb_truetype.h" />
     <ClInclude Include="FadoEngine\code\win32_fado.h" />
     <ClInclude Include="FadoEngine\Tools\FadoConverter\fado_asset_format.h" />
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_dxt.h" />
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_image.h" />
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_image_resize2.h" />
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_truetype.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

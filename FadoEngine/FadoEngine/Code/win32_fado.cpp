@@ -132,6 +132,7 @@ internal f32 Win32ProcessXInputStickValue(SHORT value, SHORT deadZoneThreshold)
 
 internal void Win32ProcessButtonState(FGameButtonState* state, bool32 isDown, f32 deltaTime)
 {
+	state->wasDown = state->isDown;
 	state->isDown = isDown;
 
 	if (state->isDown && state->wasDown)
@@ -463,6 +464,9 @@ internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
 	gameState->hGraniteTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\granite.fasset");
 	gameState->hSkyBoxTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\sky_box.fasset");
 	gameState->hWhiteTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\white.fasset");
+
+	//LoadFont(world, "FadoEngine\\AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, gameState->font);
+	LoadFont(world, "FadoEngine\\AssetsSource\\Fonts\\arialbd.ttf", 25.0f, gameState->font);
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -488,21 +492,22 @@ int WINAPI wWinMain(
 	engineMemory.scratch = ArenaMake((u8*)base + Megabytes(64), Megabytes(16));
 	
 	Win32LoadXInput();
-	FGameState* gameState = ArenaPushSize(&engineMemory.permanent, FGameState);
-	gameState->transforms = ArenaPushSize(&engineMemory.permanent, FTransformTable);
-	gameState->entityTable = ArenaPushSize(&engineMemory.permanent, FEntityTable);
-	gameState->collisionWorld = ArenaPushSize(&engineMemory.permanent, FCollisionWorld);
-	gameState->uiCommands = ArenaPushSize(&engineMemory.permanent, FUICommandBucket);
+	FGameState* gameState = ArenaPushType(&engineMemory.permanent, FGameState);
+	gameState->transforms = ArenaPushType(&engineMemory.permanent, FTransformTable);
+	gameState->entityTable = ArenaPushType(&engineMemory.permanent, FEntityTable);
+	gameState->collisionWorld = ArenaPushType(&engineMemory.permanent, FCollisionWorld);
+	gameState->uiCommands = ArenaPushType(&engineMemory.permanent, FUICommandBucket);
+	gameState->font = ArenaPushType(&engineMemory.permanent, FFont);
 
 	Win32System win32System = {};
-	win32System.world = ArenaPushSize(&engineMemory.permanent, FRenderWorld);
+	win32System.world = ArenaPushType(&engineMemory.permanent, FRenderWorld);
 	win32System.gameState = gameState;
 	win32System.engineMemory = &engineMemory;
 	win32System.world->uiBucket = gameState->uiCommands;
 	Win32InitializeWindowAndD3D(&engineMemory, &win32System);
 	InitLoadAssets(win32System.world, gameState);
 
-	FGameInput* input = ArenaPushSize(&engineMemory.permanent, FGameInput);
+	FGameInput* input = ArenaPushType(&engineMemory.permanent, FGameInput);
 
 	char sourceGameCodeDLLFullPath[MAX_PATH] = "x64\\Debug\\Game.dll";
 	//Win32BuildEXEPathFileName(&win32State, "folayfila.dll", sizeof(sourceGameCodeDLLFullPath), sourceGameCodeDLLFullPath);

@@ -2,6 +2,10 @@
 
 #include "fado_d3d.h"
 #include "Tools/FadoConverter/fado_asset_format.h"
+
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "Tools/FadoConverter/stb/stb_truetype.h"
+
 #include "glb/fado_glb.h"
 #include "fado_math.h"
 #include "imgui/imgui.h"
@@ -284,9 +288,14 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FMemoryArena* scratc
 	result = d3d->device->CreateBlendState(&blendDesc, &d3d->uiBlendState);
 	Assert(!FAILED(result));
 
+	D3D11_DEPTH_STENCIL_DESC uiDepthDesc = {};
+	uiDepthDesc.DepthEnable = false;
+	uiDepthDesc.StencilEnable = false;
+	d3d->device->CreateDepthStencilState(&uiDepthDesc, &d3d->uiDepthStencilState);
+
 	// Setup the viewport for rendering.
-	d3d->viewport.Width = (float)d3dInitParams->screenWidth;
-	d3d->viewport.Height = (float)d3dInitParams->screenHeight;
+	d3d->viewport.Width = (f32)d3dInitParams->screenWidth;
+	d3d->viewport.Height = (f32)d3dInitParams->screenHeight;
 	d3d->viewport.MinDepth = 0.0f;
 	d3d->viewport.MaxDepth = 1.0f;
 	d3d->viewport.TopLeftX = 0.0f;
@@ -297,7 +306,7 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FMemoryArena* scratc
 
 	// Setup the projection matrix.
 	f32 fieldOfView = Pi32 / 4.0f;
-	f32 screenAspect = (float)d3dInitParams->screenWidth / (float)d3dInitParams->screenHeight;
+	f32 screenAspect = (f32)d3dInitParams->screenWidth / (f32)d3dInitParams->screenHeight;
 
 	// Create the projection matrix for 3D rendering.
 	d3d->projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(fieldOfView, screenAspect, d3dInitParams->screenNear, d3dInitParams->screenDepth);
@@ -306,7 +315,7 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FMemoryArena* scratc
 	d3d->worldMatrix = DirectX::XMMatrixIdentity();
 
 	// Create an orthographic projection matrix for 2D rendering.
-	d3d->orthoMatrix = DirectX::XMMatrixOrthographicLH((float)d3dInitParams->screenWidth, (float)d3dInitParams->screenHeight, d3dInitParams->screenNear, d3dInitParams->screenDepth);
+	d3d->orthoMatrix = DirectX::XMMatrixOrthographicLH((f32)d3dInitParams->screenWidth, (f32)d3dInitParams->screenHeight, d3dInitParams->screenNear, d3dInitParams->screenDepth);
 }
 
 internal void BeginScene(FD3D *d3d, v4 color)
@@ -881,7 +890,7 @@ internal void SetUIProjection(FRenderWorld* world)
 internal void PushQuad(FUIVertex* verts, u32* count, v4 rect, v4 coords, v4 color)
 {
 	f32 w = rect.width;
-	f32 h = rect.heigth;
+	f32 h = rect.height;
 	// triangle 1
 	verts[(*count)++] = { rect.x,		rect.y,		  coords.u0, coords.v0, color.r, color.g, color.b, color.a };
 	verts[(*count)++] = { (rect.x+w),   rect.y,		  coords.u1, coords.v0, color.r, color.g, color.b, color.a };
@@ -890,6 +899,41 @@ internal void PushQuad(FUIVertex* verts, u32* count, v4 rect, v4 coords, v4 colo
 	verts[(*count)++] = { rect.x,	  rect.y,		coords.u0, coords.v0, color.r, color.g, color.b, color.a };
 	verts[(*count)++] = { (rect.x+w), (rect.y + h), coords.u1, coords.v1, color.r, color.g, color.b, color.a };
 	verts[(*count)++] = { rect.x,	  (rect.y + h), coords.u0, coords.v1, color.r, color.g, color.b, color.a };
+}
+
+internal HTexture CreateTextureFromPixels(FRenderWorld* world, void* pixels, i32 width, i32 height)
+{
+	D3D11_TEXTURE2D_DESC texDesc = {};
+	texDesc.Width = width;
+	texDesc.Height = height;
+	texDesc.MipLevels = 1;
+	texDesc.ArraySize = 1;
+	texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	texDesc.SampleDesc.Count = 1;
+	texDesc.Usage = D3D11_USAGE_DEFAULT;
+	texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	D3D11_SUBRESOURCE_DATA data = {};
+	data.pSysMem = pixels;
+	data.SysMemPitch = width * 4;
+	data.SysMemSlicePitch = 0;
+
+	ID3D11Texture2D* tex;
+	HRESULT result = world->d3d.device->CreateTexture2D(&texDesc, &data, &tex);
+	Assert(!FAILED(result));
+
+	ID3D11ShaderResourceView* srv;
+	result = world->d3d.device->CreateShaderResourceView(tex, nullptr, &srv);
+	Assert(!FAILED(result));
+	tex->Release();
+
+	Assert(world->texturesCount < MAX_TEXTURES);
+	HTexture handle = world->texturesCount++;
+	world->textures[handle].textureView = srv;
+	world->textures[handle].width = width;
+	world->textures[handle].height = height;
+
+	return handle;
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -1052,6 +1096,25 @@ internal void FlushLitTextureBucket(FRenderWorld* world)
 	world->litTextureBucket.count = 0;
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// FlushUIBucket
+//
+// Draws all queued UI commands (rects + text-as-rects) for this frame.
+//
+// - UI has no concept of depth: layering is purely by submission order
+//   (first pushed = bottom, last pushed = top), so depth testing is
+//   disabled for this entire pass. Without this, UI quads would be
+//   depth-tested against each other (and the 3D scene) and incorrectly
+//   discarded/hidden, since most UI sits at the same Z.
+// - Commands are batched by texture: consecutive commands using the same
+//   texture are combined into a single Draw() call. When the texture
+//   changes, the accumulated batch is flushed (uploaded + drawn) before
+//   starting a new batch. This keeps draw calls low without needing a
+//   full sort, as long as same-texture UI elements are pushed together.
+// - Alpha blending is enabled so partially-transparent quads (e.g. font
+//   glyph edges, semi-transparent panels) composite correctly over
+//   whatever was drawn before them in this same pass.
+// ────────────────────────────────────────────────────────────────────────
 internal void FlushUIBucket(FRenderWorld* world)
 {
 	FUICommandBucket* bucket = world->uiBucket;
@@ -1073,6 +1136,8 @@ internal void FlushUIBucket(FRenderWorld* world)
 
 	f32 blend_factor[4] = { 0, 0, 0, 0 };
 	deviceContext->OMSetBlendState(world->d3d.uiBlendState, blend_factor, 0xFFFFFFFF);
+
+	deviceContext->OMSetDepthStencilState(world->d3d.uiDepthStencilState, 0);
 
 	// Draw per texture group
 	ID3D11ShaderResourceView* currentTexture = nullptr;
@@ -1133,6 +1198,7 @@ internal void FlushUIBucket(FRenderWorld* world)
 		deviceContext->Draw(vertCount, 0);
 	}
 
+	deviceContext->OMSetDepthStencilState(world->d3d.depthStencilState, 1);
 	deviceContext->OMSetBlendState(nullptr, blend_factor, 0xFFFFFFFF);
 	bucket->count = 0;
 	ArenaReset(world->scratchArena);
@@ -1283,7 +1349,7 @@ HTexture LoadFImage(FRenderWorld* world, const char* fileName)
 
 HMesh LoadGLBModel(FRenderWorld* world, const char* fileName)
 {
-	FGLBAsset* asset = ArenaPushSize(world->scratchArena, FGLBAsset);
+	FGLBAsset* asset = ArenaPushType(world->scratchArena, FGLBAsset);
 	ZeroStruct(asset);
 
 	if (!GLB_Load(fileName, asset))
@@ -1328,6 +1394,63 @@ HMesh LoadGLBModel(FRenderWorld* world, const char* fileName)
 	ArenaReset(world->scratchArena);
 	GLB_Free(asset);
 	return handle;
+}
+
+HTexture LoadFont(FRenderWorld* world, const char* filename, f32 fontSize, FFont* outFont)
+{
+	// Read font file into memory
+	FILE* file = fopen(filename, "rb");
+	if (!file)
+	{
+		return false;
+	}
+
+	fseek(file, 0, SEEK_END);
+	u32 size = ftell(file);
+	fseek(file, 0, SEEK_SET);
+	u8* fontBuffer = ArenaPushSize(world->scratchArena, u8, size);
+	fread(fontBuffer, 1, size, file);
+	fclose(file);
+
+	// Bake atlas (single channel, 512x512 — adjust if needed)
+	i32 atlasW = 512, atlasH = 512;
+	u8* atlasPixels = ArenaPushSize(world->scratchArena, u8, (atlasW * atlasH));
+
+	stbtt_bakedchar bakedChars[96];
+	i32 result = stbtt_BakeFontBitmap(fontBuffer, 0, fontSize,
+		atlasPixels, atlasW, atlasH, 32, 96, bakedChars);
+	Assert(result > 0); // didn't fit, increase atlas size
+
+	// Convert single-channel to RGBA (so it uses same shader/pipeline as rects)
+	u32* rgbaPixels = ArenaPushSize(world->scratchArena, u32, (atlasW * atlasH * 4));
+	for (i32 i = 0; i < (atlasW * atlasH); ++i)
+	{
+		u8 a = atlasPixels[i];
+		rgbaPixels[i] = (a << 24) | (0x00FFFFFF); // white with alpha = coverage
+	}
+
+	// Upload as texture (reuse your existing texture creation path)
+	outFont->atlasTexture = CreateTextureFromPixels(world, rgbaPixels, atlasW, atlasH);
+	outFont->size = fontSize;
+
+	// Convert baked chars to our glyph format
+	for (u32 i = 0; i < GLYPHS_COUNT; ++i)
+	{
+		stbtt_bakedchar* bc = &bakedChars[i];
+		FFontGlyph* glyph = &outFont->glyphs[i];
+		glyph->coords.u0 = bc->x0 / (f32)atlasW;
+		glyph->coords.v0 = bc->y0 / (f32)atlasH;
+		glyph->coords.u1 = bc->x1 / (f32)atlasW;
+		glyph->coords.v1 = bc->y1 / (f32)atlasH;
+		glyph->width = bc->x1 - bc->x0;
+		glyph->height = bc->y1 - bc->y0;
+		glyph->offset.x = bc->xoff;
+		glyph->offset.y = bc->yoff;
+		glyph->xadvance = bc->xadvance;
+	}
+
+	ArenaReset(world->scratchArena);
+	return outFont->atlasTexture;
 }
 
 // ────────────────────────────────────────────────────────────────────────

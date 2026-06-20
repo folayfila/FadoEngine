@@ -117,7 +117,7 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
         v3 up = QuatUp(camRot);
 
         // Movement
-        f32 moveSpeed = 25.0f * input->deltaTime;
+        f32 moveSpeed = 10.0f * input->deltaTime;
         if ((controllerInput->dpadUp.isDown) || (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Up)))
         {
             *camPos += forward * moveSpeed;
@@ -198,22 +198,66 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
     }
 }
 
-internal void UpdateUI(FGameState* gameState)
+// Returns true on the frame the button was clicked.
+internal b8 UIPushButton(FUICommandBucket* bucket, FFont* font, v4 rect, cc8* text, FUIButtonStyle* style, FGameInput* input)
 {
-    FUICommandBucket* commands = gameState->uiCommands;
+    v2 mousePos = { (f32)input->mouse.x, (f32)input->mouse.y };
+    b8 hovered = UIPointInRect(mousePos, rect);
+    b8 pressed = hovered && input->mouse.buttons[0].isDown && !input->mouse.buttons[0].wasDown;
 
-    v4 rect = { 100, 100, 200, 100 };
-    v4 rectColor = { 0, 1, 0, 1.0f };
-    v4 coords = { 0, 0, 1, 1 };
-    UIPushRect(commands, rect, coords, rectColor, gameState->hWhiteTexture);
+    v4 color = style->idleColor;
+    if (pressed)
+    {
+        color = style->pressedColor;
+    }
+    else if (hovered)
+    {
+        color = style->hoverColor;
+    }
 
-    rect = { 400, 100, 200, 200 };
-    rectColor = { 1, 1, 0, 1.0f };
-    UIPushRect(commands, rect, coords, rectColor, gameState->hGraniteTexture);
+    UIPushRect(bucket, rect, { 0, 0, 1, 1 }, color, style->texture);
 
-    v2 textPos = { 15, 15 };
-    v4 textColor = { 1, 0.5f, 1, 1 };
-    UIPushText(commands, textPos, textColor, "Fado UI Working?!?!");
+    // > TODO: Replace with real text measurement later
+    f32 textX = rect.x + 20;
+    f32 textY = rect.y + rect.height * 0.5f;
+    UIPushText(bucket, font, text, { textX, textY }, style->textColor);
+
+    return pressed;
+}
+
+internal void UpdateUI(FGameState* gameState, FGameInput* input)
+{
+    FUICommandBucket* uiBucket = gameState->uiCommands;
+
+    f32 buttonsYOffset = 20.0f;
+    v4 rect = { 350, 450, 200, 75 };
+    FUIButtonStyle buttonStyle = {
+        /*idle*/    { 0.251f, 0.596f, 0.369f, 1.0f },
+        /*hover*/   { 0.82f, 0.796f, 0.584f, 1.0f },
+        /*pressed*/ { 0.102f, 0.392f, 0.306f, 1.0f },
+        /*text*/    { 0.039f, 0.102f, 0.184f, 1 },
+        gameState->hWhiteTexture
+    };
+    if (UIPushButton(uiBucket, gameState->font, rect, "Fado Engine", &buttonStyle, input))
+    {
+        v2 textPos = { 15, 15 };
+        v4 textColor = { 1, 0.5f, 1, 1 };
+        UIGuiPushText(uiBucket, textPos, textColor, "Button Is Working !!! :))");
+    }
+    rect.y += rect.height + buttonsYOffset;
+    if (UIPushButton(uiBucket, gameState->font, rect, "Is The", &buttonStyle, input))
+    {
+        v2 textPos = { 15, 15 };
+        v4 textColor = { 1, 0.5f, 1, 1 };
+        UIGuiPushText(uiBucket, textPos, textColor, "Button Is Working !!! :))");
+    }
+    rect.y += rect.height + buttonsYOffset;
+    if (UIPushButton(uiBucket, gameState->font, rect, "Best!!!", &buttonStyle, input))
+    {
+        v2 textPos = { 15, 15 };
+        v4 textColor = { 1, 0.5f, 1, 1 };
+        UIGuiPushText(uiBucket, textPos, textColor, "Button Is Working !!! :))");
+    }
 }
 
 extern "C" __declspec(dllexport)
@@ -224,8 +268,7 @@ GAME_UPDATE(GameUpdate)
         Initialize(gameState);
     }
 
-    // Reset UI commands bucket.
-    UpdateUI(gameState);
+    UpdateUI(gameState, input);
 
 	HandleGameInput(gameState, input);
 

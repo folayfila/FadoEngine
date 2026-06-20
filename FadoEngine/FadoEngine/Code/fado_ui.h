@@ -46,6 +46,15 @@ struct FUICommandBucket
 	u32 count;
 };
 
+struct FUIButtonStyle
+{
+	v4 idleColor;
+	v4 hoverColor;
+	v4 pressedColor;
+	v4 textColor;
+	HTexture texture;
+};
+
 // ─────────────────────────────────────────────
 //  Public API
 // ────────────────────────────────────────────
@@ -58,7 +67,39 @@ inline void UIPushRect(FUICommandBucket* bucket, v4 rect, v4 coords, v4 color, H
 	cmd->rect = { rect, coords, color, hTexture };
 }
 
-inline void UIPushText(FUICommandBucket* bucket, v2 pos, v4 color, const char* text)
+inline void UIPushText(FUICommandBucket* bucket, FFont* font, const char* text, v2 pos, v4 color)
+{
+	v2 cursor = pos;
+
+	for (const char* p = text; *p; ++p)
+	{
+		if (*p < 32 || *p > 127)
+		{
+			continue;
+		}
+		FFontGlyph* glyph = &font->glyphs[*p - 32];
+
+		v4 rect = {
+			cursor.x + glyph->offset.x,
+			cursor.y + glyph->offset.y,
+			(f32)glyph->width,
+			(f32)glyph->height
+		};
+		v4 coords = glyph->coords;
+
+		UIPushRect(bucket, rect, coords, color, font->atlasTexture);
+		cursor.x += glyph->xadvance;
+	}
+}
+
+inline bool32 UIPointInRect(v2 mPos, v4 rect)
+{
+	bool32 result = (mPos.x >= rect.x) && (mPos.x <= rect.x + rect.width) &&
+					(mPos.y >= rect.y) && (mPos.y <= rect.y + rect.height);
+	return result;
+}
+
+inline void UIGuiPushText(FUICommandBucket* bucket, v2 pos, v4 color, const char* text)
 {
 	Assert(bucket->count < MAX_UI_COMMANDS);
 	FUICommand* cmd = &bucket->commands[bucket->count++];

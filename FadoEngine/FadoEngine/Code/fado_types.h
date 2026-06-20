@@ -20,7 +20,11 @@ typedef double f64;
 
 typedef wchar_t wchar;
 
+typedef bool b8;
 typedef i32 bool32;
+
+typedef char c8;
+typedef const char cc8;
 
 // ─────────────────────────────────────────────
 
@@ -140,7 +144,7 @@ struct v4
 	{
 		struct { f32 x, y, z, w; };
 		struct { f32 r, g, b, a; };
-		struct { f32 r, g, width, heigth; };
+		struct { f32 r, g, width, height; };
 		struct { f32 u0, v0, u1, v1; };
 		f32 e[4];
 	};
@@ -230,7 +234,8 @@ struct FEngineMemory
     FMemoryArena scratch;   // ! MUST reset manually after using with ArenaReset()
 };
 
-#define ArenaPushSize(Arena, type) (type *)AreaPushSize_(Arena, sizeof(type))
+#define ArenaPushSize(Arena, type, size) (type *)AreaPushSize_(Arena, size)
+#define ArenaPushType(Arena, type) (type *)AreaPushSize_(Arena, sizeof(type))
 #define ArenaPushArray(Arena, Count, type) (type *)AreaPushSize_(Arena, (Count)*sizeof(type))
 internal void* AreaPushSize_(FMemoryArena* arena, u32 size)
 {
@@ -273,6 +278,24 @@ inline void CopyCString(char* dst, const char* src)
 
     dst[i] = '\0';
 }
+
+// ───────────
+// Fonts
+struct FFontGlyph
+{
+	v4 coords;
+	i32 width, height;
+	v2 offset;
+	f32 xadvance;
+};
+
+#define GLYPHS_COUNT 96
+struct FFont
+{
+	HTexture atlasTexture;
+	FFontGlyph glyphs[GLYPHS_COUNT];	// ASCII 32-127
+	f32 size;							// font size
+};
 
 
 #endif // FADO_TYPES_H

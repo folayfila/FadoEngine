@@ -37,6 +37,9 @@
     <Filter Include="Header Files\imgui\backends">
       <UniqueIdentifier>{73edadbb-841e-4809-af5e-8250214e69d9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="tools\FadoConverter\stb">
+      <UniqueIdentifier>{3f23b2ff-978d-4810-b8c5-e6b74aa1fa13}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FadoEngine\code\win32_fado.cpp">
@@ -118,6 +121,18 @@
     </ClInclude>
     <ClInclude Include="FadoEngine\Code\fado_ui.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_image_resize2.h">
+      <Filter>tools\FadoConverter\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_truetype.h">
+      <Filter>tools\FadoConverter\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_dxt.h">
+      <Filter>tools\FadoConverter\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_image.h">
+      <Filter>tools\FadoConverter\stb</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

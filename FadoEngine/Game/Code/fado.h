@@ -11,13 +11,14 @@ struct FCollisionWorld;
 
 struct FGameButtonState
 {
-	bool32 wasDown;
-	bool32 isDown;
+	b8 wasDown;
+	b8 isDown;
 	f32 heldLength;	// Time since the button has been pressed and held.
 };
 
 struct FMouseInput
 {
+    // Mouse Buttons: 0 left, 1 middle, 2 right
     FGameButtonState buttons[5];
     i32 x, y, z;
     i32 deltaX, deltaY; // Difference in mouse position between the last and current frame.
@@ -114,6 +115,8 @@ struct FGameState
     HTexture hMosaicTexture;
     HTexture hGraniteTexture;
     HTexture hWhiteTexture;
+
+    FFont* font;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
