@@ -58,7 +58,7 @@ struct FD3D
 	ID3D11BlendState* uiBlendState;
 	ID3D11DepthStencilState* uiDepthStencilState;
 	D3D11_VIEWPORT viewport;
-	bool32 vsyncEnabled;
+	b32 vsyncEnabled;
 	i32 videoCardMemory;
 	char videoCardDescription[128];
 };
@@ -70,8 +70,8 @@ struct FD3DInitParams
 	HWND window;
 	i32 screenWidth;
 	i32 screenHeight;
-	bool32 vsync;
-	bool32 fullScreen;
+	b32 vsync;
+	b32 fullScreen;
 	f32 screenDepth;
 	f32 screenNear;
 };
@@ -297,9 +297,9 @@ void	 InitializeFD3D  (FRenderWorld* world, FD3DInitParams* d3dInitParams, FTran
 void	 Render			 (FRenderWorld* world, FEntityTable* entities, FTransformTable* transforms);
 
 // Loaders
-HTexture LoadFImage		 (FRenderWorld* world, const char* fileName);
-HMesh	 LoadGLBModel	 (FRenderWorld* world, const char* filename);
-HTexture LoadFont(FRenderWorld* world, const char* filename, f32 fontSize, FFont* outFont);
+HTexture LoadFImage		 (FRenderWorld* world, cc8* fileName);
+HMesh	 LoadGLBModel	 (FRenderWorld* world, cc8* filename);
+HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFont);
 
 // Resize the swap chain buffers, recreate the render target view (and depth/stencil buffer and view), update the viewport and projection matrix aspect ratio.
 void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 screenDepth);

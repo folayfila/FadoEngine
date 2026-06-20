@@ -22,7 +22,7 @@ struct Win32GameCode
 	FILETIME dllLastWriteTime;
 
 	FGameUpdate* gameUpdate;
-	bool32 isValid;
+	b32 isValid;
 };
 
 struct Win32System
@@ -40,8 +40,8 @@ struct Win32System
 ///////////////////////////////
 global_variable Win32System* GlobalWin32System;
 global_variable WINDOWPLACEMENT GlobalWindowPosition = { sizeof(GlobalWindowPosition) };
-global_variable bool32 GlobalShowCursor = true;
-global_variable bool32 GlobalRunning = true;
+global_variable b32 GlobalShowCursor = true;
+global_variable b32 GlobalRunning = true;
 global_variable LARGE_INTEGER GlobalPerfCountFrequency;
 
 #endif // WIN32_FADO_H

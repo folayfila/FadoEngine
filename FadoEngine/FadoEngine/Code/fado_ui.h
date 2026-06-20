@@ -73,11 +73,11 @@ inline void UIPushRect(FUICommandBucket* bucket, v4 rect, v4 coords, v4 color, H
 	cmd->rect = { rect, coords, color, hTexture };
 }
 
-inline void UIPushText(FUICommandBucket* bucket, FFont* font, const char* text, v2 pos, v4 color)
+inline void UIPushText(FUICommandBucket* bucket, FFont* font, cc8* text, v2 pos, v4 color)
 {
 	v2 cursor = pos;
 
-	for (const char* p = text; *p; ++p)
+	for (cc8* p = text; *p; ++p)
 	{
 		if (*p < 32 || *p > 127)
 		{
@@ -137,7 +137,7 @@ inline void UINavigateBack(FUINavState* nav, b8 wrap = true)
 	}
 }
 
-inline void UIGuiPushText(FUICommandBucket* bucket, v2 pos, v4 color, const char* text)
+inline void UIGuiPushText(FUICommandBucket* bucket, v2 pos, v4 color, cc8* text)
 {
 	Assert(bucket->count < MAX_UI_COMMANDS);
 	FUICommand* cmd = &bucket->commands[bucket->count++];

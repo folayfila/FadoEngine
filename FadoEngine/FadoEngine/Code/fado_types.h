@@ -21,7 +21,7 @@ typedef double f64;
 typedef wchar_t wchar;
 
 typedef bool b8;
-typedef i32 bool32;
+typedef i32 b32;
 
 typedef char c8;
 typedef const char cc8;

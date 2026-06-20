@@ -62,9 +62,9 @@ internal void Initialize(FGameState* gameState)
         gameState->entityTable->entities[gameState->cube2].hTransform, extents, ECollisionFlags::Static);
 }
 
-internal bool32 IsStickHeld(v2 stickAverage, EStickDirection direction)
+internal b8 IsStickHeld(v2 stickAverage, EStickDirection direction)
 {
-    bool32 result = false;
+    b8 result = false;
     f32 threshHold = 0.5f;
 
     switch (direction)
@@ -306,7 +306,7 @@ GAME_UPDATE(GameUpdate)
 
     Rotate(gameState->transforms, gameState->cube1, { 50.0f*input->deltaTime, 0.0f, 0.0f });
     Rotate(gameState->transforms, gameState->cube2, { -50.0f * input->deltaTime, 0.0f, 0.0f });
-    //Rotate(gameState->transforms, gameState->sphere1, { 0.0f, 50.0f * input->deltaTime, 0.0f });
+    Rotate(gameState->transforms, gameState->sphere1, { 0.0f, 50.0f * input->deltaTime, 0.0f });
     Rotate(gameState->transforms, gameState->sphere2, { 0.0f, -50.0f * input->deltaTime, 0.0f });
 
     // Test and update collisions.

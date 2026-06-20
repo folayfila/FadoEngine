@@ -22,7 +22,7 @@ struct FMouseInput
     FGameButtonState buttons[5];
     i32 x, y, z;
     i32 deltaX, deltaY; // Difference in mouse position between the last and current frame.
-    bool32 isRotating;  // Used to track mouse rotation so we prevent snappy rotatiots when delta is huge.
+    b32 isRotating;  // Used to track mouse rotation so we prevent snappy rotatiots when delta is huge.
 };
 
 enum EStickDirection
@@ -38,8 +38,8 @@ struct FGameControllerInput
 {
     v2 leftStickAverage;
     v2 rightStickAverage;
-    bool32 isConnected;
-    bool32 isAnalog;
+    b32 isConnected;
+    b32 isAnalog;
 
     // L2 & R2 buttons are handled as triggers with push values.
     f32 leftTrigger;
@@ -84,8 +84,8 @@ struct FGameInput
 
 struct FGameState
 {
-    bool32 running;
-    bool32 initialized;
+    b32 running;
+    b32 initialized;
 
     HEntity hCamera; // Camera MUST always be handle 0!
     f32 cameraYaw;   // degrees, accumulates freely

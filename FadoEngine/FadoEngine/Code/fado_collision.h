@@ -78,7 +78,7 @@ struct FCollider
 	ECollisionFlags flags;
 	FAABB worldAABB;		// Rebuilt every frame by CollisionBuildAABBs()
 	FOBB  worldOBB;			// valid only when rotation isn't identity and flags are solid
-	bool32 useOBB;			// computed each frame in BuildAABBs
+	b32 useOBB;			// computed each frame in BuildAABBs
 };
 
 // ─────────────────────────────────────────────
@@ -108,7 +108,7 @@ struct FContactInfo
 	HEntity entityB;
 	v3      normal;       // points from B -> A (push A out)
 	f32     penetration;  // depth of overlap
-	bool32  isTrigger;    // at least one side is a trigger no MTV applied
+	b32  isTrigger;    // at least one side is a trigger no MTV applied
 };
 // MTV: Minimum Translation Vector. It's the smallest possible movement to separate two overlapping objects.
 
@@ -175,6 +175,6 @@ void CollisionUpdate(FCollisionWorld* collisionWorld, FTransformTable* transform
 void CollisionResolve(FCollisionWorld* collisionWorld, FTransformTable* transforms);
 
 // Checks if contactInfo->entityA and contactInfo->entityB are the same 2 entity handles passed.
-bool32 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEntityB);
+b8 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEntityB);
 
 #endif // FADO_COLIISION_H

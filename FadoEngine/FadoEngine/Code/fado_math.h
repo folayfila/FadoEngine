@@ -64,7 +64,7 @@ struct mat4
 };
 
 
-inline bool32 operator==(const v4& va, const v4& vb)
+inline b8 operator==(const v4& va, const v4& vb)
 {
 	return
 		(va.x == vb.x) &&
@@ -130,7 +130,7 @@ inline v3 V3Normalize(v3 a)
 
 // > TODO: Replace with our own rand()
 #include <stdlib.h>
-inline float Randomf32InRange(f32 min, f32 max)
+inline f32 Randomf32InRange(f32 min, f32 max)
 {
 	f32 result = min + ((max - min) * ((f32)rand() / (f32)RAND_MAX));
 	return result;
@@ -158,9 +158,9 @@ inline quat QuatIdentity()
 	return q;
 }
 
-inline bool32 IsQuatIdentity(quat& q)
+inline b8 IsQuatIdentity(quat& q)
 {
-	bool32 result = (q == QuatIdentity());
+	b8 result = (q == QuatIdentity());
 	return result;
 }
 
@@ -295,6 +295,30 @@ inline quat QuatFromEuler(v3 eulerDegrees)
 	result = QuatMultiply(yawMultPitch, roll);
 
 	return result;
+}
+
+inline v3 QuatToEuler(quat q)
+{
+	v3 euler;
+
+	// Pitch (X)
+	f32 sinp = 2.0f * (q.w * q.x + q.y * q.z);
+	f32 cosp = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
+	euler.x = atan2f(sinp, cosp);
+
+	// Yaw (Y)
+	f32 siny = 2.0f * (q.w * q.y - q.z * q.x);
+	if (fabsf(siny) >= 1.0f)
+		euler.y = copysignf(Pi32 * 0.5f, siny);
+	else
+		euler.y = asinf(siny);
+
+	// Roll (Z)
+	f32 sinr = 2.0f * (q.w * q.z + q.x * q.y);
+	f32 cosr = 1.0f - 2.0f * (q.y * q.y + q.z * q.z);
+	euler.z = atan2f(sinr, cosr);
+
+	return euler;
 }
 
 // Set an absolute rotation on a transform slot (replaces current rotation).

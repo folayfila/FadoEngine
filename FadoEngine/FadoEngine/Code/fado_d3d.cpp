@@ -16,8 +16,8 @@
 // Constants
 // ───────────────────────────
 // Unified vertex and pixel shaders entry points.
-const char* k_vsEntryFuncName = "VertexShaderEntry";
-const char* k_psEntryFuncName = "PixelShaderEntry";
+cc8* k_vsEntryFuncName = "VertexShaderEntry";
+cc8* k_psEntryFuncName = "PixelShaderEntry";
 
 // ────────────────────────────────────────────────────────────────────────
 // FD3D
@@ -1101,19 +1101,13 @@ internal void FlushLitTextureBucket(FRenderWorld* world)
 //
 // Draws all queued UI commands (rects + text-as-rects) for this frame.
 //
-// - UI has no concept of depth: layering is purely by submission order
-//   (first pushed = bottom, last pushed = top), so depth testing is
-//   disabled for this entire pass. Without this, UI quads would be
-//   depth-tested against each other (and the 3D scene) and incorrectly
-//   discarded/hidden, since most UI sits at the same Z.
-// - Commands are batched by texture: consecutive commands using the same
-//   texture are combined into a single Draw() call. When the texture
-//   changes, the accumulated batch is flushed (uploaded + drawn) before
-//   starting a new batch. This keeps draw calls low without needing a
-//   full sort, as long as same-texture UI elements are pushed together.
-// - Alpha blending is enabled so partially-transparent quads (e.g. font
-//   glyph edges, semi-transparent panels) composite correctly over
-//   whatever was drawn before them in this same pass.
+// - UI has no concept of depth: layering is purely by submission order (first pushed = bottom, last pushed = top),
+//   so depth testing is disabled for this entire pass. Without this, UI quads would be
+//   depth-tested against each other (and the 3D scene) and incorrectly discarded/hidden, since most UI sits at the same Z.
+// - Commands are batched by texture: consecutive commands using the same texture are combined into a single Draw() call.
+//   When the texture changes, the accumulated batch is flushed (uploaded + drawn) before starting a new batch.
+//   This keeps draw calls low without needing a full sort, as long as same-texture UI elements are pushed together.
+// - Alpha blending is enabled so partially-transparent quads composite correctly over whatever was drawn before them in this same pass.
 // ────────────────────────────────────────────────────────────────────────
 internal void FlushUIBucket(FRenderWorld* world)
 {
@@ -1136,7 +1130,6 @@ internal void FlushUIBucket(FRenderWorld* world)
 
 	f32 blend_factor[4] = { 0, 0, 0, 0 };
 	deviceContext->OMSetBlendState(world->d3d.uiBlendState, blend_factor, 0xFFFFFFFF);
-
 	deviceContext->OMSetDepthStencilState(world->d3d.uiDepthStencilState, 0);
 
 	// Draw per texture group
@@ -1200,6 +1193,7 @@ internal void FlushUIBucket(FRenderWorld* world)
 
 	deviceContext->OMSetDepthStencilState(world->d3d.depthStencilState, 1);
 	deviceContext->OMSetBlendState(nullptr, blend_factor, 0xFFFFFFFF);
+
 	bucket->count = 0;
 	ArenaReset(world->scratchArena);
 }
@@ -1255,7 +1249,7 @@ internal DXMatrix BuildEntityWorldMatrix(HEntity hEntity, FEntityTable* entityTa
 // ────────────────────────────────────────────────────────────────────────
 // Texture loader — .fasset image
 // ────────────────────────────────────────────────────────────────────────
-HTexture LoadFImage(FRenderWorld* world, const char* fileName)
+HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 {
 	FILE* file = fopen(fileName, "rb");
 	Assert(file);
@@ -1347,7 +1341,7 @@ HTexture LoadFImage(FRenderWorld* world, const char* fileName)
 // > TODO: Check if we can replace it with a .fasset
 // ────────────────────────────────────────────────────────────────────────
 
-HMesh LoadGLBModel(FRenderWorld* world, const char* fileName)
+HMesh LoadGLBModel(FRenderWorld* world, cc8* fileName)
 {
 	FGLBAsset* asset = ArenaPushType(world->scratchArena, FGLBAsset);
 	ZeroStruct(asset);
@@ -1396,7 +1390,7 @@ HMesh LoadGLBModel(FRenderWorld* world, const char* fileName)
 	return handle;
 }
 
-HTexture LoadFont(FRenderWorld* world, const char* filename, f32 fontSize, FFont* outFont)
+HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFont)
 {
 	// Read font file into memory
 	FILE* file = fopen(filename, "rb");
@@ -1683,6 +1677,28 @@ internal void DebugDrawOBB(FRenderWorld* world, const FOBB& box, v4 color)
 	DebugDrawLine(world, c[3], c[7], color);
 }
 
+internal void ShowDebugGui(FTransformTable* transforms)
+{
+	ImGui::Begin("Inspector");
+
+	for (u32 i = 0; i < transforms->count; ++i)
+	{
+		c8 label[64];
+		snprintf(label, sizeof(label), "Transform_%d", i);
+		if (ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			snprintf(label, sizeof(label), "Position_%d", i);
+			ImGui::DragFloat3(label, &transforms->positions[i].x, 0.1f);
+
+			snprintf(label, sizeof(label), "Scale_%d", i);
+			ImGui::DragFloat3(label, &transforms->scales[i].x, 0.1f);
+		}
+	}
+
+	ImGui::End();
+}
+
+
 internal void FlushDebugLineBucket(FRenderWorld* world)
 {
 	FDebugLineBucket* bucket = &world->debugBucket;
@@ -1750,6 +1766,8 @@ internal void FlushDebugLineBucket(FRenderWorld* world)
 
 void DebugRender(FRenderWorld* world, FEntityTable* entityTable, FTransformTable* transforms, FCollisionWorld* collisionWorld)
 {
+	ShowDebugGui(transforms);
+
 	FD3D* d3d = &world->d3d;
 
 	// Clear the buffers to begin the scene.

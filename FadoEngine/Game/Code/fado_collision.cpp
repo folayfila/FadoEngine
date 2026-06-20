@@ -6,7 +6,7 @@
 //  Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-internal bool32 AABBOverlap(const FAABB& a, const FAABB& b)
+internal b32 AABBOverlap(const FAABB& a, const FAABB& b)
 {
     if ((a.max.x < b.min.x) || (a.min.x > b.max.x)) { return false; }
     if ((a.max.y < b.min.y) || (a.min.y > b.max.y)) { return false; }
@@ -46,7 +46,7 @@ inline f32 OBBProjectedRadius(const FOBB& box, v3 axis)
  * Otherwise, tracks the axis with the SMALLEST overlap (the MTV axis),
  * and outputs a normal pointing A -> B plus the penetration depth along it. 
  */
-internal bool32 OBBOverlap(const FOBB& a, const FOBB& b, v3* outNormal, f32* outPenetration)
+internal b32 OBBOverlap(const FOBB& a, const FOBB& b, v3* outNormal, f32* outPenetration)
 {
     v3 axes[15];
     u32 axisCount = 0;
@@ -76,7 +76,7 @@ internal bool32 OBBOverlap(const FOBB& a, const FOBB& b, v3* outNormal, f32* out
 
     f32 minPenetration = 0.0f;
     v3  minAxis = {};
-    bool32 first = true;
+    b32 first = true;
 
     for (u32 i = 0; i < axisCount; ++i)
     {
@@ -286,7 +286,7 @@ internal void CollisionBroadPhase(FCollisionWorld* collisionWorld, FMemoryArena*
                 }
 
                 // Check for duplicate pair
-                bool32 found = false;
+                b32 found = false;
                 for (u32 pi = 0; pi < collisionWorld->pairCount; ++pi)
                 {
                     if ((pairTagA[pi] == a) && (pairTagB[pi] == b))
@@ -548,10 +548,10 @@ void CollisionUpdate(FCollisionWorld* collisionWorld, FTransformTable* transform
     CollisionNarrowPhase(collisionWorld);
 }
 
-bool32 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEntityB)
+b8 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEntityB)
 {
 
-    bool32 areColliding = ((contactInfo->entityA == hEntityA) && (contactInfo->entityB == hEntityB)) ||
+    b8 areColliding = ((contactInfo->entityA == hEntityA) && (contactInfo->entityB == hEntityB)) ||
                           ((contactInfo->entityA == hEntityB) && (contactInfo->entityB == hEntityA));
     return areColliding;
 }

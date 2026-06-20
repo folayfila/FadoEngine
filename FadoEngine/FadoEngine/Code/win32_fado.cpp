@@ -130,7 +130,7 @@ internal f32 Win32ProcessXInputStickValue(SHORT value, SHORT deadZoneThreshold)
 	return result;
 }
 
-internal void Win32ProcessButtonState(FGameButtonState* state, bool32 isDown, f32 deltaTime)
+internal void Win32ProcessButtonState(FGameButtonState* state, b8 isDown, f32 deltaTime)
 {
 	state->wasDown = state->isDown;
 	state->isDown = isDown;
@@ -145,9 +145,9 @@ internal void Win32ProcessButtonState(FGameButtonState* state, bool32 isDown, f3
 	}
 }
 
-internal bool32 Win32IsXInputButtonDown(DWORD XInputButtonState, DWORD ButtonBit)
+internal b8 Win32IsXInputButtonDown(DWORD XInputButtonState, DWORD ButtonBit)
 {
-	bool32 result = ((XInputButtonState & ButtonBit) == ButtonBit);
+	b8 result = ((XInputButtonState & ButtonBit) == ButtonBit);
 	return result;
 }
 
@@ -271,8 +271,8 @@ internal void Win32HandleControllerInput(HWND Window, FGameInput* input)
 internal void Win32HandleKeyboardInput(MSG* msg, WPARAM wParam, LPARAM lParam, FGameControllerInput* keyboard, f32 deltaTime)
 {
 	u32 vKCode = (u32)wParam;
-	bool32 wasDown = ((lParam & (1 << 30)) != 0);
-	bool32 isDown =  ((lParam & (1 << 31)) == 0);
+	b8 wasDown = ((lParam & (1 << 30)) != 0);
+	b8 isDown =  ((lParam & (1 << 31)) == 0);
 
 	if (vKCode == 'W')
 	{
@@ -299,7 +299,7 @@ internal void Win32HandleKeyboardInput(MSG* msg, WPARAM wParam, LPARAM lParam, F
 		Win32ProcessButtonState(&keyboard->leftShoulder, isDown, deltaTime);
 	}
 
-	bool32 altIsDown = (lParam & (1 << 29));
+	b8 altIsDown = (lParam & (1 << 29));
 	if (altIsDown && (vKCode == VK_RETURN) && isDown && !wasDown)
 	{
 		ToggleFullscreen(msg->hwnd);

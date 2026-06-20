@@ -16,7 +16,7 @@ typedef unsigned long long u64;
 typedef float f32;
 typedef double f64;
 
-typedef i32 bool32;
+typedef i32 b32;
 
 // ─────────────────────────────────────────────
 
