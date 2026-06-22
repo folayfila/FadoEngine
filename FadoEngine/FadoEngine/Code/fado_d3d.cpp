@@ -8,9 +8,12 @@
 
 #include "glb/fado_glb.h"
 #include "fado_math.h"
+
+#if FADO_DEBUG
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_win32.h"
 #include "imgui/backends/imgui_impl_dx11.h"
+#endif // FADO_DEBUG
 
 // ───────────────────────────
 // Constants
@@ -22,9 +25,11 @@ cc8* k_psEntryFuncName = "PixelShaderEntry";
 // ────────────────────────────────────────────────────────────────────────
 // FD3D
 // ────────────────────────────────────────────────────────────────────────
-internal void InitializeDX11(FD3DInitParams* d3dInitParams, FMemoryArena* scratchArena)
+internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 {
 	FD3D* d3d = d3dInitParams->d3d;
+	FSharedStuff* shared = world->shared;
+	FMemoryArena* scratchArena = world->shared->scratchArena;
 
 	// Store the vsync setting.
 	d3d->vsyncEnabled = d3dInitParams->vsync;
@@ -294,19 +299,33 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FMemoryArena* scratc
 	d3d->device->CreateDepthStencilState(&uiDepthDesc, &d3d->uiDepthStencilState);
 
 	// Setup the viewport for rendering.
-	d3d->viewport.Width = (f32)d3dInitParams->screenWidth;
-	d3d->viewport.Height = (f32)d3dInitParams->screenHeight;
-	d3d->viewport.MinDepth = 0.0f;
-	d3d->viewport.MaxDepth = 1.0f;
-	d3d->viewport.TopLeftX = 0.0f;
-	d3d->viewport.TopLeftY = 0.0f;
+	shared->viewport.topLeftX = 0.0f;
+	shared->viewport.topLeftY = 0.0f;
+	shared->viewport.width = (f32)d3dInitParams->screenWidth;
+	shared->viewport.height = (f32)d3dInitParams->screenHeight;
+	shared->viewport.minDepth = 0.0f;
+	shared->viewport.maxDepth = 1.0f;
+
+	D3D11_VIEWPORT d3d11Viewport = {
+		shared->viewport.topLeftX,
+		shared->viewport.topLeftY,
+		shared->viewport.width,
+		shared->viewport.height,
+		shared->viewport.minDepth,
+		shared->viewport.maxDepth
+	};
 
 	// Create the viewport.
-	d3d->deviceContext->RSSetViewports(1, &d3d->viewport);
+	d3d->deviceContext->RSSetViewports(1, &d3d11Viewport);
 
 	// Setup the projection matrix.
 	f32 fieldOfView = Pi32 / 4.0f;
 	f32 screenAspect = (f32)d3dInitParams->screenWidth / (f32)d3dInitParams->screenHeight;
+
+	shared->camera.fovY = fieldOfView;
+	shared->camera.aspect = screenAspect;
+	shared->camera.nearZ = d3dInitParams->screenNear;
+	shared->camera.farZ = d3dInitParams->screenDepth;
 
 	// Create the projection matrix for 3D rendering.
 	d3d->projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(fieldOfView, screenAspect, d3dInitParams->screenNear, d3dInitParams->screenDepth);
@@ -328,8 +347,10 @@ internal void BeginScene(FD3D *d3d, v4 color)
 internal void EndScene(FD3D* d3d)
 {
 	// End of frame (after 3D scene, last thing before Present)
+#if FADO_DEBUG
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+#endif // FADO_DEBUG
 
 	// Present the back buffer to the screen since rendering is complete.
 	// SyncInterval:
@@ -418,12 +439,19 @@ internal void InitializeColorShader(FColorShader *colorShader, ID3D11Device* dev
 	Assert(!FAILED(result));
 }
 
+internal FMatrixBuffer GetShadersTransposeMatrices(FRenderWorld* world)
+{
+	FMatrixBuffer mat = {};
+	mat.world = DirectX::XMMatrixTranspose(world->d3d.worldMatrix);
+	mat.view = DirectX::XMMatrixTranspose(world->cameraView);
+	mat.projection = DirectX::XMMatrixTranspose(world->d3d.projectionMatrix);
+	return mat;
+}
+
 internal void SetColorShaderParameters(FRenderWorld* world, u32 hColorDrawCall)
 {
 	// Transpose the matrices to prepare them for the shader.
-	DXMatrix worldMatrix = XMMatrixTranspose(world->d3d.worldMatrix);
-	DXMatrix viewMatrix = XMMatrixTranspose(world->camera.viewMatrix);
-	DXMatrix projectionMatrix = XMMatrixTranspose(world->d3d.projectionMatrix);
+	FMatrixBuffer mat = GetShadersTransposeMatrices(world);
 
 	ID3D11DeviceContext* deviceContext = world->d3d.deviceContext;
 	FColorShader* colorShader = &world->colorShader;
@@ -436,9 +464,9 @@ internal void SetColorShaderParameters(FRenderWorld* world, u32 hColorDrawCall)
 
 	// Get a pointer to the data in the constant buffer and opy the matrices into the constant buffer.
 	FMatrixBuffer* dataPtr = (FMatrixBuffer*)mappedResource.pData;
-	dataPtr->world = worldMatrix;
-	dataPtr->view = viewMatrix;
-	dataPtr->projection = projectionMatrix;
+	dataPtr->world = mat.world;
+	dataPtr->view = mat.view;
+	dataPtr->projection = mat.projection;
 
 	// Unlock the constant buffer.
 	deviceContext->Unmap(colorShader->matrixBuffer, 0);
@@ -555,9 +583,7 @@ internal void InitializeUnlitTextureShader(FUnlitTextureShader* unlitTexShader, 
 internal void SetUnlitTextureShaderParameters(FRenderWorld* world, HTexture hTexture)
 {
 	// Transpose the matrices to prepare them for the shader.
-	DXMatrix worldMatrix = XMMatrixTranspose(world->d3d.worldMatrix);
-	DXMatrix viewMatrix = XMMatrixTranspose(world->camera.viewMatrix);
-	DXMatrix projectionMatrix = XMMatrixTranspose(world->d3d.projectionMatrix);
+	FMatrixBuffer mat = GetShadersTransposeMatrices(world);
 
 	ID3D11DeviceContext* deviceContext = world->d3d.deviceContext;
 	FUnlitTextureShader* textureShader = &world->unlitTextureShader;
@@ -571,9 +597,9 @@ internal void SetUnlitTextureShaderParameters(FRenderWorld* world, HTexture hTex
 	FMatrixBuffer* dataPtr = (FMatrixBuffer*)mappedResource.pData;
 
 	// Copy the matrices into the constant buffer.
-	dataPtr->world = worldMatrix;
-	dataPtr->view = viewMatrix;
-	dataPtr->projection = projectionMatrix;
+	dataPtr->world = mat.world;
+	dataPtr->view = mat.view;
+	dataPtr->projection = mat.projection;
 
 	// Unlock the constant buffer.
 	deviceContext->Unmap(textureShader->matrixBuffer, 0);
@@ -708,17 +734,10 @@ internal void InitializeLitTextureShader(FLitTextureShader* litTexShader, ID3D11
 
 internal void SetLitTextureShaderParameters(FRenderWorld* world, HTexture hTexture)
 {
-	FD3D* d3d = &world->d3d;
-	DXMatrix worldMatrix = d3d->worldMatrix;
-	DXMatrix viewMatrix = world->camera.viewMatrix;
-	DXMatrix projectionMatrix = d3d->projectionMatrix;
-
 	// Transpose the matrices to prepare them for the shader.
-	worldMatrix = XMMatrixTranspose(worldMatrix);
-	viewMatrix = XMMatrixTranspose(viewMatrix);
-	projectionMatrix = XMMatrixTranspose(projectionMatrix);
+	FMatrixBuffer mat = GetShadersTransposeMatrices(world);
 
-	ID3D11DeviceContext* deviceContext = d3d->deviceContext;
+	ID3D11DeviceContext* deviceContext = world->d3d.deviceContext;
 	FLitTextureShader* lightShader = &world->litTextureShader;
 
 	// Lock the constant buffer so it can be written to.
@@ -730,9 +749,9 @@ internal void SetLitTextureShaderParameters(FRenderWorld* world, HTexture hTextu
 	FMatrixBuffer* dataPtr = (FMatrixBuffer*)mappedResource.pData;
 
 	// Copy the matrices into the constant buffer.
-	dataPtr->world = worldMatrix;
-	dataPtr->view = viewMatrix;
-	dataPtr->projection = projectionMatrix;
+	dataPtr->world = mat.world;
+	dataPtr->view = mat.view;
+	dataPtr->projection = mat.projection;
 
 	// Unlock the constant buffer.
 	deviceContext->Unmap(lightShader->matrixBuffer, 0);
@@ -876,7 +895,7 @@ internal void SetUIProjection(FRenderWorld* world)
 {
 	FUIConstants constants = {};
 
-	MakeUIOrtho(constants.projection, 0.0f, world->d3d.viewport.Width, 0.0f, world->d3d.viewport.Height);
+	MakeUIOrtho(constants.projection, 0.0f, world->shared->viewport.width, 0.0f, world->shared->viewport.height);
 
 	D3D11_MAPPED_SUBRESOURCE mapped = {};
 
@@ -1111,11 +1130,11 @@ internal void FlushLitTextureBucket(FRenderWorld* world)
 // ────────────────────────────────────────────────────────────────────────
 internal void FlushUIBucket(FRenderWorld* world)
 {
-	FUICommandBucket* bucket = world->uiBucket;
+	FUICommandBucket* bucket = world->shared->uiCommands;
 	if (bucket->count == 0)
 	{ return; }
 
-	FUIVertex* verts = ArenaPushArray(world->scratchArena, MAX_UI_VERTS, FUIVertex);
+	FUIVertex* verts = ArenaPushArray(world->shared->scratchArena, MAX_UI_VERTS, FUIVertex);
 	u32 vertCount = 0;
 
 	// Set pipeline state once
@@ -1154,9 +1173,11 @@ internal void FlushUIBucket(FRenderWorld* world)
 
 			case EUICommandType::Text:
 			{
+#if FADO_DEBUG
 				FUITextCommand* text = &cmd->text;
 				ImGui::SetCursorPos({ text->pos.x, text->pos.y });
 				ImGui::TextColored({ text->color.r, text->color.g, text->color.b, text->color.a }, text->text);
+#endif // FADO_DEBUG
 				continue; // skip quad push
 			} break;
 
@@ -1195,15 +1216,16 @@ internal void FlushUIBucket(FRenderWorld* world)
 	deviceContext->OMSetBlendState(nullptr, blend_factor, 0xFFFFFFFF);
 
 	bucket->count = 0;
-	ArenaReset(world->scratchArena);
+	ArenaReset(world->shared->scratchArena);
 }
 
 // ────────────────────────────────────────────────────────────────────────
 // FCamera
 // ────────────────────────────────────────────────────────────────────────
-internal void RenderCamera(FCamera* camera, FTransformTable* transforms)
+internal void RenderCamera(FRenderWorld* world)
 {
-	quat q = transforms->rotations[camera->hTransform];
+	FSharedStuff* shared = world->shared;
+	quat q = shared->transforms->rotations[shared->camera.handle];
 
 	// Load quaternion directly into DirectXMath.
 	DirectX::XMVECTOR quatVector = DirectX::XMVectorSet(q.x, q.y, q.z, q.w);
@@ -1212,18 +1234,27 @@ internal void RenderCamera(FCamera* camera, FTransformTable* transforms)
 	DXMatrix rotationMatrix = DirectX::XMMatrixRotationQuaternion(quatVector);
 
 	// Position
-	v3 pos = transforms->positions[camera->hTransform];
+	v3 pos = shared->transforms->positions[shared->camera.handle];
 	DirectX::XMVECTOR positionVector = DirectX::XMVectorSet(pos.x, pos.y, pos.z, 0.0f);
 
-	// Default forward and up, rotated by the quaternion matrix.
-	DirectX::XMVECTOR lookAtVector = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+	// Default forward, up, right, rotated by the quaternion matrix.
+	DirectX::XMVECTOR forwardVector = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
 	DirectX::XMVECTOR upVector = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	DirectX::XMVECTOR rightVector = DirectX::XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
 
-	lookAtVector = XMVector3TransformCoord(lookAtVector, rotationMatrix);
-	upVector = XMVector3TransformCoord(upVector, rotationMatrix);
-	lookAtVector = DirectX::XMVectorAdd(positionVector, lookAtVector);
+	forwardVector = DirectX::XMVector3TransformCoord(forwardVector, rotationMatrix);
+	upVector = DirectX::XMVector3TransformCoord(upVector, rotationMatrix);
+	rightVector = DirectX::XMVector3TransformCoord(rightVector, rotationMatrix);
 
-	camera->viewMatrix = DirectX::XMMatrixLookAtLH(positionVector, lookAtVector, upVector);
+	DirectX::XMVECTOR lookAtVector = DirectX::XMVectorAdd(positionVector, forwardVector);
+
+	world->cameraView = DirectX::XMMatrixLookAtLH(positionVector, lookAtVector, upVector);
+
+	// Populate shared CameraView (plain data, no DX types)
+	FCamera* cam = &shared->camera;
+	cam->forward = QuatForward(q);
+	cam->right = QuatRight(q);
+	cam->up = QuatUp(q);
 }
 
 // Returns a DXMatrix by building it from the Entity's transform.
@@ -1264,13 +1295,13 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	fread(&header, sizeof(header), 1, file);
 
 	// Read per-mip offset and size tables.
-	u32* mipOffsets = ArenaPushArray(world->scratchArena, header.mipCount, u32);
-	u32* mipSizes = ArenaPushArray(world->scratchArena, header.mipCount, u32);
+	u32* mipOffsets = ArenaPushArray(world->shared->scratchArena, header.mipCount, u32);
+	u32* mipSizes = ArenaPushArray(world->shared->scratchArena, header.mipCount, u32);
 	fread(mipOffsets, sizeof(u32), header.mipCount, file);
 	fread(mipSizes, sizeof(u32), header.mipCount, file);
 
 	// Read all compressed mip data in one shot.
-	u8* allMipData = ArenaPushArray(world->scratchArena, header.dataSize, u8);
+	u8* allMipData = ArenaPushArray(world->shared->scratchArena, header.dataSize, u8);
 	fread(allMipData, header.dataSize, 1, file);
 	fclose(file);
 
@@ -1291,7 +1322,7 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	texDesc.MiscFlags = 0; // no GENERATE_MIPS flag needed
 
 	// Fill one D3D11_SUBRESOURCE_DATA per mip level.
-	D3D11_SUBRESOURCE_DATA* mipData = ArenaPushArray(world->scratchArena, header.mipCount, D3D11_SUBRESOURCE_DATA);
+	D3D11_SUBRESOURCE_DATA* mipData = ArenaPushArray(world->shared->scratchArena, header.mipCount, D3D11_SUBRESOURCE_DATA);
 
 	u32 mipWidth = header.width;
 	u32 mipHeight = header.height;
@@ -1332,7 +1363,7 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	world->textures[handle].height = (i32)header.height;
 
 	// All pixel/mip data was only needed for CreateTexture2D — free it now.
-	ArenaReset(world->scratchArena);
+	ArenaReset(world->shared->scratchArena);
 	return handle;
 }
 
@@ -1343,7 +1374,7 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 
 HMesh LoadGLBModel(FRenderWorld* world, cc8* fileName)
 {
-	FGLBAsset* asset = ArenaPushType(world->scratchArena, FGLBAsset);
+	FGLBAsset* asset = ArenaPushType(world->shared->scratchArena, FGLBAsset);
 	ZeroStruct(asset);
 
 	if (!GLB_Load(fileName, asset))
@@ -1368,7 +1399,7 @@ HMesh LoadGLBModel(FRenderWorld* world, cc8* fileName)
 			}
 
 			// NOTE: FGLBVertex and the texture struct need to match in layout.
-			FLitTextureVertex* converted = (FLitTextureVertex*)ArenaPushArray(world->scratchArena, prim->vertexCount, FLitTextureVertex);
+			FLitTextureVertex* converted = (FLitTextureVertex*)ArenaPushArray(world->shared->scratchArena, prim->vertexCount, FLitTextureVertex);
 			if (converted)
 			{
 				for (u32 v = 0; v < prim->vertexCount; v++)
@@ -1385,7 +1416,7 @@ HMesh LoadGLBModel(FRenderWorld* world, cc8* fileName)
 		}
 	}
 
-	ArenaReset(world->scratchArena);
+	ArenaReset(world->shared->scratchArena);
 	GLB_Free(asset);
 	return handle;
 }
@@ -1402,13 +1433,13 @@ HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFo
 	fseek(file, 0, SEEK_END);
 	u32 size = ftell(file);
 	fseek(file, 0, SEEK_SET);
-	u8* fontBuffer = ArenaPushSize(world->scratchArena, u8, size);
+	u8* fontBuffer = ArenaPushSize(world->shared->scratchArena, u8, size);
 	fread(fontBuffer, 1, size, file);
 	fclose(file);
 
 	// Bake atlas (single channel, 512x512 — adjust if needed)
 	i32 atlasW = 512, atlasH = 512;
-	u8* atlasPixels = ArenaPushSize(world->scratchArena, u8, (atlasW * atlasH));
+	u8* atlasPixels = ArenaPushSize(world->shared->scratchArena, u8, (atlasW * atlasH));
 
 	stbtt_bakedchar bakedChars[96];
 	i32 result = stbtt_BakeFontBitmap(fontBuffer, 0, fontSize,
@@ -1416,7 +1447,7 @@ HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFo
 	Assert(result > 0); // didn't fit, increase atlas size
 
 	// Convert single-channel to RGBA (so it uses same shader/pipeline as rects)
-	u32* rgbaPixels = ArenaPushSize(world->scratchArena, u32, (atlasW * atlasH * 4));
+	u32* rgbaPixels = ArenaPushSize(world->shared->scratchArena, u32, (atlasW * atlasH * 4));
 	for (i32 i = 0; i < (atlasW * atlasH); ++i)
 	{
 		u8 a = atlasPixels[i];
@@ -1443,16 +1474,16 @@ HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFo
 		glyph->xadvance = bc->xadvance;
 	}
 
-	ArenaReset(world->scratchArena);
+	ArenaReset(world->shared->scratchArena);
 	return outFont->atlasTexture;
 }
 
 // ────────────────────────────────────────────────────────────────────────
 // Global Functions
 // ────────────────────────────────────────────────────────────────────────
-void InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams, FTransformTable* transforms)
+void InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams)
 {
-	InitializeDX11(d3dInitParams, world->scratchArena);
+	InitializeDX11(d3dInitParams, world);
 
 	// Init shaders
 	InitializeColorShader(&world->colorShader, world->d3d.device, d3dInitParams->window);
@@ -1481,7 +1512,7 @@ void InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams, FTransfo
 #endif // FADO_DEBUG
 }
 
-void Render(FRenderWorld* world, FEntityTable* entityTable, FTransformTable* transforms)
+void Render(FRenderWorld* world)
 {
 	FD3D* d3d = &world->d3d;
 
@@ -1489,9 +1520,11 @@ void Render(FRenderWorld* world, FEntityTable* entityTable, FTransformTable* tra
 	BeginScene(d3d, v4{ 0.0f, 0.0f, 0.0f, 3.0f });
 
 	// Generate the view matrix based on the camera's position.
-	RenderCamera(&world->camera, transforms);
+	RenderCamera(world);
 
-	for (u32 i = 0; i < entityTable->count; ++i)
+	FTransformTable* transforms = world->shared->transforms;
+	FEntityTable* entityTable = world->shared->entityTable;
+	for (u32 i = 0; i < world->shared->entityTable->count; ++i)
 	{
 		FEntity* e = &entityTable->entities[i];
 		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, entityTable, transforms);
@@ -1538,7 +1571,9 @@ void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 s
 		return;
 	}
 
+#if FADO_DEBUG
 	ImGui_ImplDX11_InvalidateDeviceObjects();
+#endif // FADO_DEBUG
 
 	// Release old views/buffers — they hold references to the old back buffer.
 	d3d->deviceContext->OMSetRenderTargets(0, nullptr, nullptr);
@@ -1575,13 +1610,25 @@ void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 s
 	d3d->deviceContext->OMSetRenderTargets(1, &d3d->renderTargetView, d3d->depthStencilView);
 
 	// Update viewport.
-	d3d->viewport.Width = (f32)width;
-	d3d->viewport.Height = (f32)height;
-	d3d->viewport.TopLeftX = 0;
-	d3d->viewport.TopLeftY = 0;
-	d3d->viewport.MinDepth = 0.0f;
-	d3d->viewport.MaxDepth = 1.0f;
-	d3d->deviceContext->RSSetViewports(1, &d3d->viewport);
+	FSharedStuff* shared = world->shared;
+	shared->viewport.topLeftX = 0.0f;
+	shared->viewport.topLeftY = 0.0f;
+	shared->viewport.width = (f32)width;
+	shared->viewport.height = (f32)height;
+	shared->viewport.minDepth = 0.0f;
+	shared->viewport.maxDepth = 1.0f;
+
+	D3D11_VIEWPORT d3d11Viewport = {
+		shared->viewport.topLeftX,
+		shared->viewport.topLeftY,
+		shared->viewport.width,
+		shared->viewport.height,
+		shared->viewport.minDepth,
+		shared->viewport.maxDepth
+	};
+
+	// Create the viewport.
+	d3d->deviceContext->RSSetViewports(1, &d3d11Viewport);
 
 	// Update projection matrix aspect ratio.
 	f32 aspect = (f32)width / (f32)height;
@@ -1589,7 +1636,10 @@ void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 s
 	d3d->projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(fovY, aspect, 0.3f, 1000.0f);
 
 	SetUIProjection(world);
+
+#if FADO_DEBUG
 	ImGui_ImplDX11_CreateDeviceObjects();
+#endif // FADO_DEBUG
 }
 
 
@@ -1677,24 +1727,38 @@ internal void DebugDrawOBB(FRenderWorld* world, const FOBB& box, v4 color)
 	DebugDrawLine(world, c[3], c[7], color);
 }
 
-internal void ShowDebugGui(FTransformTable* transforms)
+internal void ShowDebugGui(FRenderWorld* world)
 {
 	ImGui::Begin("Inspector");
 
-	for (u32 i = 0; i < transforms->count; ++i)
-	{
-		c8 label[64];
-		snprintf(label, sizeof(label), "Transform_%d", i);
-		if (ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen))
-		{
-			snprintf(label, sizeof(label), "Position_%d", i);
-			ImGui::DragFloat3(label, &transforms->positions[i].x, 0.1f);
+	FEntity* selected = GetEntity(world->shared->entityTable, world->shared->selectedEntity);
+	HTransform hTransform = selected->hTransform;
+	FTransformTable* transforms = world->shared->transforms;
 
-			snprintf(label, sizeof(label), "Scale_%d", i);
-			ImGui::DragFloat3(label, &transforms->scales[i].x, 0.1f);
-		}
+	c8 label[64];
+	snprintf(label, sizeof(label), "Camera Transform");
+	if (ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		snprintf(label, sizeof(label), "Position");
+		ImGui::DragFloat3(label, &transforms->positions[0].x, 0.1f);
 	}
 
+	snprintf(label, sizeof(label), "Selected entity Transform_%d", hTransform);
+	if (ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		snprintf(label, sizeof(label), "Position_%d", hTransform);
+		ImGui::DragFloat3(label, &transforms->positions[hTransform].x, 0.1f);
+
+		snprintf(label, sizeof(label), "Rotation_%d", hTransform);
+		v3 rot = QuatToEuler(transforms->rotations[hTransform]);
+		if (ImGui::DragFloat3(label, &rot.x, 0.1f))
+		{
+			transforms->rotations[hTransform] = QuatFromEuler(rot);
+		}
+
+		snprintf(label, sizeof(label), "Scale_%d", hTransform);
+		ImGui::DragFloat3(label, &transforms->scales[hTransform].x, 0.1f);
+	}
 	ImGui::End();
 }
 
@@ -1749,9 +1813,9 @@ internal void FlushDebugLineBucket(FRenderWorld* world)
 		D3D11_MAPPED_SUBRESOURCE matMapped;
 		d3d->deviceContext->Map(shader->matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &matMapped);
 		FMatrixBuffer* mb = (FMatrixBuffer*)matMapped.pData;
-		mb->world = XMMatrixTranspose(d3d->worldMatrix);
-		mb->view = XMMatrixTranspose(world->camera.viewMatrix);
-		mb->projection = XMMatrixTranspose(d3d->projectionMatrix);
+		mb->world = DirectX::XMMatrixTranspose(d3d->worldMatrix);
+		mb->view = DirectX::XMMatrixTranspose(world->cameraView);
+		mb->projection = DirectX::XMMatrixTranspose(d3d->projectionMatrix);
 		d3d->deviceContext->Unmap(shader->matrixBuffer, 0);
 		d3d->deviceContext->VSSetConstantBuffers(0, 1, &shader->matrixBuffer);
 
@@ -1764,17 +1828,22 @@ internal void FlushDebugLineBucket(FRenderWorld* world)
 	bucket->count = 0;
 }
 
-void DebugRender(FRenderWorld* world, FEntityTable* entityTable, FTransformTable* transforms, FCollisionWorld* collisionWorld)
+void DebugRender(FRenderWorld* world)
 {
-	ShowDebugGui(transforms);
+	FTransformTable* transforms = world->shared->transforms;
+	FEntityTable* entityTable = world->shared->entityTable;
+	FCollisionWorld* collisionWorld = world->shared->collisionWorld;
+	ShowDebugGui(world);
 
 	FD3D* d3d = &world->d3d;
+
+	world->shared->canSelect = !ImGui::GetIO().WantCaptureMouse;
 
 	// Clear the buffers to begin the scene.
 	BeginScene(d3d, v4{ 0.0f, 0.0f, 0.0f, 3.0f });
 
 	// Generate the view matrix based on the camera's position.
-	RenderCamera(&world->camera, transforms);
+	RenderCamera(world);
 
 	for (u32 i = 0; i < entityTable->count; ++i)
 	{

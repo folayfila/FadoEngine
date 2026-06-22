@@ -30,7 +30,6 @@ struct Win32System
 	HINSTANCE instance;
 	HWND window;
 	FEngineMemory* engineMemory;
-	FGameState* gameState;
 	FRenderWorld* world;
 	Win32GameCode* gameCode;
 };

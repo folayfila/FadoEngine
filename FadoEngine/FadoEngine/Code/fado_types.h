@@ -74,9 +74,14 @@ typedef const char cc8;
 
 #define Pi32 3.141459265359f
 
+#define MAX_FLOAT 3.402823466e+38F
+
 #define Kilobytes(Value) ((Value) * 1024)
 #define Megabytes(Value) (Kilobytes(Value) * 1024)
 #define Gigabytes(Value) (Megabytes(Value) * 1024)
+
+#define Min(a, b) (((a) < (b)) ? (a) : (b))
+#define Max(a, b) (((a) > (b)) ? (a) : (b))
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
@@ -87,7 +92,11 @@ typedef const char cc8;
 
 struct v2
 {
-	f32 x, y;
+	union
+	{
+		struct { f32 x, y; };
+		f32 e[2];
+	};
 
 	inline v2& operator=(const v2& rhs)
 	{
@@ -103,6 +112,7 @@ struct v3
 	{
 		struct { f32 x, y, z; };
 		struct { f32 r, g, b; };
+		f32 e[3];
 	};
 
 	inline v3& operator=(const v3& rhs)
@@ -144,7 +154,7 @@ struct v4
 	{
 		struct { f32 x, y, z, w; };
 		struct { f32 r, g, b, a; };
-		struct { f32 r, g, width, height; };
+		struct { f32 x, y, width, height; };
 		struct { f32 u0, v0, u1, v1; };
 		f32 e[4];
 	};
@@ -159,6 +169,20 @@ struct v4
 	}
 };
 typedef v4 quat;
+
+struct mat3
+{
+	f32 m[9];
+};
+
+struct mat4
+{
+	union
+	{
+		f32 m[16];
+		f32 e[4][4]; // e[row][col], row-major
+	};
+};
 
 // ─────────────────────────────────────────────
 // ──────────────── Transform ──────────────────
@@ -296,6 +320,49 @@ struct FFont
 	FFontGlyph glyphs[GLYPHS_COUNT];	// ASCII 32-127
 	f32 size;							// font size
 };
+
+// ─────────────────────────────────────────────
+// ──────────────── Shared Stuff ───────────────
+/// FCamera
+struct FCamera
+{
+	HEntity handle;
+	v3 forward;
+	v3 up;
+	v3 right;
+	f32 fovY;       // vertical FOV in radians
+	f32 aspect;
+	f32 nearZ;
+	f32 farZ;
+};
+
+struct FViewPort
+{
+	f32 topLeftX;
+	f32 topLeftY;
+	f32 width;
+	f32 height;
+	f32 minDepth;
+	f32 maxDepth;
+};
+
+// Struct containing pointers to stuff that both the renderer and the game could use/access.
+struct FSharedStuff
+{
+	FCamera camera;
+	FViewPort viewport;
+
+	FEntityTable* entityTable;
+	FTransformTable* transforms;
+	struct FCollisionWorld* collisionWorld;
+	struct FUICommandBucket* uiCommands;
+
+	FMemoryArena* scratchArena;
+
+	HEntity selectedEntity;
+	b32 canSelect;
+};
+
 
 
 #endif // FADO_TYPES_H

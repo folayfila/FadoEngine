@@ -4,9 +4,6 @@
 #include "fado_types.h"
 #include "fado_ui.h"
 
-// Forward declaractions:
-struct FCollisionWorld;
-
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
 struct FGameButtonState
@@ -86,15 +83,11 @@ struct FGameState
 {
     b32 running;
     b32 initialized;
+    
+    FSharedStuff* shared;
 
-    HEntity hCamera; // Camera MUST always be handle 0!
     f32 cameraYaw;   // degrees, accumulates freely
     f32 cameraPitch; // degrees, clamped to [-89, 89]
-
-    FEntityTable* entityTable;
-    FTransformTable* transforms;
-    FCollisionWorld* collisionWorld;
-    FUICommandBucket* uiCommands;
 
     // Entites
     HEntity infinitePlane;
@@ -121,7 +114,7 @@ struct FGameState
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
-#define GAME_UPDATE(name) void name(FEngineMemory* memory, FGameState* gameState, FGameInput* input)
+#define GAME_UPDATE(name) void name(FGameState* gameState, FGameInput* input)
 typedef GAME_UPDATE(FGameUpdate);
 
 #endif FADO_H

@@ -229,7 +229,7 @@ struct FMeshBuffer
 
 // ──────────────────────────────────
 /// FCameraD3D
-struct FCamera
+struct FCameraD3D
 {
 	DXMatrix viewMatrix;
 	HTransform hTransform;
@@ -262,8 +262,8 @@ struct FRenderBucket
 struct FRenderWorld
 {
 	FD3D d3d;
-	FCamera camera;
-	FMemoryArena* scratchArena;
+	DXMatrix cameraView;
+	FSharedStuff* shared;
 
 	// Shaders — one of each, initialized once.
 	FColorShader colorShader;
@@ -275,7 +275,6 @@ struct FRenderWorld
 	FRenderBucket colorBucket;
 	FRenderBucket unlitTextureBucket;
 	FRenderBucket litTextureBucket;
-	FUICommandBucket* uiBucket;
 
 #if FADO_DEBUG
 	FDebugLineBucket debugBucket;
@@ -293,8 +292,8 @@ struct FRenderWorld
 // ────────────────────────────────────────────────────────────────
 // Public API
 
-void	 InitializeFD3D  (FRenderWorld* world, FD3DInitParams* d3dInitParams, FTransformTable* transforms);
-void	 Render			 (FRenderWorld* world, FEntityTable* entities, FTransformTable* transforms);
+void	 InitializeFD3D  (FRenderWorld* world, FD3DInitParams* d3dInitParams);
+void	 Render			 (FRenderWorld* world);
 
 // Loaders
 HTexture LoadFImage		 (FRenderWorld* world, cc8* fileName);
@@ -305,8 +304,7 @@ HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFo
 void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 screenDepth);
 
 #if FADO_DEBUG
-struct FCollisionWorld;
-void DebugRender(FRenderWorld* world, FEntityTable* entityTable, FTransformTable* transforms, FCollisionWorld* collisionWorld);
+void DebugRender(FRenderWorld* world);
 #endif // FADO_DEBUG
 
 

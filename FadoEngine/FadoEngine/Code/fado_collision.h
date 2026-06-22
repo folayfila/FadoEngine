@@ -3,8 +3,8 @@
 #ifndef FADO_COLIISION_H
 #define FADO_COLIISION_H
 
-#include "fado_types.h"
 #include "fado_math.h"
+#include "fado_types.h"
 
 typedef u32 HCollider;
 
@@ -65,6 +65,15 @@ struct FOBB
 	v3 center;
 	v3 halfExtents;
 	v3 axes[3];   // world-space rotation basis (columns of rotation matrix)
+};
+
+// ─────────────────────────────────────────────
+//  FRay
+// ─────────────────────────────────────────────
+struct FRay
+{
+	v3 origin;
+	v3 direction;
 };
 
 // ─────────────────────────────────────────────
@@ -176,5 +185,7 @@ void CollisionResolve(FCollisionWorld* collisionWorld, FTransformTable* transfor
 
 // Checks if contactInfo->entityA and contactInfo->entityB are the same 2 entity handles passed.
 b8 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEntityB);
+
+b8 RayIntersectsAABB(FRay ray, v3 aabbMin, v3 aabbMax, f32* outDistance);
 
 #endif // FADO_COLIISION_H

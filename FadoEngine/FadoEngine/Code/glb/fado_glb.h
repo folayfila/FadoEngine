@@ -1,7 +1,6 @@
 #ifndef FADO_GLB_H
 #define FADO_GLB_H
 
-#include "fado_glb.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,6 +29,7 @@ typedef double f64;
 typedef wchar_t wchar;
 
 typedef i32 bool32;
+typedef bool b8;
 
 // ─────────────────────────────────────────────
 
@@ -286,7 +286,7 @@ internal void json_skip_whitespace(FJSONParser* p)
     }
 }
 
-internal bool32 json_expect(FJSONParser* p, char c)
+internal b8 json_expect(FJSONParser* p, char c)
 {
     json_skip_whitespace(p);
     if (p->cur >= p->end || *p->cur != c)
@@ -590,7 +590,7 @@ internal i32 json_parse_value(FJSONParser* p)
     return GLB_INVALID;
 }
 
-internal bool32 json_parse(FJSONDoc* doc, char* text, u32 textLen)
+internal b8 json_parse(FJSONDoc* doc, char* text, u32 textLen)
 {
     doc->text = text;
     doc->textLen = textLen;
@@ -809,7 +809,7 @@ internal u32 gltf_read_index(const u8* ptr, u32 componentType)
    SECTION 5 — MAIN PARSER
    ======================================================================= */
 
-internal bool32 GLB_Load(const char* filename, FGLBAsset* out)
+internal b8 GLB_Load(const char* filename, FGLBAsset* out)
 {
     // ----------------------------------------------------------------
     // 5.1  Read entire file into memory

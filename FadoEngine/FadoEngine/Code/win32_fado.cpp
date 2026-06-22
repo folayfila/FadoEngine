@@ -2,9 +2,12 @@
 #include <xinput.h>
 #include "fado_math.h"
 #include "fado_collision.h"
+
+#if FADO_DEBUG
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_win32.h"
 #include "imgui/backends/imgui_impl_dx11.h"
+#endif // FADO_DEBUG
 
 
 internal void ToggleFullscreen(HWND Window)
@@ -364,7 +367,7 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPA
 			{
 				i32 newWidth = LOWORD(lParam);
 				i32 newHeight = HIWORD(lParam);
-				if (newWidth > 0 && newHeight > 0 && ImGui::GetCurrentContext() != nullptr)
+				if (newWidth > 0 && newHeight > 0)
 				{
 					D3DResize(GlobalWin32System->world, newWidth, newHeight, SCREEN_NEAR, SCREEN_DEPTH);
 				}
@@ -437,9 +440,10 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 	d3dInitParams.screenNear = SCREEN_NEAR;
 
 	// Initialize Dx11.
-	win32System->world->scratchArena = &memory->scratch;
-	InitializeFD3D(win32System->world, &d3dInitParams, win32System->gameState->transforms);
+	win32System->world->shared->scratchArena = &memory->scratch;
+	InitializeFD3D(win32System->world, &d3dInitParams);
 
+#if FADO_DEBUG
 	// Init ImGui
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -448,6 +452,7 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 	ImGui_ImplWin32_Init(win32System->window);
 	ImGui_ImplDX11_Init(win32System->world->d3d.device, win32System->world->d3d.deviceContext);
 	ImGui::StyleColorsDark();
+#endif // FADO_DEBUG
 }
 
 // Called before starting the game loop.
@@ -493,17 +498,18 @@ int WINAPI wWinMain(
 	
 	Win32LoadXInput();
 	FGameState* gameState = ArenaPushType(&engineMemory.permanent, FGameState);
-	gameState->transforms = ArenaPushType(&engineMemory.permanent, FTransformTable);
-	gameState->entityTable = ArenaPushType(&engineMemory.permanent, FEntityTable);
-	gameState->collisionWorld = ArenaPushType(&engineMemory.permanent, FCollisionWorld);
-	gameState->uiCommands = ArenaPushType(&engineMemory.permanent, FUICommandBucket);
+	gameState->shared = ArenaPushType(&engineMemory.permanent, FSharedStuff);
+	gameState->shared->transforms = ArenaPushType(&engineMemory.permanent, FTransformTable);
+	gameState->shared->entityTable = ArenaPushType(&engineMemory.permanent, FEntityTable);
+	gameState->shared->collisionWorld = ArenaPushType(&engineMemory.permanent, FCollisionWorld);
+	gameState->shared->uiCommands = ArenaPushType(&engineMemory.permanent, FUICommandBucket);
+	gameState->shared->scratchArena = &engineMemory.scratch;
 	gameState->font = ArenaPushType(&engineMemory.permanent, FFont);
 
 	Win32System win32System = {};
 	win32System.world = ArenaPushType(&engineMemory.permanent, FRenderWorld);
-	win32System.gameState = gameState;
 	win32System.engineMemory = &engineMemory;
-	win32System.world->uiBucket = gameState->uiCommands;
+	win32System.world->shared = gameState->shared;
 	Win32InitializeWindowAndD3D(&engineMemory, &win32System);
 	InitLoadAssets(win32System.world, gameState);
 
@@ -539,9 +545,11 @@ int WINAPI wWinMain(
 			gameCode = Win32LoadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
 		}
 
+#if FADO_DEBUG
 		ImGui_ImplDX11_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
+#endif // FADO_DEBUG
 
 		// Handle keyboard and controller input.
 		FGameControllerInput* keyboardInput = &input->controllers[0];
@@ -552,13 +560,13 @@ int WINAPI wWinMain(
 		// Update game and render.
 		if (gameCode.gameUpdate)
 		{
-			gameCode.gameUpdate(&engineMemory, gameState, input);
+			gameCode.gameUpdate(gameState, input);
 		}
 
 #if FADO_DEBUG
-		DebugRender(win32System.world, win32System.gameState->entityTable, win32System.gameState->transforms, gameState->collisionWorld);
+		DebugRender(win32System.world);
 #else
-		Render(win32System.world, win32System.gameState->entityTable, win32System.gameState->transforms);
+		Render(win32System.world);
 #endif // FADO_DEBUG
 
 		// Update the previous buttons states.

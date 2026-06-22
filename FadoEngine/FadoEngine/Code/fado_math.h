@@ -8,6 +8,7 @@
 
 // ────────────────────────────────────────────────────────────────────────
 #define Deg2Rad(d) ((d) * (Pi32 / 180.0f))
+#define Rad2Deg(r) ((r) * (180.0f / Pi32))
 
 // ────────────────────────────────────────────────────────────────────────
 // ──────────────── General ───────────────────────────────────────────────
@@ -51,18 +52,41 @@ inline f32 Absf32(f32 value)
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// ──────────────── Matrix ───────────────────────────────────────────────
+
+inline mat4 operator*(const mat4& A, const mat4& B)
+{
+	mat4 R;
+
+	for (i32 row = 0; row < 4; row++)
+	{
+		for (i32 col = 0; col < 4; col++)
+		{
+			R.e[row][col] =
+				A.e[row][0] * B.e[0][col] +
+				A.e[row][1] * B.e[1][col] +
+				A.e[row][2] * B.e[2][col] +
+				A.e[row][3] * B.e[3][col];
+		}
+	}
+
+	return R;
+}
+
+inline mat4 Mat4Identity()
+{
+	mat4 M = {};
+
+	M.e[0][0] = 1.0f;
+	M.e[1][1] = 1.0f;
+	M.e[2][2] = 1.0f;
+	M.e[3][3] = 1.0f;
+
+	return M;
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // ──────────────── Vectors ───────────────────────────────────────────────
-
-struct mat3
-{
-	f32 m[9];
-};
-
-struct mat4
-{
-	f32 m[16];
-};
-
 
 inline b8 operator==(const v4& va, const v4& vb)
 {
@@ -80,6 +104,17 @@ inline v3 operator*(v3 a, f32 b)
 	result.x = a.x * b;
 	result.y = a.y * b;
 	result.z = a.z * b;
+
+	return result;
+}
+
+inline v3 operator+(v3 a, v3 b)
+{
+	v3 result;
+
+	result.x = a.x + b.x;
+	result.y = a.y + b.y;
+	result.z = a.z + b.z;
 
 	return result;
 }
@@ -301,22 +336,19 @@ inline v3 QuatToEuler(quat q)
 {
 	v3 euler;
 
-	// Pitch (X)
 	f32 sinp = 2.0f * (q.w * q.x + q.y * q.z);
 	f32 cosp = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
-	euler.x = atan2f(sinp, cosp);
+	euler.x = Rad2Deg(atan2f(sinp, cosp));
 
-	// Yaw (Y)
 	f32 siny = 2.0f * (q.w * q.y - q.z * q.x);
 	if (fabsf(siny) >= 1.0f)
-		euler.y = copysignf(Pi32 * 0.5f, siny);
+		euler.y = Rad2Deg(copysignf(Pi32 * 0.5f, siny));
 	else
-		euler.y = asinf(siny);
+		euler.y = Rad2Deg(asinf(siny));
 
-	// Roll (Z)
 	f32 sinr = 2.0f * (q.w * q.z + q.x * q.y);
 	f32 cosr = 1.0f - 2.0f * (q.y * q.y + q.z * q.z);
-	euler.z = atan2f(sinr, cosr);
+	euler.z = Rad2Deg(atan2f(sinr, cosr));
 
 	return euler;
 }

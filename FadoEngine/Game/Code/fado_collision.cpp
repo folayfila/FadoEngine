@@ -19,7 +19,7 @@ internal FAABB AABBFromTransform(v3 position, v3 scale, v3 halfExtents)
     v3 scaledHalf = { halfExtents.x * scale.x,
                       halfExtents.y * scale.y,
                       halfExtents.z * scale.z };
-    FAABB result;
+    FAABB result = {};
     result.min = { position.x - scaledHalf.x,
                    position.y - scaledHalf.y,
                    position.z - scaledHalf.z };
@@ -48,7 +48,7 @@ inline f32 OBBProjectedRadius(const FOBB& box, v3 axis)
  */
 internal b32 OBBOverlap(const FOBB& a, const FOBB& b, v3* outNormal, f32* outPenetration)
 {
-    v3 axes[15];
+    v3 axes[15] = {};
     u32 axisCount = 0;
 
     // 3 face axes of A
@@ -132,7 +132,7 @@ internal b32 OBBOverlap(const FOBB& a, const FOBB& b, v3* outNormal, f32* outPen
 
 internal FOBB OBBFromTransform(v3 position, quat rotation, v3 scale, v3 halfExtents)
 {
-    FOBB result;
+    FOBB result = {};
     result.center = position;
     result.halfExtents = { halfExtents.x * scale.x,
                             halfExtents.y * scale.y,
@@ -145,7 +145,7 @@ internal FOBB OBBFromTransform(v3 position, quat rotation, v3 scale, v3 halfExte
 
 internal FOBB OBBFromAABB(const FAABB& aabb)
 {
-    FOBB result;
+    FOBB result = {};
     result.center = { (aabb.min.x + aabb.max.x) * 0.5f,
                        (aabb.min.y + aabb.max.y) * 0.5f,
                        (aabb.min.z + aabb.max.z) * 0.5f };
@@ -554,4 +554,45 @@ b8 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEn
     b8 areColliding = ((contactInfo->entityA == hEntityA) && (contactInfo->entityB == hEntityB)) ||
                           ((contactInfo->entityA == hEntityB) && (contactInfo->entityB == hEntityA));
     return areColliding;
+}
+
+b8 RayIntersectsAABB(FRay ray, v3 aabbMin, v3 aabbMax, f32* outDistance)
+{
+    f32 tMin = 0.0f;
+    f32 tMax = MAX_FLOAT;
+
+    for (i32 axis = 0; axis < 3; ++axis)
+    {
+        f32 origin = ray.origin.e[axis];
+        f32 dir = ray.direction.e[axis];
+        f32 minB = aabbMin.e[axis];
+        f32 maxB = aabbMax.e[axis];
+
+        if (fabsf(dir) < 1e-8f)
+        {
+            // Ray parallel to slab — no hit if origin outside slab
+            if (origin < minB || origin > maxB) 
+            { return false; }
+        }
+        else
+        {
+            f32 t1 = (minB - origin) / dir;
+            f32 t2 = (maxB - origin) / dir;
+            if (t1 > t2)
+            {
+                f32 tmp = t1;
+                t1 = t2;
+                t2 = tmp;
+            }
+
+            tMin = Max(tMin, t1);
+            tMax = Min(tMax, t2);
+
+            if (tMin > tMax)
+            { return false; }
+        }
+    }
+
+    *outDistance = tMin;
+    return true;
 }

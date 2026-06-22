@@ -2,13 +2,13 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
-// fado_converter.cpp
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb/stb_image_resize2.h"
 #define STB_DXT_IMPLEMENTATION
 #include "stb/stb_dxt.h"
+
 #include "fado_asset_format.h"
 #include <stdio.h>
 #include <sys/stat.h>

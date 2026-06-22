@@ -20,46 +20,52 @@ internal void Initialize(FGameState* gameState)
 {
     gameState->initialized = true;
 
+    FSharedStuff* shared = gameState->shared;
+    shared->canSelect = true;
+
     // >> IMPORTANT: Camera MUST be handle 0!
-    gameState->hCamera = SpawnEntity(gameState->entityTable, gameState->transforms, INVALID_HANDLE, INVALID_HANDLE, {}, EShaderTypes::Shader_None);
-    gameState->transforms->positions[gameState->hCamera] = { 0.0f, 2.5f, -10.0f };
+    shared->camera.handle = SpawnEntity(shared->entityTable, shared->transforms, INVALID_HANDLE, INVALID_HANDLE, {}, EShaderTypes::Shader_None);
+    shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
 
-    gameState->infinitePlane = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hPlaneMesh, gameState->hGridTexture, {}, EShaderTypes::UnlitTexture);
-    gameState->transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f };
+    gameState->infinitePlane = SpawnEntity(shared->entityTable, shared->transforms, gameState->hPlaneMesh, gameState->hGridTexture, {}, EShaderTypes::UnlitTexture);
+    shared->transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f };
 
-    gameState->skyBox = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCubeMesh, gameState->hSkyBoxTexture, {}, EShaderTypes::UnlitTexture);
-    gameState->transforms->positions[gameState->skyBox] = { 10.0f, 10.0f, 10.0f };
+    gameState->skyBox = SpawnEntity(shared->entityTable, shared->transforms, gameState->hCubeMesh, gameState->hSkyBoxTexture, {}, EShaderTypes::UnlitTexture);
+    shared->transforms->positions[gameState->skyBox] = { 10.0f, 10.0f, 10.0f };
 
-    gameState->cube1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCubeMesh, 0, { 0.63f, 1, 0.21f, 1 }, EShaderTypes::Color);
-    gameState->cube2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hCubeMesh, 0, { 1, 0.21f, 0.63f, 1 }, EShaderTypes::Color);
-    gameState->sphere1 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphereMesh, gameState->hGraniteTexture, {}, EShaderTypes::LitTexture);
-    gameState->sphere2 = SpawnEntity(gameState->entityTable, gameState->transforms, gameState->hSphereMesh, gameState->hMosaicTexture, {}, EShaderTypes::LitTexture);
+    gameState->cube1 = SpawnEntity(shared->entityTable, shared->transforms, gameState->hCubeMesh, 0, { 0.63f, 1, 0.21f, 1 }, EShaderTypes::Color);
+    gameState->cube2 = SpawnEntity(shared->entityTable, shared->transforms, gameState->hCubeMesh, 0, { 1, 0.21f, 0.63f, 1 }, EShaderTypes::Color);
+    gameState->sphere1 = SpawnEntity(shared->entityTable, shared->transforms, gameState->hSphereMesh, gameState->hGraniteTexture, {}, EShaderTypes::LitTexture);
+    gameState->sphere2 = SpawnEntity(shared->entityTable, shared->transforms, gameState->hSphereMesh, gameState->hMosaicTexture, {}, EShaderTypes::LitTexture);
 
-    gameState->transforms->positions[gameState->cube1] = { -3.5f, 5.0f, 0 };
-    gameState->transforms->scales[gameState->cube1] = { 2.5f, 0.25f, 1.0f };
-    gameState->transforms->positions[gameState->cube2] = { 1.5f, 5.0f, 0 };
-    gameState->transforms->positions[gameState->sphere1] = { -1.5f, 2.0f, 0 };
-    gameState->transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
+    shared->transforms->positions[gameState->cube1] = { -3.5f, 5.0f, 0 };
+    shared->transforms->scales[gameState->cube1] = { 2.5f, 0.25f, 1.0f };
+    shared->transforms->positions[gameState->cube2] = { 1.5f, 5.0f, 0 };
+    shared->transforms->positions[gameState->sphere1] = { -1.5f, 2.0f, 0 };
+    shared->transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
 
-    CollisionInitialize(gameState->collisionWorld);
+    CollisionInitialize(shared->collisionWorld);
 
-    CollisionAddCollider(gameState->collisionWorld, gameState->hCamera,
-        gameState->entityTable->entities[gameState->hCamera].hTransform,
+    CollisionAddCollider(shared->collisionWorld, shared->camera.handle,
+        shared->entityTable->entities[shared->camera.handle].hTransform,
         { 1.0f, 1.0f, 1.0f }, ECollisionFlags::Physics);
 
-    CollisionAddCollider(gameState->collisionWorld, gameState->infinitePlane,
-        gameState->entityTable->entities[gameState->infinitePlane].hTransform,
+    CollisionAddCollider(shared->collisionWorld, gameState->infinitePlane,
+        shared->entityTable->entities[gameState->infinitePlane].hTransform,
         { 1.0f, 0.01f, 1.0f }, ECollisionFlags::Static);
 
     v3 extents = {1.0f, 1.0f, 1.0f};
-    CollisionAddCollider(gameState->collisionWorld, gameState->sphere1,
-        gameState->entityTable->entities[gameState->sphere1].hTransform, extents, ECollisionFlags::Dynamic);
-    CollisionAddCollider(gameState->collisionWorld, gameState->sphere2,
-        gameState->entityTable->entities[gameState->sphere2].hTransform, extents, ECollisionFlags::Physics);
-    CollisionAddCollider(gameState->collisionWorld, gameState->cube1,
-        gameState->entityTable->entities[gameState->cube1].hTransform, extents, ECollisionFlags::Kinematic);
-    CollisionAddCollider(gameState->collisionWorld, gameState->cube2,
-        gameState->entityTable->entities[gameState->cube2].hTransform, extents, ECollisionFlags::Static);
+    CollisionAddCollider(shared->collisionWorld, gameState->sphere1,
+        shared->entityTable->entities[gameState->sphere1].hTransform, extents, ECollisionFlags::Dynamic);
+    CollisionAddCollider(shared->collisionWorld, gameState->sphere2,
+        shared->entityTable->entities[gameState->sphere2].hTransform, extents, ECollisionFlags::Physics);
+    CollisionAddCollider(shared->collisionWorld, gameState->cube1,
+        shared->entityTable->entities[gameState->cube1].hTransform, extents, ECollisionFlags::Kinematic);
+    CollisionAddCollider(shared->collisionWorld, gameState->cube2,
+        shared->entityTable->entities[gameState->cube2].hTransform, extents, ECollisionFlags::Static);
+
+    CollisionAddCollider(shared->collisionWorld, gameState->skyBox,
+        shared->entityTable->entities[gameState->skyBox].hTransform, extents, ECollisionFlags::Static);
 }
 
 internal b8 IsStickHeld(v2 stickAverage, EStickDirection direction)
@@ -95,6 +101,31 @@ internal b8 IsStickHeld(v2 stickAverage, EStickDirection direction)
     }
 
     return result;
+}
+
+internal i32 PickEntity(FRay ray, FCollisionWorld* collisions)
+{
+    i32 closestIndex = 0;
+    f32 closestDist = MAX_FLOAT;
+
+    // start from 1 to skip the camera
+    for (u32 i = 1; i < collisions->colliders.count; ++i)
+    {
+        v3 aabbMin = collisions->colliders.colliders[i].worldAABB.min; // adjust to your actual AABB storage
+        v3 aabbMax = collisions->colliders.colliders[i].worldAABB.max;
+
+        f32 dist;
+        if (RayIntersectsAABB(ray, aabbMin, aabbMax, &dist))
+        {
+            if (dist < closestDist)
+            {
+                closestDist = dist;
+                closestIndex = i;
+            }
+        }
+    }
+
+    return collisions->colliders.colliders[closestIndex].hEntity;
 }
 
 internal b8 IsInputButtonClick(FGameButtonState* button)
@@ -147,7 +178,7 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
 {
     gameState->uiNavState.buttonCount = 0;
 
-    FUICommandBucket* uiBucket = gameState->uiCommands;
+    FUICommandBucket* uiBucket = gameState->shared->uiCommands;
 
     f32 buttonsYOffset = 20.0f;
     v4 rect = { 350, 450, 200, 75 };
@@ -182,6 +213,8 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
 
 internal void HandleGameInput(FGameState* gameState, FGameInput* input)
 {
+    FSharedStuff* shared = gameState->shared;
+
     for (u32 controllerIndex = 0; controllerIndex < ArrayCount(input->controllers); ++controllerIndex)
     {
         FGameControllerInput* controllerInput = &input->controllers[controllerIndex];
@@ -190,14 +223,15 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
             return;
         }
 
-        quat camRot = gameState->transforms->rotations[gameState->hCamera];
-        v3* camPos = &gameState->transforms->positions[gameState->hCamera];
+        quat camRot = shared->transforms->rotations[shared->camera.handle];
+        v3* camPos = &shared->transforms->positions[shared->camera.handle];
 
-        v3* sphere1Pos = &gameState->transforms->positions[gameState->sphere1];
+        v3* sphere1Pos = &shared->transforms->positions[gameState->sphere1];
 
-        v3 forward = QuatForward(camRot);
-        v3 right = QuatRight(camRot);
-        v3 up = QuatUp(camRot);
+        FCamera* cam = &shared->camera;
+        v3 forward = cam->forward;
+        v3 right = cam->right;
+        v3 up = cam->up;
 
         // Movement
         f32 moveSpeed = 10.0f * input->deltaTime;
@@ -260,7 +294,7 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
             gameState->cameraYaw -= sensitivity;
         }
         gameState->cameraPitch = Clampf32(gameState->cameraPitch, -89.0f, 89.0f);
-        SetRotation(gameState->transforms, gameState->hCamera,
+        SetRotation(shared->transforms, shared->camera.handle,
             { gameState->cameraPitch, gameState->cameraYaw, 0 });
        
         // Mouse Rotation
@@ -279,7 +313,7 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
         if ((mouseYaw != 0 || mousePitch != 0) && (input->mouse.isRotating))
         {
             // Rebuild quat from the two angles.
-            SetRotation(gameState->transforms, gameState->hCamera,
+            SetRotation(shared->transforms, shared->camera.handle,
                 { gameState->cameraPitch, gameState->cameraYaw, 0 });
         }
 
@@ -290,6 +324,25 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
     }
 }
 
+internal FRay ScreenPointToRay(FSharedStuff* shared, f32 mouseX, f32 mouseY)
+{
+    FCamera* cam = &shared->camera;
+
+    // Convert to NDC [-1, 1]
+    f32 ndcX = (2.0f * mouseX) / shared->viewport.width - 1.0f;
+    f32 ndcY = 1.0f - (2.0f * mouseY) / shared->viewport.height; // flip Y
+
+    f32 halfHeight = tanf(cam->fovY * 0.5f);
+    f32 halfWidth = halfHeight * cam->aspect;
+
+    v3 dir = cam->forward + (cam->right * (ndcX * halfWidth)) + (cam->up * (ndcY * halfHeight));
+
+    FRay ray = {};
+    ray.origin = shared->transforms->positions[cam->handle];
+    ray.direction = V3Normalize(dir);
+    return ray;
+}
+
 extern "C" __declspec(dllexport)
 GAME_UPDATE(GameUpdate)
 {
@@ -298,26 +351,39 @@ GAME_UPDATE(GameUpdate)
         Initialize(gameState);
     }
 
+    FSharedStuff* shared = gameState->shared;
+
+    // Clicking on entites
+    if (IsInputButtonClick(&input->mouse.buttons[0]) && shared->canSelect)
+    {
+        FRay ray = ScreenPointToRay(gameState->shared, (f32)input->mouse.x, (f32)input->mouse.y);
+        i32 picked = PickEntity(ray, shared->collisionWorld);
+        if (picked >= 0)
+        {
+            shared->selectedEntity = picked;
+        }
+    }
+
 	HandleGameInput(gameState, input);
     UpdateUI(gameState, input);
 
-    gameState->transforms->positions[gameState->infinitePlane].x = gameState->transforms->positions[gameState->hCamera].x;
-    gameState->transforms->positions[gameState->infinitePlane].z = gameState->transforms->positions[gameState->hCamera].z;
+    shared->transforms->positions[gameState->infinitePlane].x = shared->transforms->positions[shared->camera.handle].x;
+    shared->transforms->positions[gameState->infinitePlane].z = shared->transforms->positions[shared->camera.handle].z;
 
-    Rotate(gameState->transforms, gameState->cube1, { 50.0f*input->deltaTime, 0.0f, 0.0f });
-    Rotate(gameState->transforms, gameState->cube2, { -50.0f * input->deltaTime, 0.0f, 0.0f });
-    Rotate(gameState->transforms, gameState->sphere1, { 0.0f, 50.0f * input->deltaTime, 0.0f });
-    Rotate(gameState->transforms, gameState->sphere2, { 0.0f, -50.0f * input->deltaTime, 0.0f });
+    Rotate(shared->transforms, gameState->cube1, { 50.0f*input->deltaTime, 50.0f * input->deltaTime, 0.0f });
+    Rotate(shared->transforms, gameState->cube2, { -50.0f * input->deltaTime, 0.0f, 0.0f });
+    Rotate(shared->transforms, gameState->sphere1, { 0.0f, 50.0f * input->deltaTime, 0.0f });
+    Rotate(shared->transforms, gameState->sphere2, { 0.0f, -50.0f * input->deltaTime, 0.0f });
 
     // Test and update collisions.
     // 1. Calculate and detect.
-    CollisionUpdate(gameState->collisionWorld, gameState->transforms, &memory->scratch);
+    CollisionUpdate(shared->collisionWorld, shared->transforms, shared->scratchArena);
     // 2. Resolve (push solid objects apart).
-    CollisionResolve(gameState->collisionWorld, gameState->transforms);
+    CollisionResolve(shared->collisionWorld, shared->transforms);
     // 3. React (Iterate contacts for game logic).
-    for (u32 i = 0; i < gameState->collisionWorld->contactCount; ++i)
+    for (u32 i = 0; i < shared->collisionWorld->contactCount; ++i)
     {
-        FContactInfo* c = &gameState->collisionWorld->contacts[i];
+        FContactInfo* c = &shared->collisionWorld->contacts[i];
         if (c->isTrigger)
         {
             // Example: Doing something specific if sphere1 collides with sphere2
