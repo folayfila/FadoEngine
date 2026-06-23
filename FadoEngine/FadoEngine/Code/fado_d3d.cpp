@@ -406,7 +406,7 @@ internal FMatrixBuffer GetShadersTransposeMatrices(FRenderWorld* world)
 internal void InitializeColorShader(FColorShader *colorShader, ID3D11Device* device, HWND window)
 {
 	// Compile the shader code.
-	wchar hlslFileName[FMAX_PATH] = { L"FadoEngine\\Shaders\\color.hlsl" };
+	wchar hlslFileName[FMAX_PATH] = { L"Shaders\\color.hlsl" };
 	ID3D10Blob* vertexShaderBuffer = nullptr;
 	ID3D10Blob* pixelShaderBuffer = nullptr;
 	LoadAndCompileShader(device, hlslFileName, vertexShaderBuffer, pixelShaderBuffer, colorShader->vertexShader, colorShader->pixelShader);
@@ -501,7 +501,7 @@ internal void SetColorShaderParameters(FRenderWorld* world, u32 hColorDrawCall)
 internal void InitializeUnlitTextureShader(FUnlitTextureShader* unlitTexShader, ID3D11Device* device, HWND window)
 {
 	// Compile the shader code.
-	wchar hlslFileName[FMAX_PATH] = { L"FadoEngine\\Shaders\\unlit_texture.hlsl" };
+	wchar hlslFileName[FMAX_PATH] = { L"Shaders\\unlit_texture.hlsl" };
 	ID3D10Blob* vertexShaderBuffer = nullptr;
 	ID3D10Blob* pixelShaderBuffer = nullptr;
 	LoadAndCompileShader(device, hlslFileName, vertexShaderBuffer, pixelShaderBuffer, unlitTexShader->vertexShader, unlitTexShader->pixelShader);
@@ -610,7 +610,7 @@ internal void SetUnlitTextureShaderParameters(FRenderWorld* world, HTexture hTex
 internal void InitializeLitTextureShader(FLitTextureShader* litTexShader, ID3D11Device* device, HWND window)
 {
 	// Compile the shader code.
-	wchar hlslFileName[FMAX_PATH] = { L"FadoEngine\\Shaders\\lit_texture.hlsl" };
+	wchar hlslFileName[FMAX_PATH] = { L"Shaders\\lit_texture.hlsl" };
 	ID3D10Blob* vertexShaderBuffer = nullptr;
 	ID3D10Blob* pixelShaderBuffer = nullptr;
 	LoadAndCompileShader(device, hlslFileName, vertexShaderBuffer, pixelShaderBuffer, litTexShader->vertexShader, litTexShader->pixelShader);
@@ -760,7 +760,7 @@ internal void SetLitTextureShaderParameters(FRenderWorld* world, HTexture hTextu
 internal void InitializeUIShader(FUIShader* uiShader, ID3D11Device* device, HWND window)
 {
 	// Compile the shader code.
-	wchar hlslFileName[FMAX_PATH] = { L"FadoEngine\\Shaders\\ui.hlsl" };
+	wchar hlslFileName[FMAX_PATH] = { L"Shaders\\ui.hlsl" };
 	ID3D10Blob* vertexShaderBuffer = nullptr;
 	ID3D10Blob* pixelShaderBuffer = nullptr;
 	LoadAndCompileShader(device, hlslFileName, vertexShaderBuffer, pixelShaderBuffer, uiShader->vertexShader, uiShader->pixelShader);

@@ -13,6 +13,9 @@
     <Filter Include="Code\imgui\backends">
       <UniqueIdentifier>{34E58734-A046-6542-29B4-ABF495149C01}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{EFAC8DF2-5B8C-0C8E-64A4-9764D00273EF}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Tools">
       <UniqueIdentifier>{16CF2D0E-82E3-55BF-4B65-F91EB73852F0}</UniqueIdentifier>
     </Filter>
@@ -113,5 +116,26 @@
     <ClCompile Include="FadoEngine\Code\imgui\imgui_widgets.cpp">
       <Filter>Code\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="FadoEngine\Tools\FadoConverter\fado_converter.cpp">
+      <Filter>Tools\FadoConverter</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="FadoEngine\FadoEngine.ico" />
+    <None Include="FadoEngine\Shaders\color.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="FadoEngine\Shaders\lit_texture.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="FadoEngine\Shaders\ui.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="FadoEngine\Shaders\unlit_texture.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="FadoEngine\FadoEngine.rc" />
   </ItemGroup>
 </Project>

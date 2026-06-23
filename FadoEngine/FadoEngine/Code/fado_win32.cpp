@@ -11,7 +11,6 @@
 #include "imgui/backends/imgui_impl_dx11.h"
 #endif // FADO_DEBUG
 
-
 // ────────────────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────────────────
@@ -432,7 +431,7 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 	windowClass.style = 0; // These make the rendereing flash because of the redraw when we resize. //CS_HREDRAW | CS_VREDRAW;
 	windowClass.lpfnWndProc = Win32MainWindowCallback;
 	windowClass.hInstance = win32System->instance;
-	//windowClass.hIcon = LoadIconW(NULL, IDI_WINLOGO);
+	//windowClass.hIcon = LoadIconW(NULL, MAKEINTRESOURCE(IDI_APP_ICON));
 	windowClass.hCursor = LoadCursorW(NULL, IDC_CROSS);
 	windowClass.hbrBackground = 0;	// Skips the automatic background erase.
 	windowClass.lpszClassName = applicationName;
@@ -480,19 +479,19 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 // Loads all assets at startup.
 internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
 {
-	gameState->hPlaneMesh = LoadGLBModel(world, "FadoEngine\\AssetsSource\\Models\\plane.glb");
-	gameState->hCubeMesh = LoadGLBModel(world, "FadoEngine\\AssetsSource\\Models\\cube.glb");
-	gameState->hSphereMesh = LoadGLBModel(world, "FadoEngine\\AssetsSource\\Models\\sphere.glb");
-	//HMesh hMonkey = LoadGLBIntoWorld(world, "FadoEngine\\models\\monkey.glb");
+	gameState->hPlaneMesh = LoadGLBModel(world, "Assets\\Models\\plane.glb");
+	gameState->hCubeMesh = LoadGLBModel(world, "Assets\\Models\\cube.glb");
+	gameState->hSphereMesh = LoadGLBModel(world, "Assets\\Models\\sphere.glb");
+	//HMesh hMonkey = LoadGLBIntoWorld(world, "models\\monkey.glb");
 
-	gameState->hGridTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\grid.fasset");
-	gameState->hMosaicTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\mosaic.fasset");
-	gameState->hGraniteTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\granite.fasset");
-	gameState->hSkyBoxTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\sky_box.fasset");
-	gameState->hWhiteTexture = LoadFImage(world, "FadoEngine\\Assets\\Textures\\white.fasset");
+	gameState->hGridTexture = LoadFImage(world, "Assets\\Textures\\grid.fasset");
+	gameState->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fasset");
+	gameState->hGraniteTexture = LoadFImage(world, "Assets\\Textures\\granite.fasset");
+	gameState->hSkyBoxTexture = LoadFImage(world, "Assets\\Textures\\sky_box.fasset");
+	gameState->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fasset");
 
-	//LoadFont(world, "FadoEngine\\AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, gameState->font);
-	LoadFont(world, "FadoEngine\\AssetsSource\\Fonts\\arialbd.ttf", 25.0f, gameState->font);
+	//LoadFont(world, "AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, gameState->font);
+	LoadFont(world, "Assets\\Fonts\\arialbd.ttf", 25.0f, gameState->font);
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -535,8 +534,8 @@ int WINAPI wWinMain(
 	Win32LoadXInput();
 	FGameInput* input = ArenaPushType(&engineMemory.permanent, FGameInput);
 
-	char sourceGameCodeDLLFullPath[MAX_PATH] = "x64\\Debug\\Game.dll";
-	char tempGameCodeDLLFullPath[MAX_PATH] = "x64\\Debug\\tempGame.dll";;
+	char sourceGameCodeDLLFullPath[MAX_PATH] = "..\\Debug\\Game.dll";
+	char tempGameCodeDLLFullPath[MAX_PATH] = "..\\Debug\\tempGame.dll";;
 	Win32GameCode gameCode = Win32LoadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
 
 	// Game loop.

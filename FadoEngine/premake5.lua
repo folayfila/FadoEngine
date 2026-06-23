@@ -5,6 +5,7 @@ workspace "FadoEngine"
     architecture "x64"
     configurations { "Debug", "Release" }
     startproject "FadoEngine"
+    debugdir "%{wks.location}/FadoEngine/"
 
 -- ──────────────────────────────────────────────────────────────────────
 -- Engine (Application .exe)
@@ -21,13 +22,11 @@ project "FadoEngine"
     {
         "FadoEngine/Code/**.h",
         "FadoEngine/Code/**.cpp",
-        "FadoEngine/Tools/FadoConverter/**.h"
-    }
-
-    removefiles
-    {
-        "FadoEngine/Tools/FadoConverter/fado_converter.cpp",
-        "FadoEngine/Shaders/**",
+        "FadoEngine/Tools/FadoConverter/**.h",
+        "FadoEngine/Tools/FadoConverter/**.cpp",
+        "FadoEngine/Shaders/**.hlsl",
+        "FadoEngine/FadoEngine.rc",
+        "FadoEngine/FadoEngine.ico"
     }
 
     includedirs
@@ -37,7 +36,19 @@ project "FadoEngine"
         "%{wks.location}/Game/Code/",
     }
 
+    postbuildcommands
+    {
+        "{COPYDIR} %{wks.location}/FadoEngine/Assets %{cfg.targetdir}/Assets",
+        "{COPYDIR} %{wks.location}/FadoEngine/Shaders %{cfg.targetdir}/Shaders"
+    }
+
     disablewarnings { "6297", "28251", "6387", "6386" }
+
+    filter "files:FadoEngine/Tools/FadoConverter/fado_converter.cpp"
+        excludefrombuild "On"
+
+    filter "files:FadoEngine/Shaders/**.hlsl"
+        buildaction "None"
 
     filter "configurations:Debug"
         defines { "DEBUG" }

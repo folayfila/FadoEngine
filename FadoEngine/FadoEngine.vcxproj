@@ -65,12 +65,20 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>FadoEngine;FadoEngine\Code\imgui;Game\Code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <ProjectReference>
     </ProjectReference>
+    <PostBuildEvent>
+      <Command>xcopy /Q /E /Y /I $(SolutionDir)\FadoEngine\Assets Debug\Assets
+xcopy /Q /E /Y /I $(SolutionDir)\FadoEngine\Shaders Debug\Shaders</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -87,6 +95,10 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>FadoEngine;FadoEngine\Code\imgui;Game\Code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -94,6 +106,10 @@
     </Link>
     <ProjectReference>
     </ProjectReference>
+    <PostBuildEvent>
+      <Command>xcopy /Q /E /Y /I $(SolutionDir)\FadoEngine\Assets Release\Assets
+xcopy /Q /E /Y /I $(SolutionDir)\FadoEngine\Shaders Release\Shaders</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="FadoEngine\Code\fado_collision.h" />
@@ -127,6 +143,19 @@
     <ClCompile Include="FadoEngine\Code\imgui\imgui_draw.cpp" />
     <ClCompile Include="FadoEngine\Code\imgui\imgui_tables.cpp" />
     <ClCompile Include="FadoEngine\Code\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="FadoEngine\Tools\FadoConverter\fado_converter.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="FadoEngine\FadoEngine.ico" />
+    <None Include="FadoEngine\Shaders\color.hlsl" />
+    <None Include="FadoEngine\Shaders\lit_texture.hlsl" />
+    <None Include="FadoEngine\Shaders\ui.hlsl" />
+    <None Include="FadoEngine\Shaders\unlit_texture.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="FadoEngine\FadoEngine.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
