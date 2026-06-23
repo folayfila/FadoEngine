@@ -1,39 +1,10 @@
+// (C) Copyright 2026 by Abdallah Maaliki / folayfila.
+
 #ifndef FADO_GLB_H
 #define FADO_GLB_H
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include <math.h>
-
-#pragma warning(disable : 6262)
-
-
-// Copy pasting these typedefs to avoid including anything from fado engine code here.
-#include <stdint.h>
-// ─────────────────────────────────────────────
-typedef int8_t i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
-
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-
-typedef float f32;
-typedef double f64;
-
-typedef wchar_t wchar;
-
-typedef i32 bool32;
-typedef bool b8;
-
-// ─────────────────────────────────────────────
-
-#define internal static
+#include "fado_types.h"
 
 /*
  * fado_glb.h  —  GLB 2.0 parser, no external dependencies
@@ -59,6 +30,10 @@ typedef bool b8;
  * OUTPUT VERTEX FORMAT:
  *   Each mesh primitive is flattened to interleaved FGLBVertex[] + uint32 indices[].
  *   Ready to drop straight into UploadMesh().
+ * 
+ * Note:
+ * In all honesty, this was based on a really good claude prompt, with a few tweaks here and there.
+ * I might consider replacing it with "tinygltf" header.
  */
 
 #define GLB_MAX_MESHES      64
@@ -79,7 +54,7 @@ struct FGLBVertex
 {
     f32 px, py, pz;       // POSITION
     f32 nx, ny, nz;       // NORMAL   (0 if absent in file)
-    f32 u, v;            // TEXCOORD_0 (0 if absent)
+    f32 u, v;             // TEXCOORD_0 (0 if absent)
 };
 
 /* -----------------------------------------------------------------------
@@ -91,7 +66,7 @@ struct FGLBVertex
 struct FGLBPrimitive
 {
     FGLBVertex* vertices;
-    u32* indices;
+    u32*        indices;
     u32         vertexCount;
     u32         indexCount;
     i32         materialIndex;   // -1 = none
@@ -102,7 +77,7 @@ struct FGLBPrimitive
    ----------------------------------------------------------------------- */
 struct FGLBMesh
 {
-    char            name[GLB_MAX_NAME];
+    c8            name[GLB_MAX_NAME];
     FGLBPrimitive   primitives[GLB_MAX_PRIMITIVES];
     u32             primitiveCount;
 };
@@ -112,13 +87,13 @@ struct FGLBMesh
    ----------------------------------------------------------------------- */
 struct FGLBNode
 {
-    char  name[GLB_MAX_NAME];
+    c8  name[GLB_MAX_NAME];
     i32   meshIndex;        // -1 = none
     i32   parentIndex;      // -1 = root
     f32   scale[3];
     f32   rotation[4];      // quaternion xyzw
     f32   translation[3];   // local transform components
-    bool32  hasSRT;         // true if any SRT values were present
+    b32  hasSRT;         // true if any SRT values were present
 };
 
 /* -----------------------------------------------------------------------
@@ -126,7 +101,7 @@ struct FGLBNode
    ----------------------------------------------------------------------- */
 struct FGLBMaterial
 {
-    char  name[GLB_MAX_NAME];
+    c8  name[GLB_MAX_NAME];
     i32   baseColorTextureIndex;   // index into asset.textures[], -1 = none
     f32   baseColorFactor[4];      // RGBA, default 1,1,1,1
 };
@@ -146,8 +121,8 @@ struct FGLBImage
     // mimeType is "image/png" or "image/jpeg".
     const u8* data;
     u32       byteLength;
-    char      mimeType[32];
-    char      name[GLB_MAX_NAME];
+    c8        mimeType[32];
+    c8        name[GLB_MAX_NAME];
 };
 
 /* -----------------------------------------------------------------------
@@ -248,20 +223,20 @@ struct FJSONValue
     FJSONType type;
     union
     {
-        bool32  boolVal;
+        b32  boolVal;
         f64 numVal;
-        char* strVal;
-        i32 firstChild;   // ARRAY / OBJECT: index of first child, GLB_INVALID if empty
+        c8* strVal;
+        i32 firstChild;  // ARRAY / OBJECT: index of first child, GLB_INVALID if empty
     };
-    char* key;           // OBJECT / children only: key is a pointer into JSON text buffer
-    i32   nextSibling;   // index of next sibling in parent, GLB_INVALID if last
+    c8* key;             // OBJECT / children only: key is a pointer into JSON text buffer
+    i32 nextSibling;     // index of next sibling in parent, GLB_INVALID if last
 };
 
 struct FJSONDoc
 {
     FJSONValue pool[JSON_POOL_MAX];
     u32        poolUsed;
-    char* text;     // mutable copy of the JSON chunk (we null-terminate strings)
+    c8* text;           // mutable copy of the JSON chunk (we null-terminate strings)
     u32        textLen;
 };
 
@@ -270,26 +245,26 @@ struct FJSONDoc
 // -----------------------------------------------------------------------
 struct FJSONParser
 {
-    char* cur;
-    char* end;
+    c8* cur;
+    c8* end;
     FJSONDoc* doc;
-    bool32      error;
+    b32 error;
 };
 
 internal void json_skip_whitespace(FJSONParser* p)
 {
     while ((p->cur < p->end) &&
-        ((*p->cur == ' ') || (*p->cur == '\t') ||
-            (*p->cur == '\n') || (*p->cur == '\r')))
+          ((*p->cur == ' ') || (*p->cur == '\t') ||
+          (*p->cur == '\n') || (*p->cur == '\r')))
     {
         p->cur++;
     }
 }
 
-internal b8 json_expect(FJSONParser* p, char c)
+internal b8 json_expect(FJSONParser* p, c8 c)
 {
     json_skip_whitespace(p);
-    if (p->cur >= p->end || *p->cur != c)
+    if ((p->cur >= p->end) || (*p->cur != c))
     {
         p->error = true;
         return false;
@@ -316,7 +291,7 @@ internal i32 json_parse_string(FJSONParser* p)
 {
     // Caller has already confirmed *cur == '"'
     p->cur++; // skip opening "
-    char* start = p->cur;
+    c8* start = p->cur;
     while ((p->cur < p->end) && (*p->cur != '"'))
     {
         if (*p->cur == '\\')
@@ -341,7 +316,7 @@ internal i32 json_parse_string(FJSONParser* p)
 
 internal i32 json_parse_number(FJSONParser* p)
 {
-    char* start = p->cur;
+    c8* start = p->cur;
     if (*p->cur == '-')
     {
         p->cur++;
@@ -471,7 +446,7 @@ internal i32 json_parse_object(FJSONParser* p)
 
         // parse key
         p->cur++;
-        char* key = p->cur;
+        c8* key = p->cur;
         while ((p->cur < p->end) && (*p->cur != '"'))
         {
             if (*p->cur == '\\')
@@ -541,7 +516,7 @@ internal i32 json_parse_value(FJSONParser* p)
         return result;
     }
 
-    char c = *p->cur;
+    c8 c = *p->cur;
     if (c == '"')
     {
         result = json_parse_string(p);
@@ -590,7 +565,7 @@ internal i32 json_parse_value(FJSONParser* p)
     return GLB_INVALID;
 }
 
-internal b8 json_parse(FJSONDoc* doc, char* text, u32 textLen)
+internal b8 json_parse(FJSONDoc* doc, c8* text, u32 textLen)
 {
     doc->text = text;
     doc->textLen = textLen;
@@ -610,7 +585,7 @@ internal b8 json_parse(FJSONDoc* doc, char* text, u32 textLen)
 // -----------------------------------------------------------------------
 
 // Find a child by key in an OBJECT node. Returns nullptr if not found.
-internal FJSONValue* json_obj_get(FJSONDoc* doc, i32 objIdx, const char* key)
+internal FJSONValue* json_obj_get(FJSONDoc* doc, i32 objIdx, cc8* key)
 {
     if (objIdx < 0)
     {
@@ -665,7 +640,7 @@ internal FJSONValue* json_arr_get(FJSONDoc* doc, i32 arrIdx, u32 index)
 }
 
 // Shorthand: get a numeric value from an object key, with a default.
-internal f64 json_num(FJSONDoc* doc, u32 objIdx, const char* key, f64 def)
+internal f64 json_num(FJSONDoc* doc, u32 objIdx, cc8* key, f64 def)
 {
     FJSONValue* v = json_obj_get(doc, objIdx, key);
     if (!v || (v->type != JSON_NUMBER))
@@ -675,13 +650,13 @@ internal f64 json_num(FJSONDoc* doc, u32 objIdx, const char* key, f64 def)
     return v->numVal;
 }
 
-internal i32 json_int(FJSONDoc* doc, u32 objIdx, const char* key, i32 def)
+internal i32 json_int(FJSONDoc* doc, u32 objIdx, cc8* key, i32 def)
 {
     i32 result = (i32)json_num(doc, objIdx, key, (f64)def);
     return result;
 }
 
-internal const char* json_str(FJSONDoc* doc, u32 objIdx, const char* key, const char* def = "")
+internal cc8* json_str(FJSONDoc* doc, u32 objIdx, cc8* key, cc8* def = "")
 {
     FJSONValue* v = json_obj_get(doc, objIdx, key);
     if (!v || (v->type != JSON_STRING))
@@ -692,7 +667,7 @@ internal const char* json_str(FJSONDoc* doc, u32 objIdx, const char* key, const 
 }
 
 // Index of a child node (for passing to further navigation). Returns -1 if not found.
-internal i32 json_child_idx(FJSONDoc* doc, i32 parentIdx, const char* key)
+internal i32 json_child_idx(FJSONDoc* doc, i32 parentIdx, cc8* key)
 {
     FJSONValue* v = json_obj_get(doc, parentIdx, key);
     if (!v)
@@ -732,7 +707,7 @@ struct FGLBAccessor
     u32 numComponents;      // 1=SCALAR, 2=VEC2, 3=VEC3, 4=VEC4, 9=MAT3, 16=MAT4
 };
 
-internal u32 gltf_type_components(const char* type)
+internal u32 gltf_type_components(cc8* type)
 {
     if (!type) return 0;
     if (strcmp(type, "SCALAR") == 0) return 1;
@@ -809,7 +784,7 @@ internal u32 gltf_read_index(const u8* ptr, u32 componentType)
    SECTION 5 — MAIN PARSER
    ======================================================================= */
 
-internal b8 GLB_Load(const char* filename, FGLBAsset* out)
+internal b8 GLB_Load(cc8* filename, FGLBAsset* out)
 {
     // ----------------------------------------------------------------
     // 5.1  Read entire file into memory
@@ -868,7 +843,7 @@ internal b8 GLB_Load(const char* filename, FGLBAsset* out)
         fprintf(stderr, "GLB_Load: first chunk is not JSON\n");
         return false;
     }
-    char* jsonText = (char*)(cursor + 8);
+    c8* jsonText = (c8*)(cursor + 8);
     u32   jsonLen = jsonChunkHdr->chunkLength;
     cursor += 8 + ((jsonLen + 3) & ~3u); // advance past chunk (padded to 4)
 
@@ -968,7 +943,7 @@ internal b8 GLB_Load(const char* filename, FGLBAsset* out)
             accessors[i].componentType = (u32)json_num(&doc, aIdx, "componentType", 0);
             accessors[i].count = (u32)json_num(&doc, aIdx, "count", 0);
 
-            const char* typeStr = json_str(&doc, aIdx, "type", "SCALAR");
+            cc8* typeStr = json_str(&doc, aIdx, "type", "SCALAR");
             accessors[i].numComponents = gltf_type_components(typeStr);
 
             accessorCount++;
@@ -994,8 +969,8 @@ internal b8 GLB_Load(const char* filename, FGLBAsset* out)
             i32 iIdx = ci;
             u32 i = out->imageCount;
 
-            const char* name = json_str(&doc, iIdx, "name", "");
-            const char* mime = json_str(&doc, iIdx, "mimeType", "");
+            cc8* name = json_str(&doc, iIdx, "name", "");
+            cc8* mime = json_str(&doc, iIdx, "mimeType", "");
             strncpy_s(out->images[i].name, name, GLB_MAX_NAME - 1);
             strncpy_s(out->images[i].mimeType, mime, 31);
 
@@ -1056,7 +1031,7 @@ internal b8 GLB_Load(const char* filename, FGLBAsset* out)
             i32 mIdx = ci;
             u32 i = out->materialCount;
 
-            const char* name = json_str(&doc, mIdx, "name", "");
+            cc8* name = json_str(&doc, mIdx, "name", "");
             strncpy_s(out->materials[i].name, name, GLB_MAX_NAME - 1);
 
             // Default base color factor
@@ -1115,7 +1090,7 @@ internal b8 GLB_Load(const char* filename, FGLBAsset* out)
             i32 meshNodeIdx = mci;
             u32 mi = out->meshCount;
 
-            const char* meshName = json_str(&doc, meshNodeIdx, "name", "");
+            cc8* meshName = json_str(&doc, meshNodeIdx, "name", "");
             strncpy_s(out->meshes[mi].name, meshName, GLB_MAX_NAME - 1);
 
             i32 primArrayIdx = json_child_idx(&doc, meshNodeIdx, "primitives");
@@ -1281,7 +1256,7 @@ internal b8 GLB_Load(const char* filename, FGLBAsset* out)
             node->meshIndex = json_int(&doc, nIdx, "mesh", -1);
             node->parentIndex = -1; // filled in second pass below
 
-            const char* name = json_str(&doc, nIdx, "name", "");
+            cc8* name = json_str(&doc, nIdx, "name", "");
             strncpy_s(node->name, name, GLB_MAX_NAME - 1);
 
             // TRS

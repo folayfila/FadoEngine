@@ -19,6 +19,7 @@ typedef u32 HCollider;
 #define GRID_WIDTH              128    // cells along X  (GRID_WIDTH  * GRID_CELL_SIZE = world extent)
 #define GRID_HEIGHT             128    // cells along Z  (3-D)  / Y (2-D)
 #define GRID_MAX_PER_CELL       32     // max colliders that fit in one cell
+/*─────────────────────────────────────────────*/
 
 // ─────────────────────────────────────────────
 //  Collider flags
@@ -162,7 +163,6 @@ struct FCollisionWorld
 //  Public API
 // ────────────────────────────────────────────
 
-
 // Called once to set up the grid origin.
 void CollisionInitialize(FCollisionWorld* collisionWorld);
 
@@ -186,6 +186,7 @@ void CollisionResolve(FCollisionWorld* collisionWorld, FTransformTable* transfor
 // Checks if contactInfo->entityA and contactInfo->entityB are the same 2 entity handles passed.
 b8 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEntityB);
 
-b8 RayIntersectsAABB(FRay ray, v3 aabbMin, v3 aabbMax, f32* outDistance);
+// Checks if the ray intersects an AABB.
+b8 RayIntersectsAABB(FRay ray, FAABB aabb, f32* outDistance);
 
 #endif // FADO_COLIISION_H

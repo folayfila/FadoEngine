@@ -1,11 +1,23 @@
+// (C) Copyright 2026 by Abdallah Maaliki / folayfila.
+
 #ifndef FADO_H
 #define FADO_H
 
 #include "fado_types.h"
 #include "fado_ui.h"
 
+/*
+* Game Layer
+  - The plan is to have this as the connection layer between the game and engine and
+    for any game, we just call a specific game's update inside the update loop here.
+    This wasy, technically we can just drop game files and have a game run out of the box.
+*/
+
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
+// State of a button
+// - !wasDown && isDown -> was just clicked
+// - wasDown && !isDown -> was just released
 struct FGameButtonState
 {
 	b8 wasDown;
@@ -15,11 +27,10 @@ struct FGameButtonState
 
 struct FMouseInput
 {
-    // Mouse Buttons: 0 left, 1 middle, 2 right
-    FGameButtonState buttons[5];
-    i32 x, y, z;
-    i32 deltaX, deltaY; // Difference in mouse position between the last and current frame.
-    b32 isRotating;  // Used to track mouse rotation so we prevent snappy rotatiots when delta is huge.
+    FGameButtonState buttons[5];    // Mouse Buttons: 0 left, 1 middle, 2 right
+    i32 x, y, z;                    // Position 
+    i32 deltaX, deltaY;             // Difference in mouse position between the last and current frame.
+    b32 isRotating;                 // Used to track mouse rotation so we prevent snappy rotatiots when delta is huge.
 };
 
 enum EStickDirection
@@ -31,6 +42,7 @@ enum EStickDirection
     Right
 };
 
+// Game Controller - used for both keyboard and joysticks
 struct FGameControllerInput
 {
     v2 leftStickAverage;
@@ -79,6 +91,7 @@ struct FGameInput
     f32 deltaTime;
 };
 
+// ──────────────────────────────────────────────────────────────────────────────────────────
 struct FGameState
 {
     b32 running;
@@ -88,6 +101,9 @@ struct FGameState
 
     f32 cameraYaw;   // degrees, accumulates freely
     f32 cameraPitch; // degrees, clamped to [-89, 89]
+
+    FFont* font;
+    FUINavState uiNavState;
 
     // Entites
     HEntity infinitePlane;
@@ -108,9 +124,6 @@ struct FGameState
     HTexture hMosaicTexture;
     HTexture hGraniteTexture;
     HTexture hWhiteTexture;
-
-    FFont* font;
-    FUINavState uiNavState;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────

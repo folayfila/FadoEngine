@@ -1,5 +1,4 @@
-// fado_converter.cpp — standalone tool, not part of the engine build
-
+// (C) Copyright 2026 by Abdallah Maaliki / folayfila.
 #define _CRT_SECURE_NO_WARNINGS
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -15,16 +14,34 @@
 #include <stdlib.h>
 #include <math.h>
 
-#pragma warning(disable : 6262)
+// ──────────────────────────────────────────────────────────────────────────────────────────
+/*
+* Fado Converter
+* - A standalone tool that goes over assets in "FadoEngine\AssetsSource", compresses and converts them
+    to the engine's custom type ".fasset".
+*
+* How to use:
+* - Run "compile_fado_converter.bat" in "FadoEngine\Tools\FadoConverter", it should compile the cpp file and 
+*   generate an exe and an obj.
+* - Run the other bat, "compile_fado_converter.bat" also in "FadoEngine\Tools\FadoConverter".
+*   The bat will go over all files in the subfolders of "FadoEngine\AssetsSource", check if they have an
+*   implemented importer/baker, runs the code which converts them into .fasset placed in the same subfolders but in "FadoEngine\Assets".
+*   Skips over undefined types and files assets that weren't updated since the last bake.
+*   For more on the bakers, check the section "Asset Pipeline Dispatcher" below.
+* 
+*/
+// ──────────────────────────────────────────────────────────────────────────────────────────
 
+// ──────────────────────────────────────────────────────────────────────────────────────────
+// Compression functions - Uses stb to compress.
 
 internal u32 ComputeMipCount(u32 width, u32 height)
 {
     u32 count = 1;
     while (width > 1 || height > 1)
     {
-        if (width > 1)  width >>= 1;
-        if (height > 1) height >>= 1;
+        if (width > 1)  { width >>= 1; }
+        if (height > 1) { height >>= 1; }
         ++count;
     }
     return count;
@@ -32,8 +49,8 @@ internal u32 ComputeMipCount(u32 width, u32 height)
 
 internal u32 CompressBC3(u8* rgba, u32 width, u32 height, u8* outBuffer)
 {
-    if (width < 4)  width = 4;
-    if (height < 4) height = 4;
+    if (width < 4)  { width = 4; }
+    if (height < 4) { height = 4; }
 
     u32 blocksX = (width + 3) / 4;
     u32 blocksY = (height + 3) / 4;
@@ -71,15 +88,17 @@ internal u32 BakeMippedBC3_UpperBound(u32 width, u32 height)
     return mip0 * 2 + ComputeMipCount(width, height) * 64;
 }
 
-// Generates the full mip chain from rgba (width x height, RGBA8) and BC3-
-// compresses each level back to back into dstBuffer. Size dstBuffer with
-// BakeMippedBC3_UpperBound().
+// Generates the full mip chain from rgba (width x height, RGBA8) and BC3-compresses each level back to back into dstBuffer.
+// Size dstBuffer with BakeMippedBC3_UpperBound().
 internal u32 BakeMippedBC3(u8* rgba, u32 width, u32 height, u8* dstBuffer,
     u32 mipOffsets[FASSET_MAX_MIPS], u32 mipSizes[FASSET_MAX_MIPS],
     u32* outMipCount)
 {
     u32 mipCount = ComputeMipCount(width, height);
-    if (mipCount > FASSET_MAX_MIPS) mipCount = FASSET_MAX_MIPS;
+    if (mipCount > FASSET_MAX_MIPS)
+    {
+        mipCount = FASSET_MAX_MIPS;
+    }
 
     u32 total = 0;
     u32 mipWidth = width, mipHeight = height;
@@ -132,8 +151,11 @@ internal u32 BakeMippedBC3(u8* rgba, u32 width, u32 height, u8* dstBuffer,
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// ---- A small asset pipeline dispatcher.
-// ---- Calls the bake function based on the type "extenstion".
+/*
+ * Asset Pipeline Dispatcher.
+   - Calls the bake function based on the type "extenstion".
+   - Each type is manually added to importers with the dispatched function.
+*/
 
 typedef bool AssetBakeFn(const char* src, const char* dst);
 
@@ -177,10 +199,9 @@ AssetImporter* FindImporter(const char* path)
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// --- Imposters functions implementations
+// Imposters functions implementations
 
-
-// --- Images
+// -- Images --
 bool BakeImage(const char* src, const char* dst)
 {
     i32 width, height, channels;
@@ -239,6 +260,7 @@ bool BakeImage(const char* src, const char* dst)
 
 // ────────────────────────────────────────────────────────────────────────
 
+// Checks if the file was updated.
 internal bool SourceIsNewer(const char* srcPath, const char* outPath)
 {
     struct _stat srcStat, outStat;
@@ -247,10 +269,8 @@ internal bool SourceIsNewer(const char* srcPath, const char* outPath)
     return srcStat.st_mtime > outStat.st_mtime;
 }
 
-
 // ────────────────────────────────────────────────────────────────────────
 // ---- fado_converter main ----
-
 int main(int argc, char** argv)
 {
     if (argc != 3)

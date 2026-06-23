@@ -1,3 +1,5 @@
+// (C) Copyright 2026 by Abdallah Maaliki / folayfila.
+
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "fado_d3d.h"
@@ -27,7 +29,7 @@ cc8* k_psEntryFuncName = "PixelShaderEntry";
 // ────────────────────────────────────────────────────────────────────────
 internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 {
-	FD3D* d3d = d3dInitParams->d3d;
+	FD3D* d3d = &world->d3d;
 	FSharedStuff* shared = world->shared;
 	FMemoryArena* scratchArena = world->shared->scratchArena;
 
@@ -50,8 +52,8 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 	result = adapter->EnumOutputs(0, &adapterOutput);
 	Assert(!FAILED(result));
 
-	u32 numModes = 0;
 	// Get the number of modes that fit the DXGI_FORMAT_R8G8B8A8_UNORM display format for the adapter output (monitor).
+	u32 numModes = 0;
 	result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &numModes, NULL);
 	Assert(!FAILED(result));
 
@@ -333,26 +335,27 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 	// Initialize the world matrix to the identity matrix.
 	d3d->worldMatrix = DirectX::XMMatrixIdentity();
 
+	// Not used currently.
+	// TODO: check if we should just delete it.
 	// Create an orthographic projection matrix for 2D rendering.
-	d3d->orthoMatrix = DirectX::XMMatrixOrthographicLH((f32)d3dInitParams->screenWidth, (f32)d3dInitParams->screenHeight, d3dInitParams->screenNear, d3dInitParams->screenDepth);
+	//d3d->orthoMatrix = DirectX::XMMatrixOrthographicLH((f32)d3dInitParams->screenWidth, (f32)d3dInitParams->screenHeight, d3dInitParams->screenNear, d3dInitParams->screenDepth);
 }
 
+// Clear the back and depth buffer.
 internal void BeginScene(FD3D *d3d, v4 color)
 {
-	// Clear the back and depth buffer.
 	d3d->deviceContext->ClearRenderTargetView(d3d->renderTargetView, color.e);
 	d3d->deviceContext->ClearDepthStencilView(d3d->depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
+// Present the back buffer to the screen since rendering is complete.
 internal void EndScene(FD3D* d3d)
 {
-	// End of frame (after 3D scene, last thing before Present)
 #if FADO_DEBUG
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 #endif // FADO_DEBUG
 
-	// Present the back buffer to the screen since rendering is complete.
 	// SyncInterval:
 	// - 1: Lock to screen refresh rate.
 	// - 0: Present as fast as possible.
@@ -360,36 +363,53 @@ internal void EndScene(FD3D* d3d)
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// FColorShader
+// Shaders
 // ────────────────────────────────────────────────────────────────────────
-internal void InitializeColorShader(FColorShader *colorShader, ID3D11Device* device, HWND window)
+internal void LoadAndCompileShader(ID3D11Device* device, wchar* hlslFileName, ID3D10Blob*& vertexShaderBuffer, ID3D10Blob*& pixelShaderBuffer,
+	ID3D11VertexShader*& vertexShader, ID3D11PixelShader*& pixelShader)
 {
 	// Set the filename of the hlsl shader.
-	wchar hlslFileName[128];
-	i32 error = wcscpy_s(hlslFileName, 128, L"FadoEngine\\Shaders\\color.hlsl");
-	Assert(!error);
 	Assert(GetFileAttributesW(hlslFileName) != INVALID_FILE_ATTRIBUTES);
 
 	// Compile the vertex shader code.
 	ID3D10Blob* errorMessage = nullptr;
-	ID3D10Blob* vertexShaderBuffer = nullptr;
 	HRESULT result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&vertexShaderBuffer, &errorMessage);
 	Assert(!FAILED(result));
 
 	// Compile the pixel shader code.
-	ID3D10Blob* pixelShaderBuffer = nullptr;
 	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_psEntryFuncName, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
 		&pixelShaderBuffer, &errorMessage);
 	Assert(!FAILED(result));
 
 	// Create the vertex shader from the buffer.
-	result = device->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &colorShader->vertexShader);
+	result = device->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &vertexShader);
 	Assert(!FAILED(result));
 
 	// Create the pixel shader from the buffer.
-	result = device->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &colorShader->pixelShader);
+	result = device->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &pixelShader);
 	Assert(!FAILED(result));
+}
+
+internal FMatrixBuffer GetShadersTransposeMatrices(FRenderWorld* world)
+{
+	FMatrixBuffer mat = {};
+	mat.world = DirectX::XMMatrixTranspose(world->d3d.worldMatrix);
+	mat.view = DirectX::XMMatrixTranspose(world->cameraView);
+	mat.projection = DirectX::XMMatrixTranspose(world->d3d.projectionMatrix);
+	return mat;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// FColorShader
+// ────────────────────────────────────────────────────────────────────────
+internal void InitializeColorShader(FColorShader *colorShader, ID3D11Device* device, HWND window)
+{
+	// Compile the shader code.
+	wchar hlslFileName[FMAX_PATH] = { L"FadoEngine\\Shaders\\color.hlsl" };
+	ID3D10Blob* vertexShaderBuffer = nullptr;
+	ID3D10Blob* pixelShaderBuffer = nullptr;
+	LoadAndCompileShader(device, hlslFileName, vertexShaderBuffer, pixelShaderBuffer, colorShader->vertexShader, colorShader->pixelShader);
 
 	// Create the vertex input layout description.
 	// This setup needs to match the VertexType stucture in the model and in the shader.
@@ -403,7 +423,7 @@ internal void InitializeColorShader(FColorShader *colorShader, ID3D11Device* dev
 	polygonLayout[0].InstanceDataStepRate = 0;
 
 	// Create the vertex input layout.
-	result = device->CreateInputLayout(polygonLayout, 1, vertexShaderBuffer->GetBufferPointer(),
+	HRESULT result = device->CreateInputLayout(polygonLayout, 1, vertexShaderBuffer->GetBufferPointer(),
 		vertexShaderBuffer->GetBufferSize(), &colorShader->layout);
 	Assert(!FAILED(result));
 
@@ -437,15 +457,6 @@ internal void InitializeColorShader(FColorShader *colorShader, ID3D11Device* dev
 
 	result = device->CreateBuffer(&colorBufferDesc, NULL, &colorShader->colorBuffer);
 	Assert(!FAILED(result));
-}
-
-internal FMatrixBuffer GetShadersTransposeMatrices(FRenderWorld* world)
-{
-	FMatrixBuffer mat = {};
-	mat.world = DirectX::XMMatrixTranspose(world->d3d.worldMatrix);
-	mat.view = DirectX::XMMatrixTranspose(world->cameraView);
-	mat.projection = DirectX::XMMatrixTranspose(world->d3d.projectionMatrix);
-	return mat;
 }
 
 internal void SetColorShaderParameters(FRenderWorld* world, u32 hColorDrawCall)
@@ -489,32 +500,11 @@ internal void SetColorShaderParameters(FRenderWorld* world, u32 hColorDrawCall)
 // ────────────────────────────────────────────────────────────────────────
 internal void InitializeUnlitTextureShader(FUnlitTextureShader* unlitTexShader, ID3D11Device* device, HWND window)
 {
-	// Set the filename of the hlsl shader.
-	wchar hlslFileName[128];
-	i32 error = wcscpy_s(hlslFileName, 128, L"FadoEngine\\Shaders\\unlit_texture.hlsl");
-	Assert(!error);
-	Assert(GetFileAttributesW(hlslFileName) != INVALID_FILE_ATTRIBUTES);
-
-	// Compile the vertex shader code.
-	ID3D10Blob* errorMessage = nullptr;
+	// Compile the shader code.
+	wchar hlslFileName[FMAX_PATH] = { L"FadoEngine\\Shaders\\unlit_texture.hlsl" };
 	ID3D10Blob* vertexShaderBuffer = nullptr;
-	HRESULT result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
-		&vertexShaderBuffer, &errorMessage);
-	Assert(!FAILED(result));
-
-	// Compile the pixel shader code.
 	ID3D10Blob* pixelShaderBuffer = nullptr;
-	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_psEntryFuncName, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
-		&pixelShaderBuffer, &errorMessage);
-	Assert(!FAILED(result));
-
-	// Create the vertex shader from the buffer.
-	result = device->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &unlitTexShader->vertexShader);
-	Assert(!FAILED(result));
-
-	// Create the pixel shader from the buffer.
-	result = device->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &unlitTexShader->pixelShader);
-	Assert(!FAILED(result));
+	LoadAndCompileShader(device, hlslFileName, vertexShaderBuffer, pixelShaderBuffer, unlitTexShader->vertexShader, unlitTexShader->pixelShader);
 
 	// Create the vertex input layout description.
 	// This setup needs to match the VertexType stucture in the model and in the shader.
@@ -539,7 +529,7 @@ internal void InitializeUnlitTextureShader(FUnlitTextureShader* unlitTexShader, 
 	u32 numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
 
 	// Create the vertex input layout.
-	result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
+	HRESULT result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
 		vertexShaderBuffer->GetBufferSize(), &unlitTexShader->layout);
 	Assert(!FAILED(result));
 
@@ -619,32 +609,11 @@ internal void SetUnlitTextureShaderParameters(FRenderWorld* world, HTexture hTex
 // ────────────────────────────────────────────────────────────────────────
 internal void InitializeLitTextureShader(FLitTextureShader* litTexShader, ID3D11Device* device, HWND window)
 {
-	// Set the filename of the hlsl shader.
-	wchar hlslFileName[128];
-	i32 error = wcscpy_s(hlslFileName, 128, L"FadoEngine\\Shaders\\lit_texture.hlsl");
-	Assert(!error);
-	Assert(GetFileAttributesW(hlslFileName) != INVALID_FILE_ATTRIBUTES);
-
-	// Compile the vertex shader code.
-	ID3D10Blob* errorMessage = nullptr;
+	// Compile the shader code.
+	wchar hlslFileName[FMAX_PATH] = { L"FadoEngine\\Shaders\\lit_texture.hlsl" };
 	ID3D10Blob* vertexShaderBuffer = nullptr;
-	HRESULT result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
-		&vertexShaderBuffer, &errorMessage);
-	Assert(!FAILED(result));
-
-	// Compile the pixel shader code.
 	ID3D10Blob* pixelShaderBuffer = nullptr;
-	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_psEntryFuncName, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
-		&pixelShaderBuffer, &errorMessage);
-	Assert(!FAILED(result));
-
-	// Create the vertex shader from the buffer.
-	result = device->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &litTexShader->vertexShader);
-	Assert(!FAILED(result));
-
-	// Create the pixel shader from the buffer.
-	result = device->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &litTexShader->pixelShader);
-	Assert(!FAILED(result));
+	LoadAndCompileShader(device, hlslFileName, vertexShaderBuffer, pixelShaderBuffer, litTexShader->vertexShader, litTexShader->pixelShader);
 
 	// Create the vertex input layout description.
 	// This setup needs to match the VertexType stucture in the model and in the shader.
@@ -677,7 +646,7 @@ internal void InitializeLitTextureShader(FLitTextureShader* litTexShader, ID3D11
 	u32 numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
 
 	// Create the vertex input layout.
-	result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
+	HRESULT result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
 		vertexShaderBuffer->GetBufferSize(), &litTexShader->layout);
 	Assert(!FAILED(result));
 
@@ -785,38 +754,16 @@ internal void SetLitTextureShaderParameters(FRenderWorld* world, HTexture hTextu
 	deviceContext->PSSetConstantBuffers(0, 1, &lightShader->lightBuffer);
 }
 
-
 // ────────────────────────────────────────────────────────────────────────
 // FUIShader
 // ────────────────────────────────────────────────────────────────────────
 internal void InitializeUIShader(FUIShader* uiShader, ID3D11Device* device, HWND window)
 {
-	// Set the filename of the hlsl shader.
-	wchar hlslFileName[128];
-	i32 error = wcscpy_s(hlslFileName, 128, L"FadoEngine\\Shaders\\ui.hlsl");
-	Assert(!error);
-	Assert(GetFileAttributesW(hlslFileName) != INVALID_FILE_ATTRIBUTES);
-
-	// Compile the vertex shader code.
-	ID3D10Blob* errorMessage = nullptr;
+	// Compile the shader code.
+	wchar hlslFileName[FMAX_PATH] = { L"FadoEngine\\Shaders\\ui.hlsl" };
 	ID3D10Blob* vertexShaderBuffer = nullptr;
-	HRESULT result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_vsEntryFuncName, "vs_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
-		&vertexShaderBuffer, &errorMessage);
-	Assert(!FAILED(result));
-
-	// Compile the pixel shader code.
 	ID3D10Blob* pixelShaderBuffer = nullptr;
-	result = D3DCompileFromFile(hlslFileName, NULL, NULL, k_psEntryFuncName, "ps_5_0", D3D10_SHADER_ENABLE_STRICTNESS, 0,
-		&pixelShaderBuffer, &errorMessage);
-	Assert(!FAILED(result));
-
-	// Create the vertex shader from the buffer.
-	result = device->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &uiShader->vertexShader);
-	Assert(!FAILED(result));
-
-	// Create the pixel shader from the buffer.
-	result = device->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &uiShader->pixelShader);
-	Assert(!FAILED(result));
+	LoadAndCompileShader(device, hlslFileName, vertexShaderBuffer, pixelShaderBuffer, uiShader->vertexShader, uiShader->pixelShader);
 
 	// Create the vertex input layout description.
 	// This setup needs to match the VertexType stucture in the model and in the shader.
@@ -847,7 +794,7 @@ internal void InitializeUIShader(FUIShader* uiShader, ID3D11Device* device, HWND
 
 	// Create the vertex input layout.
 	u32 numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
-	result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
+	HRESULT result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
 		vertexShaderBuffer->GetBufferSize(), &uiShader->layout);
 	Assert(!FAILED(result));
 
@@ -861,7 +808,7 @@ internal void InitializeUIShader(FUIShader* uiShader, ID3D11Device* device, HWND
 	// Setup the description of the constant buffer.
 	D3D11_BUFFER_DESC cbDesc = {};
 	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
-	cbDesc.ByteWidth = sizeof(FUIConstants);
+	cbDesc.ByteWidth = sizeof(mat4/*MatrixBuffer*/);
 	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
@@ -879,30 +826,33 @@ internal void InitializeUIShader(FUIShader* uiShader, ID3D11Device* device, HWND
 	Assert(!FAILED(result));
 }
 
-internal void MakeUIOrtho(f32 out[4][4], f32 left, f32 right, f32 top, f32 bottom)
+internal void MakeUIOrtho(mat4* out, f32 left, f32 right, f32 top, f32 bottom)
 {
-	memset(out, 0, sizeof(f32) * 16);
-	out[0][0] = 2.0f / (right - left);
-	out[1][1] = 2.0f / (top - bottom);  // flipped: y=0 top
-	out[2][2] = 0.5f;
-	out[3][0] = -(right + left) / (right - left);
-	out[3][1] = -(top + bottom) / (top - bottom);
-	out[3][2] = 0.5f;
-	out[3][3] = 1.0f;
+	// Scale screen coordinates into clip space.
+	out->e[0][0] = 2.0f / (right - left);
+	out->e[1][1] = 2.0f / (top - bottom);  // flipped: y=0 top
+
+	// Map depth from [0, 1] into clip space.
+	out->e[2][2] = 0.5f;
+
+	// Translate screen origin into clip space.
+	out->e[3][0] = -(right + left) / (right - left);
+	out->e[3][1] = -(top + bottom) / (top - bottom);
+	out->e[3][2] = 0.5f;
+	out->e[3][3] = 1.0f;
 }
 
 internal void SetUIProjection(FRenderWorld* world)
 {
-	FUIConstants constants = {};
-
-	MakeUIOrtho(constants.projection, 0.0f, world->shared->viewport.width, 0.0f, world->shared->viewport.height);
+	// Create a projection where (0,0) is the top-left of the viewport. (MatrixBuffer).
+	mat4 uiProjection = {};
+	MakeUIOrtho(&uiProjection, 0.0f, world->shared->viewport.width, 0.0f, world->shared->viewport.height);
 
 	D3D11_MAPPED_SUBRESOURCE mapped = {};
-
 	HRESULT result = world->d3d.deviceContext->Map(world->uiShader.constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 	Assert(!FAILED(result));
 
-	memcpy(mapped.pData, &constants, sizeof(constants));
+	fmemcpy(mapped.pData, &uiProjection, sizeof(uiProjection));
 	world->d3d.deviceContext->Unmap(world->uiShader.constantBuffer, 0);
 }
 
@@ -912,12 +862,12 @@ internal void PushQuad(FUIVertex* verts, u32* count, v4 rect, v4 coords, v4 colo
 	f32 h = rect.height;
 	// triangle 1
 	verts[(*count)++] = { rect.x,		rect.y,		  coords.u0, coords.v0, color.r, color.g, color.b, color.a };
-	verts[(*count)++] = { (rect.x+w),   rect.y,		  coords.u1, coords.v0, color.r, color.g, color.b, color.a };
+	verts[(*count)++] = { (rect.x + w), rect.y,		  coords.u1, coords.v0, color.r, color.g, color.b, color.a };
 	verts[(*count)++] = { (rect.x + w), (rect.y + h), coords.u1, coords.v1, color.r, color.g, color.b, color.a };
 	// triangle 2
-	verts[(*count)++] = { rect.x,	  rect.y,		coords.u0, coords.v0, color.r, color.g, color.b, color.a };
-	verts[(*count)++] = { (rect.x+w), (rect.y + h), coords.u1, coords.v1, color.r, color.g, color.b, color.a };
-	verts[(*count)++] = { rect.x,	  (rect.y + h), coords.u0, coords.v1, color.r, color.g, color.b, color.a };
+	verts[(*count)++] = { rect.x,	    rect.y,		  coords.u0, coords.v0, color.r, color.g, color.b, color.a };
+	verts[(*count)++] = { (rect.x + w), (rect.y + h), coords.u1, coords.v1, color.r, color.g, color.b, color.a };
+	verts[(*count)++] = { rect.x,	    (rect.y + h), coords.u0, coords.v1, color.r, color.g, color.b, color.a };
 }
 
 internal HTexture CreateTextureFromPixels(FRenderWorld* world, void* pixels, i32 width, i32 height)
@@ -946,7 +896,7 @@ internal HTexture CreateTextureFromPixels(FRenderWorld* world, void* pixels, i32
 	Assert(!FAILED(result));
 	tex->Release();
 
-	Assert(world->texturesCount < MAX_TEXTURES);
+	Assert(world->texturesCount < FMAX_TEXTURES);
 	HTexture handle = world->texturesCount++;
 	world->textures[handle].textureView = srv;
 	world->textures[handle].width = width;
@@ -1020,6 +970,7 @@ internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 // ────────────────────────────────────────────────────────────────────────
 // Draw call helpers
 // ────────────────────────────────────────────────────────────────────────
+// Add a draw call to the passed bucket.
 internal void PushDrawCall(FRenderBucket* bucket, HMesh hMesh, HTexture hTexture, DXMatrix worldMatrix, DXFloat4 color = {})
 {
 	Assert(bucket->count < MAX_DRAW_CALLS);
@@ -1060,8 +1011,8 @@ internal void FlushColorBucket(FRenderWorld* world)
 		FDrawCall* call = &world->colorBucket.calls[i];
 		d3d->worldMatrix = call->worldMatrix;
 		FMeshBuffer* mesh = &world->meshes[call->hMesh];
-		RenderMesh(mesh, d3d->deviceContext);
 		SetColorShaderParameters(world, i);
+		RenderMesh(mesh, d3d->deviceContext);
 		d3d->deviceContext->DrawIndexed(mesh->indexCount, 0, 0);
 	}
 
@@ -1084,8 +1035,8 @@ internal void FlushTextureBucket(FRenderWorld* world)
 		FDrawCall* call = &world->unlitTextureBucket.calls[i];
 		d3d->worldMatrix = call->worldMatrix;
 		FMeshBuffer* mesh = &world->meshes[call->hMesh];
-		RenderMesh(mesh, d3d->deviceContext);
 		SetUnlitTextureShaderParameters(world, call->hTexture);
+		RenderMesh(mesh, d3d->deviceContext);
 		d3d->deviceContext->DrawIndexed(mesh->indexCount, 0, 0);
 	}
 
@@ -1107,8 +1058,8 @@ internal void FlushLitTextureBucket(FRenderWorld* world)
 		FDrawCall* call = &world->litTextureBucket.calls[i];
 		d3d->worldMatrix = call->worldMatrix;
 		FMeshBuffer* mesh = &world->meshes[call->hMesh];
-		RenderMesh(mesh, d3d->deviceContext);
 		SetLitTextureShaderParameters(world, call->hTexture);
+		RenderMesh(mesh, d3d->deviceContext);
 		d3d->deviceContext->DrawIndexed(mesh->indexCount, 0, 0);
 	}
 
@@ -1117,15 +1068,11 @@ internal void FlushLitTextureBucket(FRenderWorld* world)
 
 // ────────────────────────────────────────────────────────────────────────
 // FlushUIBucket
-//
+// 
 // Draws all queued UI commands (rects + text-as-rects) for this frame.
-//
 // - UI has no concept of depth: layering is purely by submission order (first pushed = bottom, last pushed = top),
 //   so depth testing is disabled for this entire pass. Without this, UI quads would be
 //   depth-tested against each other (and the 3D scene) and incorrectly discarded/hidden, since most UI sits at the same Z.
-// - Commands are batched by texture: consecutive commands using the same texture are combined into a single Draw() call.
-//   When the texture changes, the accumulated batch is flushed (uploaded + drawn) before starting a new batch.
-//   This keeps draw calls low without needing a full sort, as long as same-texture UI elements are pushed together.
 // - Alpha blending is enabled so partially-transparent quads composite correctly over whatever was drawn before them in this same pass.
 // ────────────────────────────────────────────────────────────────────────
 internal void FlushUIBucket(FRenderWorld* world)
@@ -1171,26 +1118,16 @@ internal void FlushUIBucket(FRenderWorld* world)
 				color = cmd->rect.color;
 			} break;
 
-			case EUICommandType::Text:
-			{
-#if FADO_DEBUG
-				FUITextCommand* text = &cmd->text;
-				ImGui::SetCursorPos({ text->pos.x, text->pos.y });
-				ImGui::TextColored({ text->color.r, text->color.g, text->color.b, text->color.a }, text->text);
-#endif // FADO_DEBUG
-				continue; // skip quad push
-			} break;
-
 			default:
 			{ continue; }
 		}
 
-		// Flush if texture changes
+		// Flush if texture changes.
 		if ((cmdTexture != currentTexture) && (vertCount > 0))
 		{
 			D3D11_MAPPED_SUBRESOURCE mapped = {};
 			deviceContext->Map(world->d3d.uiVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-			memcpy(mapped.pData, verts, sizeof(FUIVertex) * vertCount);
+			fmemcpy(mapped.pData, verts, sizeof(FUIVertex) * vertCount);
 			deviceContext->Unmap(world->d3d.uiVertexBuffer, 0);
 			deviceContext->PSSetShaderResources(0, 1, &currentTexture);
 			deviceContext->Draw(vertCount, 0);
@@ -1206,7 +1143,7 @@ internal void FlushUIBucket(FRenderWorld* world)
 	{
 		D3D11_MAPPED_SUBRESOURCE mapped = {};
 		deviceContext->Map(world->d3d.uiVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-		memcpy(mapped.pData, verts, sizeof(FUIVertex) * vertCount);
+		fmemcpy(mapped.pData, verts, sizeof(FUIVertex) * vertCount);
 		deviceContext->Unmap(world->d3d.uiVertexBuffer, 0);
 		deviceContext->PSSetShaderResources(0, 1, &currentTexture);
 		deviceContext->Draw(vertCount, 0);
@@ -1222,13 +1159,20 @@ internal void FlushUIBucket(FRenderWorld* world)
 // ────────────────────────────────────────────────────────────────────────
 // FCamera
 // ────────────────────────────────────────────────────────────────────────
+// Updates the camera view matrix and the shared FCamera.
 internal void RenderCamera(FRenderWorld* world)
 {
 	FSharedStuff* shared = world->shared;
-	quat q = shared->transforms->rotations[shared->camera.handle];
+	quat rot = shared->transforms->rotations[shared->camera.handle];
+
+	// Update shared CameraView.
+	FCamera* cam = &shared->camera;
+	cam->forward = QuatForward(rot);
+	cam->right = QuatRight(rot);
+	cam->up = QuatUp(rot);
 
 	// Load quaternion directly into DirectXMath.
-	DirectX::XMVECTOR quatVector = DirectX::XMVectorSet(q.x, q.y, q.z, q.w);
+	DirectX::XMVECTOR quatVector = DirectX::XMVectorSet(rot.x, rot.y, rot.z, rot.w);
 
 	// Build rotation matrix from quaternion.
 	DXMatrix rotationMatrix = DirectX::XMMatrixRotationQuaternion(quatVector);
@@ -1249,19 +1193,14 @@ internal void RenderCamera(FRenderWorld* world)
 	DirectX::XMVECTOR lookAtVector = DirectX::XMVectorAdd(positionVector, forwardVector);
 
 	world->cameraView = DirectX::XMMatrixLookAtLH(positionVector, lookAtVector, upVector);
-
-	// Populate shared CameraView (plain data, no DX types)
-	FCamera* cam = &shared->camera;
-	cam->forward = QuatForward(q);
-	cam->right = QuatRight(q);
-	cam->up = QuatUp(q);
 }
 
 // Returns a DXMatrix by building it from the Entity's transform.
-internal DXMatrix BuildEntityWorldMatrix(HEntity hEntity, FEntityTable* entityTable, FTransformTable* transforms)
+internal DXMatrix BuildEntityWorldMatrix(HEntity hEntity, FSharedStuff* shared)
 {
-	FEntity* entity = &entityTable->entities[hEntity];
-	
+	FEntity* entity = &shared->entityTable->entities[hEntity];
+	FTransformTable* transforms = shared->transforms;
+
 	v3 scale = transforms->scales[entity->hTransform];
 	DXMatrix scaleMatrix = DirectX::XMMatrixScaling(scale.x, scale.y, scale.z);
 
@@ -1309,7 +1248,7 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 		? DXGI_FORMAT_BC3_UNORM
 		: DXGI_FORMAT_R8G8B8A8_UNORM;
 
-	// Create texture with full mip chain
+	// Create texture with full mip chain.
 	D3D11_TEXTURE2D_DESC texDesc = {};
 	texDesc.Width = header.width;
 	texDesc.Height = header.height;
@@ -1356,13 +1295,12 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	tex->Release();
 
 	// Store in world texture pool.
-	Assert(world->texturesCount < MAX_TEXTURES);
+	Assert(world->texturesCount < FMAX_TEXTURES);
 	HTexture handle = world->texturesCount++;
 	world->textures[handle].textureView = srv;
 	world->textures[handle].width = (i32)header.width;
 	world->textures[handle].height = (i32)header.height;
 
-	// All pixel/mip data was only needed for CreateTexture2D — free it now.
 	ArenaReset(world->shared->scratchArena);
 	return handle;
 }
@@ -1371,17 +1309,13 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 // Model loader — .glb model
 // > TODO: Check if we can replace it with a .fasset
 // ────────────────────────────────────────────────────────────────────────
-
 HMesh LoadGLBModel(FRenderWorld* world, cc8* fileName)
 {
 	FGLBAsset* asset = ArenaPushType(world->shared->scratchArena, FGLBAsset);
 	ZeroStruct(asset);
 
-	if (!GLB_Load(fileName, asset))
-	{
-		Assert(0);	// Check filename, it failed to load!
-		return 0;
-	}
+	// Load the .glb file
+	Assert(GLB_Load(fileName, asset));
 
 	HMesh handle = 0;
 
@@ -1399,6 +1333,8 @@ HMesh LoadGLBModel(FRenderWorld* world, cc8* fileName)
 			}
 
 			// NOTE: FGLBVertex and the texture struct need to match in layout.
+			// FLitTextureVertex contains all attributes currently imported from GLB (position, normal, uv),
+			// so it can be uploaded regardless of which shader will eventually render the mesh.
 			FLitTextureVertex* converted = (FLitTextureVertex*)ArenaPushArray(world->shared->scratchArena, prim->vertexCount, FLitTextureVertex);
 			if (converted)
 			{
@@ -1437,7 +1373,7 @@ HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFo
 	fread(fontBuffer, 1, size, file);
 	fclose(file);
 
-	// Bake atlas (single channel, 512x512 — adjust if needed)
+	// Bake atlas (single channel, 512x512 — can be adjusted)
 	i32 atlasW = 512, atlasH = 512;
 	u8* atlasPixels = ArenaPushSize(world->shared->scratchArena, u8, (atlasW * atlasH));
 
@@ -1455,7 +1391,7 @@ HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFo
 	}
 
 	// Upload as texture (reuse your existing texture creation path)
-	outFont->atlasTexture = CreateTextureFromPixels(world, rgbaPixels, atlasW, atlasH);
+	outFont->atlas = CreateTextureFromPixels(world, rgbaPixels, atlasW, atlasH);
 	outFont->size = fontSize;
 
 	// Convert baked chars to our glyph format
@@ -1463,19 +1399,23 @@ HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFo
 	{
 		stbtt_bakedchar* bc = &bakedChars[i];
 		FFontGlyph* glyph = &outFont->glyphs[i];
+
 		glyph->coords.u0 = bc->x0 / (f32)atlasW;
 		glyph->coords.v0 = bc->y0 / (f32)atlasH;
 		glyph->coords.u1 = bc->x1 / (f32)atlasW;
 		glyph->coords.v1 = bc->y1 / (f32)atlasH;
-		glyph->width = bc->x1 - bc->x0;
+
+		glyph->width  = bc->x1 - bc->x0;
 		glyph->height = bc->y1 - bc->y0;
+
 		glyph->offset.x = bc->xoff;
 		glyph->offset.y = bc->yoff;
+
 		glyph->xadvance = bc->xadvance;
 	}
 
 	ArenaReset(world->shared->scratchArena);
-	return outFont->atlasTexture;
+	return outFont->atlas;
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -1522,12 +1462,13 @@ void Render(FRenderWorld* world)
 	// Generate the view matrix based on the camera's position.
 	RenderCamera(world);
 
-	FTransformTable* transforms = world->shared->transforms;
+	// Draw all entites
+	// TODO: draw only those that need to be drawn (in view).
 	FEntityTable* entityTable = world->shared->entityTable;
 	for (u32 i = 0; i < world->shared->entityTable->count; ++i)
 	{
 		FEntity* e = &entityTable->entities[i];
-		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, entityTable, transforms);
+		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
 
 		switch (e->shaderType)
 		{
@@ -1552,7 +1493,7 @@ void Render(FRenderWorld* world)
 		}
 	}
 
-	// Flush all buckets — shader bound once per bucket, zero branching.
+	// Flush all buckets — shader bound once per bucket.
 	FlushColorBucket(world);
 	FlushTextureBucket(world);
 	FlushLitTextureBucket(world);
@@ -1645,9 +1586,9 @@ void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 s
 
 // ─────────────────────────────────
 /// Debug Only
+#if FADO_DEBUG
 #include "fado_collision.h"
 
-#if FADO_DEBUG
 // Call from game code to queue a line for this frame
 internal void DebugDrawLine(FRenderWorld* world, v3 start, v3 end, v4 color)
 {
@@ -1736,6 +1677,8 @@ internal void ShowDebugGui(FRenderWorld* world)
 	FTransformTable* transforms = world->shared->transforms;
 
 	c8 label[64];
+
+	// Camera
 	snprintf(label, sizeof(label), "Camera Transform");
 	if (ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen))
 	{
@@ -1743,6 +1686,23 @@ internal void ShowDebugGui(FRenderWorld* world)
 		ImGui::DragFloat3(label, &transforms->positions[0].x, 0.1f);
 	}
 
+	// Light
+	snprintf(label, sizeof(label), "Light");
+	if (ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		FLitTextureShader* light = &world->litTextureShader;
+
+		snprintf(label, sizeof(label), "Ambient Color");
+		ImGui::DragFloat4(label, &light->ambientColor.x, 0.1f);
+
+		snprintf(label, sizeof(label), "Diffuse Color");
+		ImGui::DragFloat4(label, &light->diffuseColor.x, 0.1f);
+
+		snprintf(label, sizeof(label), "Direction");
+		ImGui::DragFloat3(label, &light->lightDirection.x, 0.1f);
+	}
+
+	// Selected Entity
 	snprintf(label, sizeof(label), "Selected entity Transform_%d", hTransform);
 	if (ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen))
 	{
@@ -1830,25 +1790,21 @@ internal void FlushDebugLineBucket(FRenderWorld* world)
 
 void DebugRender(FRenderWorld* world)
 {
-	FTransformTable* transforms = world->shared->transforms;
-	FEntityTable* entityTable = world->shared->entityTable;
-	FCollisionWorld* collisionWorld = world->shared->collisionWorld;
 	ShowDebugGui(world);
-
-	FD3D* d3d = &world->d3d;
-
 	world->shared->canSelect = !ImGui::GetIO().WantCaptureMouse;
 
 	// Clear the buffers to begin the scene.
+	FD3D* d3d = &world->d3d;
 	BeginScene(d3d, v4{ 0.0f, 0.0f, 0.0f, 3.0f });
 
 	// Generate the view matrix based on the camera's position.
 	RenderCamera(world);
 
+	FEntityTable* entityTable = world->shared->entityTable;
 	for (u32 i = 0; i < entityTable->count; ++i)
 	{
 		FEntity* e = &entityTable->entities[i];
-		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, entityTable, transforms);
+		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
 
 		switch (e->shaderType)
 		{
@@ -1879,6 +1835,7 @@ void DebugRender(FRenderWorld* world)
 	FlushLitTextureBucket(world);
 	FlushUIBucket(world);
 
+	FCollisionWorld* collisionWorld = world->shared->collisionWorld;
 	for (u32 i = 0; i < collisionWorld->colliders.count; ++i)
 	{
 		FCollider* c = &collisionWorld->colliders.colliders[i];

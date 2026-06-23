@@ -1,3 +1,7 @@
+#pragma warning(push)
+#pragma warning(disable : 4996)
+
+
 /* stb_image_resize2 - v2.18 - public domain image resizing
 
    by Jeff Roberts (v2) and Jorge L Rodriguez
@@ -10677,3 +10681,5 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ------------------------------------------------------------------------------
 */
+
+#pragma warning(pop)

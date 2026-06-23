@@ -5,13 +5,13 @@
 /////////////
 // GLOBALS //
 /////////////
-cbuffer UI_Constants : register(b0)
+cbuffer MatrixBuffer : register(b0)
 {
     float4x4 projection;
 };
 
-Texture2D ui_texture : register(t0);
-SamplerState ui_sampler : register(s0);
+Texture2D uiTexture : register(t0);
+SamplerState uiSampler : register(s0);
 
 /////////////
 // TYPEDEFS //
@@ -47,6 +47,6 @@ PixelInputType VertexShaderEntry(VertexInputType input)
 ////////////////////////////////////////////////////////////////////////////////
 float4 PixelShaderEntry(PixelInputType input) : SV_TARGET
 {
-    float4 tex = ui_texture.Sample(ui_sampler, input.uv);
+    float4 tex = uiTexture.Sample(uiSampler, input.uv);
     return tex * input.color;
 }

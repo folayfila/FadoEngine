@@ -16,14 +16,8 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{918fa7bd-55d0-46ef-8c93-8ae60badca02}</UniqueIdentifier>
     </Filter>
-    <Filter Include="tools">
-      <UniqueIdentifier>{426e2182-92a9-457c-ae93-0c802070fa4e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\glb">
       <UniqueIdentifier>{f7736571-cd2f-41ae-a31d-78233f999448}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="tools\FadoConverter">
-      <UniqueIdentifier>{500bddc5-de80-4af4-8196-36ea76a7e9d7}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\imgui">
       <UniqueIdentifier>{c86e3fb6-2952-445e-82c2-9a0857ae8a0b}</UniqueIdentifier>
@@ -37,7 +31,13 @@
     <Filter Include="Header Files\imgui\backends">
       <UniqueIdentifier>{73edadbb-841e-4809-af5e-8250214e69d9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="tools\FadoConverter\stb">
+    <Filter Include="Tools">
+      <UniqueIdentifier>{426e2182-92a9-457c-ae93-0c802070fa4e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\FadoConverter">
+      <UniqueIdentifier>{500bddc5-de80-4af4-8196-36ea76a7e9d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\FadoConverter\stb">
       <UniqueIdentifier>{3f23b2ff-978d-4810-b8c5-e6b74aa1fa13}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -47,9 +47,6 @@
     </ClCompile>
     <ClCompile Include="FadoEngine\code\fado_d3d.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="FadoEngine\Tools\FadoConverter\fado_converter.cpp">
-      <Filter>tools\FadoConverter</Filter>
     </ClCompile>
     <ClCompile Include="FadoEngine\Code\imgui\imgui.cpp">
       <Filter>Source Files\imgui</Filter>
@@ -93,7 +90,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FadoEngine\Tools\FadoConverter\fado_asset_format.h">
-      <Filter>tools\FadoConverter</Filter>
+      <Filter>Tools\FadoConverter</Filter>
     </ClInclude>
     <ClInclude Include="FadoEngine\Code\imgui\backends\imgui_impl_dx11.h">
       <Filter>Header Files\imgui\backends</Filter>
@@ -123,16 +120,16 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_image_resize2.h">
-      <Filter>tools\FadoConverter\stb</Filter>
+      <Filter>Tools\FadoConverter\stb</Filter>
     </ClInclude>
     <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_truetype.h">
-      <Filter>tools\FadoConverter\stb</Filter>
+      <Filter>Tools\FadoConverter\stb</Filter>
     </ClInclude>
     <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_dxt.h">
-      <Filter>tools\FadoConverter\stb</Filter>
+      <Filter>Tools\FadoConverter\stb</Filter>
     </ClInclude>
     <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_image.h">
-      <Filter>tools\FadoConverter\stb</Filter>
+      <Filter>Tools\FadoConverter\stb</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -148,6 +145,9 @@
     </None>
     <None Include="FadoEngine\Shaders\unlit_texture.hlsl">
       <Filter>Shaders</Filter>
+    </None>
+    <None Include="FadoEngine\Tools\FadoConverter\fado_converter.cpp">
+      <Filter>Tools\FadoConverter</Filter>
     </None>
   </ItemGroup>
 </Project>

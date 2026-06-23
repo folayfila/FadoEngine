@@ -72,7 +72,7 @@ internal b32 OBBOverlap(const FOBB& a, const FOBB& b, v3* outNormal, f32* outPen
 
     // Vector from A's center to B's center — used to measure how far apart
     // the boxes are along each candidate axis, and to orient the final normal.
-    v3  centerDelta = V3Sub(b.center, a.center); // A -> B
+    v3  centerDelta = b.center - a.center; // A -> B
 
     f32 minPenetration = 0.0f;
     v3  minAxis = {};
@@ -390,7 +390,7 @@ internal void CollisionNarrowPhase(FCollisionWorld* collisionWorld)
             contact->normal = normal;
             contact->penetration = penetration;
             contact->isTrigger = (ca->flags & ECollisionFlags::Trigger) ||
-                (cb->flags & ECollisionFlags::Trigger);
+                                 (cb->flags & ECollisionFlags::Trigger);
         }
     }
 }
@@ -487,11 +487,11 @@ void CollisionResolve(FCollisionWorld* collisionWorld, FTransformTable* transfor
         // Convert penetration depth into world-space movement vectors.
         // shareA + shareB always equals 1, so the full penetration is removed.
         v3 deltaA = { contact->normal.x * contact->penetration * shareA,
-                       contact->normal.y * contact->penetration * shareA,
-                       contact->normal.z * contact->penetration * shareA };
+                      contact->normal.y * contact->penetration * shareA,
+                      contact->normal.z * contact->penetration * shareA };
         v3 deltaB = { contact->normal.x * contact->penetration * shareB,
-                       contact->normal.y * contact->penetration * shareB,
-                       contact->normal.z * contact->penetration * shareB };
+                      contact->normal.y * contact->penetration * shareB,
+                      contact->normal.z * contact->penetration * shareB };
 
         if (shareA > 0.0f)
         {
@@ -556,7 +556,7 @@ b8 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEn
     return areColliding;
 }
 
-b8 RayIntersectsAABB(FRay ray, v3 aabbMin, v3 aabbMax, f32* outDistance)
+b8 RayIntersectsAABB(FRay ray, FAABB aabb, f32* outDistance)
 {
     f32 tMin = 0.0f;
     f32 tMax = MAX_FLOAT;
@@ -565,8 +565,8 @@ b8 RayIntersectsAABB(FRay ray, v3 aabbMin, v3 aabbMax, f32* outDistance)
     {
         f32 origin = ray.origin.e[axis];
         f32 dir = ray.direction.e[axis];
-        f32 minB = aabbMin.e[axis];
-        f32 maxB = aabbMax.e[axis];
+        f32 minB = aabb.min.e[axis];
+        f32 maxB = aabb.max.e[axis];
 
         if (fabsf(dir) < 1e-8f)
         {

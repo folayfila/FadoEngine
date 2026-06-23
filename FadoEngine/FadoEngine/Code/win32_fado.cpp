@@ -1,3 +1,5 @@
+// (C) Copyright 2026 by Abdallah Maaliki / folayfila.
+
 #include "win32_fado.h"
 #include <xinput.h>
 #include "fado_math.h"
@@ -10,9 +12,12 @@
 #endif // FADO_DEBUG
 
 
+// ────────────────────────────────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────────────────────────────────
 internal void ToggleFullscreen(HWND Window)
 {
-	// >Note: Copied code from internet
+	// Note: Copied code from internet
 	DWORD style = GetWindowLongW(Window, GWL_STYLE);
 	if (style & WS_OVERLAPPEDWINDOW)
 	{
@@ -52,26 +57,29 @@ internal FILETIME Win32GetLastWriteTime(char* fileName)
 	return lastWriteTime;
 }
 
+// Returns the loaded game moode if successful.
+// - sourceDLLName: The actual dll to load. 
+// - tempDLLName: a temporary dll that gets created while loading the new one to bypass msvc.
 internal Win32GameCode Win32LoadGameCode(char* sourceDLLName, char* tempDLLName)
 {
-	Win32GameCode result = {};
+	Win32GameCode gameCode = {};
 
-	result.dllLastWriteTime = Win32GetLastWriteTime(sourceDLLName);
+	gameCode.dllLastWriteTime = Win32GetLastWriteTime(sourceDLLName);
 	CopyFileA(sourceDLLName, tempDLLName, FALSE);
 
-	result.gameCodeDLL = LoadLibraryA(tempDLLName);
-	if (result.gameCodeDLL)
+	gameCode.gameCodeDLL = LoadLibraryA(tempDLLName);
+	if (gameCode.gameCodeDLL)
 	{
-		result.gameUpdate = (FGameUpdate*)GetProcAddress(result.gameCodeDLL, "GameUpdate");
-		result.isValid = (result.gameUpdate != nullptr);
+		gameCode.gameUpdate = (FGameUpdate*)GetProcAddress(gameCode.gameCodeDLL, "GameUpdate");
+		gameCode.isValid = (gameCode.gameUpdate != nullptr);
 	}
 
-	if (!result.isValid)
+	if (!gameCode.isValid)
 	{
-		result.gameUpdate = 0;
+		gameCode.gameUpdate = 0;
 	}
 
-	return result;
+	return gameCode;
 }
 
 internal void Win32UnloadGameCode(Win32GameCode* gameCode)
@@ -162,12 +170,13 @@ internal void Win32HandleControllerInput(HWND Window, FGameInput* input)
 	GetCursorPos(&mousePoint);
 	ScreenToClient(Window, &mousePoint);
 
-	// Only update if mouse is within the window bounds and the mouse-right click
+	// Update the mouse only if it's within the window bounds.
 	RECT clientRect;
 	GetClientRect(Window, &clientRect);
 	if ((mousePoint.x >= clientRect.left) && (mousePoint.x <= clientRect.right) &&
 		(mousePoint.y >= clientRect.top) && (mousePoint.y <= clientRect.bottom))
 	{
+		// Rotation:
 		// We update the delta only if the user was holding the right-click mouse button, i.e. was already rotating.
 		// This prevents huge delta values if the user goes outside of the bounds and then back from another corner,
 		// in that case, we just set the update the mouse position to the current, and calculate delta on the next frame.
@@ -196,13 +205,17 @@ internal void Win32HandleControllerInput(HWND Window, FGameInput* input)
 	}
 	input->mouse.z = 0;
 
+	// Update mouse buttons state.
 	Win32ProcessButtonState(&input->mouse.buttons[0], (GetKeyState(VK_LBUTTON) & (1 << 15)),  dt);
 	Win32ProcessButtonState(&input->mouse.buttons[1], (GetKeyState(VK_MBUTTON) & (1 << 15)),  dt);
 	Win32ProcessButtonState(&input->mouse.buttons[2], (GetKeyState(VK_RBUTTON) & (1 << 15)),  dt);
 	Win32ProcessButtonState(&input->mouse.buttons[3], (GetKeyState(VK_XBUTTON1) & (1 << 15)), dt);
 	Win32ProcessButtonState(&input->mouse.buttons[4], (GetKeyState(VK_XBUTTON2) & (1 << 15)), dt);
 
-	input->mouse.isRotating = ((input->mouse.buttons[2].isDown) || (input->mouse.buttons[2].wasDown));
+	// No-clip camera can rotate only if the right-click mouse button is pressed.
+	// TODO: Create button state functions, e.g. Held, Clicked, Pressed.
+	// TODO: Add different camera types and handle their movement and input based on their type.
+	input->mouse.isRotating = (input->mouse.buttons[2].heldLength > 0.0f);
 
 	u32 maxControllerCount = XUSER_MAX_COUNT;
 	if (maxControllerCount > (ArrayCount(input->controllers) - 1))
@@ -210,6 +223,7 @@ internal void Win32HandleControllerInput(HWND Window, FGameInput* input)
 		maxControllerCount = (ArrayCount(input->controllers) - 1);
 	}
 
+	// Update controllers input.
 	for (u32 controllerIndex = 0; controllerIndex < maxControllerCount; ++controllerIndex)
 	{
 		// 0 in input->controllers is for the keyboard, but XInput counts the first controller as 0,
@@ -314,6 +328,7 @@ internal void Win32HandleKeyboardInput(MSG* msg, WPARAM wParam, LPARAM lParam, F
 	}
 }
 
+// Custom window message loop handle. This is where our custom input handles are triggered.
 internal void Win32HandleWindowsMessageLoop(FGameControllerInput* keyboard, f32 deltaTime)
 {
 	MSG message;
@@ -344,13 +359,20 @@ internal void Win32HandleWindowsMessageLoop(FGameControllerInput* keyboard, f32 
 	}
 }
 
+// Windows proc callback function. Handles all messages except input.
+#if FADO_DEBUG
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
+#endif // FADO_DEBUG
 internal LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
+
+#if FADO_DEBUG
 	if (ImGui_ImplWin32_WndProcHandler(window, message, wParam, lParam))
 	{
 		return true;
 	}
+#endif // FADO_DEBUG
+
 	LRESULT result = 0;
 
 	switch (message)
@@ -430,7 +452,6 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 		0, 0, win32System->instance, 0);
 
 	FD3DInitParams d3dInitParams = {};
-	d3dInitParams.d3d = &win32System->world->d3d;
 	d3dInitParams.window = win32System->window;
 	d3dInitParams.screenWidth = screenWidth;
 	d3dInitParams.screenHeight = screenHeight;
@@ -456,7 +477,7 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 }
 
 // Called before starting the game loop.
-// Loads all models and textures at startup.
+// Loads all assets at startup.
 internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
 {
 	gameState->hPlaneMesh = LoadGLBModel(world, "FadoEngine\\AssetsSource\\Models\\plane.glb");
@@ -491,12 +512,11 @@ int WINAPI wWinMain(
 
 	// Create all memory for the game upfront, and use it across the game.
 	FEngineMemory engineMemory = {};
-	u32 totalSize = Megabytes(64) + Megabytes(16);
+	u32 totalSize = Megabytes(64) + Megabytes(16);	// 80 MB
 	void* base = VirtualAlloc(0, totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	engineMemory.permanent = ArenaMake((u8*)base, Megabytes(64));
 	engineMemory.scratch = ArenaMake((u8*)base + Megabytes(64), Megabytes(16));
 	
-	Win32LoadXInput();
 	FGameState* gameState = ArenaPushType(&engineMemory.permanent, FGameState);
 	gameState->shared = ArenaPushType(&engineMemory.permanent, FSharedStuff);
 	gameState->shared->transforms = ArenaPushType(&engineMemory.permanent, FTransformTable);
@@ -508,20 +528,16 @@ int WINAPI wWinMain(
 
 	Win32System win32System = {};
 	win32System.world = ArenaPushType(&engineMemory.permanent, FRenderWorld);
-	win32System.engineMemory = &engineMemory;
 	win32System.world->shared = gameState->shared;
 	Win32InitializeWindowAndD3D(&engineMemory, &win32System);
 	InitLoadAssets(win32System.world, gameState);
 
+	Win32LoadXInput();
 	FGameInput* input = ArenaPushType(&engineMemory.permanent, FGameInput);
 
 	char sourceGameCodeDLLFullPath[MAX_PATH] = "x64\\Debug\\Game.dll";
-	//Win32BuildEXEPathFileName(&win32State, "folayfila.dll", sizeof(sourceGameCodeDLLFullPath), sourceGameCodeDLLFullPath);
-
 	char tempGameCodeDLLFullPath[MAX_PATH] = "x64\\Debug\\tempGame.dll";;
-	//Win32BuildEXEPathFileName(&win32State, "folayfila_temp.dll", sizeof(tempGameCodeDLLFullPath), tempGameCodeDLLFullPath);
 	Win32GameCode gameCode = Win32LoadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
-	win32System.gameCode = &gameCode;
 
 	// Game loop.
 	gameState->running = true;
@@ -538,6 +554,7 @@ int WINAPI wWinMain(
 		}
 		input->deltaTime = deltaTime;
 
+		// Check if we need to reload the game code (hot reload).
 		FILETIME newDLLWriteTime = Win32GetLastWriteTime(sourceGameCodeDLLFullPath);
 		if (CompareFileTime(&newDLLWriteTime, &gameCode.dllLastWriteTime) != 0)
 		{

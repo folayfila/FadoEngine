@@ -7,6 +7,13 @@
 #include <math.h>
 
 // ────────────────────────────────────────────────────────────────────────
+#define Pi32 3.141459265359f
+
+#define MAX_FLOAT 3.402823466e+38F
+
+#define Min(a, b) (((a) < (b)) ? (a) : (b))
+#define Max(a, b) (((a) > (b)) ? (a) : (b))
+
 #define Deg2Rad(d) ((d) * (Pi32 / 180.0f))
 #define Rad2Deg(r) ((r) * (180.0f / Pi32))
 
@@ -51,6 +58,490 @@ inline f32 Absf32(f32 value)
 	return result;
 }
 
+
+// > TODO: Replace with our own rand()
+#include <stdlib.h>
+inline f32 Randomf32InRange(f32 min, f32 max)
+{
+	f32 result = min + ((max - min) * ((f32)rand() / (f32)RAND_MAX));
+	return result;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// ──────────────── Vectors ───────────────────────────────────────────────
+
+// ──────────────── v2 ───────────────────────────────────────────────
+// Operators overloads:
+
+inline v2 operator+(v2 a, v2 b)
+{
+	v2 result = { a.x + b.x, a.y + b.y };
+	return result;
+}
+
+inline v2 operator+(v2 a, f32 s)
+{
+	v2 result = { a.x + s, a.y + s };
+	return result;
+}
+
+inline v2 operator-(v2 a, v2 b)
+{
+	v2 result = { a.x - b.x, a.y - b.y };
+	return result;
+}
+
+inline v2 operator-(v2 a, f32 s)
+{
+	v2 result = { a.x - s, a.y - s };
+	return result;
+}
+
+inline v2 operator*(v2 a, v2 b)
+{
+	v2 result = { a.x * b.x, a.y * b.y };
+	return result;
+}
+
+inline v2 operator*(v2 a, f32 s)
+{
+	v2 result = { a.x * s, a.y * s };
+	return result;
+}
+
+inline v2 operator*(f32 s, v2 a)
+{
+	v2 result = { a.x * s, a.y * s };
+	return result;
+}
+
+inline v2 operator/(v2 a, v2 b)
+{
+	v2 result = { a.x / b.x, a.y / b.y };
+	return result;
+}
+
+inline v2 operator/(v2 a, f32 s)
+{
+	v2 result = { a.x / s, a.y / s };
+	return result;
+}
+
+inline v2& operator+=(v2& a, v2 b)
+{
+	a.x += b.x;
+	a.y += b.y;
+	return a;
+}
+
+inline v2& operator+=(v2& a, f32 s)
+{
+	a.x += s;
+	a.y += s;
+	return a;
+}
+
+inline v2& operator-=(v2& a, v2 b)
+{
+	a.x -= b.x;
+	a.y -= b.y;
+	return a;
+}
+
+inline v2& operator-=(v2& a, f32 s)
+{
+	a.x -= s;
+	a.y -= s;
+	return a;
+}
+
+inline v2& operator*=(v2& a, v2 b)
+{
+	a.x *= b.x;
+	a.y *= b.y;
+	return a;
+}
+
+inline v2& operator*=(v2& a, f32 s)
+{
+	a.x *= s;
+	a.y *= s;
+	return a;
+}
+
+inline v2& operator/=(v2& a, v2 b)
+{
+	a.x /= b.x;
+	a.y /= b.y;
+	return a;
+}
+
+inline v2& operator/=(v2& a, f32 s)
+{
+	a.x /= s;
+	a.y /= s;
+	return a;
+}
+
+inline b8 operator==(const v2& va, const v2& vb)
+{
+	b8 equal = (va.x == vb.x) && (va.y == vb.y);
+	return equal;
+}
+
+inline b8 operator!=(const v2& va, const v2& vb)
+{
+	b8 notEqual = (va.x != vb.x) && (va.y != vb.y);
+	return notEqual;
+}
+
+// Functions:
+inline v2 V2One()
+{
+	v2 v = { 1.0f, 1.0f };
+	return v;
+}
+
+// ──────────────── v3 ───────────────────────────────────────────────
+// Operators overloads:
+
+inline v3 operator+(v3 a, v3 b)
+{
+	v3 result = { a.x + b.x, a.y + b.y, a.z + b.z };
+	return result;
+}
+
+inline v3 operator+(v3 a, f32 s)
+{
+	v3 result = { a.x + s, a.y + s, a.z + s };
+	return result;
+}
+
+inline v3 operator-(v3 a, v3 b)
+{
+	v3 result = { a.x - b.x, a.y - b.y, a.z - b.z };
+	return result;
+}
+
+inline v3 operator-(v3 a, f32 s)
+{
+	v3 result = { a.x - s, a.y - s, a.z - s };
+	return result;
+}
+
+inline v3 operator*(v3 a, v3 b)
+{
+	v3 result = { a.x * b.x, a.y * b.y, a.z * b.z };
+	return result;
+}
+
+inline v3 operator*(v3 a, f32 s)
+{
+	v3 result = { a.x * s, a.y * s, a.z * s };
+	return result;
+}
+
+inline v3 operator*(f32 s, v3 a)
+{
+	v3 result = { a.x * s, a.y * s, a.z * s };
+	return result;
+}
+
+inline v3 operator/(v3 a, v3 b)
+{
+	v3 result = { a.x / b.x, a.y / b.y, a.z / b.z };
+	return result;
+}
+
+inline v3 operator/(v3 a, f32 s)
+{
+	v3 result = { a.x / s, a.y / s, a.z / s };
+	return result;
+}
+
+inline v3& operator+=(v3& a, v3 b)
+{
+	a.x += b.x;
+	a.y += b.y;
+	a.z += b.z;
+	return a;
+}
+
+inline v3& operator+=(v3& a, f32 s)
+{
+	a.x += s;
+	a.y += s;
+	a.z += s;
+	return a;
+}
+
+inline v3& operator-=(v3& a, v3 b)
+{
+	a.x -= b.x;
+	a.y -= b.y;
+	a.z -= b.z;
+	return a;
+}
+
+inline v3& operator-=(v3& a, f32 s)
+{
+	a.x -= s;
+	a.y -= s;
+	a.z -= s;
+	return a;
+}
+
+inline v3& operator*=(v3& a, v3 b)
+{
+	a.x *= b.x;
+	a.y *= b.y;
+	a.z *= b.z;
+	return a;
+}
+
+inline v3& operator*=(v3& a, f32 s)
+{
+	a.x *= s;
+	a.y *= s;
+	a.z *= s;
+	return a;
+}
+
+inline v3& operator/=(v3& a, v3 b)
+{
+	a.x /= b.x;
+	a.y /= b.y;
+	a.z /= b.z;
+	return a;
+}
+
+inline v3& operator/=(v3& a, f32 s)
+{
+	a.x /= s;
+	a.y /= s;
+	a.z /= s;
+	return a;
+}
+
+inline b8 operator==(const v3& va, const v3& vb)
+{
+	b8 equal = (va.x == vb.x) &&
+				  (va.y == vb.y) &&
+				  (va.z == vb.z);
+	return equal;
+}
+
+inline b8 operator!=(const v3& va, const v3& vb)
+{
+	b8 notEqual = (va.x != vb.x) &&
+				  (va.y != vb.y) &&
+				  (va.z != vb.z);
+	return notEqual;
+}
+
+// Functions:
+inline v3 V3One()
+{
+	v3 v = { 1.0f, 1.0f, 1.0f };
+	return v;
+}
+
+inline f32 V3Dot(v3 a, v3 b)
+{
+	return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
+}
+
+inline v3 V3Cross(v3 a, v3 b)
+{
+	v3 result;
+	result.x = (a.y * b.z) - (a.z * b.y);
+	result.y = (a.z * b.x) - (a.x * b.z);
+	result.z = (a.x * b.y) - (a.y * b.x);
+	return result;
+}
+
+inline f32 V3Length(v3 a)
+{
+	f32 result = sqrtf(V3Dot(a, a));
+	return result;
+}
+
+inline v3 V3Normalize(v3 a)
+{
+	v3 result = { 0.0f, 0.0f, 0.0f };
+
+	f32 len = V3Length(a);
+	if (len > 0.00001f)
+	{
+		result = { (a.x / len), (a.y / len), (a.z / len) };
+	}
+	return result;
+}
+
+// ──────────────── v4 ───────────────────────────────────────────────
+// Operators overloads:
+
+inline v4 operator+(v4 a, v4 b)
+{
+	v4 result = { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
+	return result;
+}
+
+inline v4 operator+(v4 a, f32 s)
+{
+	v4 result = { a.x + s, a.y + s, a.z + s, a.w + s };
+	return result;
+}
+
+inline v4 operator-(v4 a, v4 b)
+{
+	v4 result = { a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w };
+	return result;
+}
+
+inline v4 operator-(v4 a, f32 s)
+{
+	v4 result = { a.x - s, a.y - s, a.z - s, a.w - s };
+	return result;
+}
+
+inline v4 operator*(v4 a, v4 b)
+{
+	v4 result = { a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w };
+	return result;
+}
+
+inline v4 operator*(v4 a, f32 s)
+{
+	v4 result = { a.x * s, a.y * s, a.z * s, a.w * s };
+	return result;
+}
+
+inline v4 operator*(f32 s, v4 a)
+{
+	v4 result = { a.x * s, a.y * s, a.z * s, a.w * s };
+	return result;
+}
+
+inline v4 operator/(v4 a, v4 b)
+{
+	v4 result = { a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w };
+	return result;
+}
+
+inline v4 operator/(v4 a, f32 s)
+{
+	v4 result = { a.x / s, a.y / s, a.z / s, a.w / s };
+	return result;
+}
+
+inline v4& operator+=(v4& a, v4 b)
+{
+	a.x += b.x;
+	a.y += b.y;
+	a.z += b.z;
+	a.w += b.w;
+	return a;
+}
+
+inline v4& operator+=(v4& a, f32 s)
+{
+	a.x += s;
+	a.y += s;
+	a.z += s;
+	a.w += s;
+	return a;
+}
+
+inline v4& operator-=(v4& a, v4 b)
+{
+	a.x -= b.x;
+	a.y -= b.y;
+	a.z -= b.z;
+	a.w -= b.w;
+	return a;
+}
+
+inline v4& operator-=(v4& a, f32 s)
+{
+	a.x -= s;
+	a.y -= s;
+	a.z -= s;
+	a.w -= s;
+	return a;
+}
+
+inline v4& operator*=(v4& a, v4 b)
+{
+	a.x *= b.x;
+	a.y *= b.y;
+	a.z *= b.z;
+	a.w *= b.w;
+	return a;
+}
+
+inline v4& operator*=(v4& a, f32 s)
+{
+	a.x *= s;
+	a.y *= s;
+	a.z *= s;
+	a.w *= s;
+	return a;
+}
+
+inline v4& operator/=(v4& a, v4 b)
+{
+	a.x /= b.x;
+	a.y /= b.y;
+	a.z /= b.z;
+	a.w /= b.w;
+	return a;
+}
+
+inline v4& operator/=(v4& a, f32 s)
+{
+	a.x /= s;
+	a.y /= s;
+	a.z /= s;
+	a.w /= s;
+	return a;
+}
+
+inline b8 operator==(const v4& va, const v4& vb)
+{
+	b8 equal = (va.x == vb.x) &&
+			   (va.y == vb.y) &&
+			   (va.z == vb.z) &&
+			   (va.w == vb.w);
+	return equal;
+}
+
+inline b8 operator!=(const v4& va, const v4& vb)
+{
+	b8 notEqual = (va.x != vb.x) &&
+				  (va.y != vb.y) &&
+				  (va.z != vb.z) &&
+				  (va.w != vb.w);
+	return notEqual;
+}
+
+// Functions:
+inline v4 V4One()
+{
+	v4 v = { 1.0f, 1.0f, 1.0f, 1.0f};
+	return v;
+}
+
+inline v4 GetRandomColor()
+{
+	v4 color = { 0 , 0, 0, 1 };
+	color.r = Randomf32InRange(0.0f, 1.0f);
+	color.g = Randomf32InRange(0.0f, 1.0f);
+	color.b = Randomf32InRange(0.0f, 1.0f);
+	return color;
+}
+
+
 // ────────────────────────────────────────────────────────────────────────
 // ──────────────── Matrix ───────────────────────────────────────────────
 
@@ -83,101 +574,6 @@ inline mat4 Mat4Identity()
 	M.e[3][3] = 1.0f;
 
 	return M;
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// ──────────────── Vectors ───────────────────────────────────────────────
-
-inline b8 operator==(const v4& va, const v4& vb)
-{
-	return
-		(va.x == vb.x) &&
-		(va.y == vb.y) &&
-		(va.z == vb.z) &&
-		(va.w == vb.w);
-}
-
-inline v3 operator*(v3 a, f32 b)
-{
-	v3 result;
-
-	result.x = a.x * b;
-	result.y = a.y * b;
-	result.z = a.z * b;
-
-	return result;
-}
-
-inline v3 operator+(v3 a, v3 b)
-{
-	v3 result;
-
-	result.x = a.x + b.x;
-	result.y = a.y + b.y;
-	result.z = a.z + b.z;
-
-	return result;
-}
-
-inline v3 V3One()
-{
-	v3 v = { 1.0f, 1.0f, 1.0f };
-	return v;
-}
-
-inline f32 V3Dot(v3 a, v3 b)
-{
-    return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
-}
-
-inline v3 V3Cross(v3 a, v3 b)
-{
-    v3 result;
-    result.x = (a.y * b.z) - (a.z * b.y);
-    result.y = (a.z * b.x) - (a.x * b.z);
-    result.z = (a.x * b.y) - (a.y * b.x);
-    return result;
-}
-
-inline v3 V3Sub(v3 a, v3 b)
-{
-    v3 result = { (a.x - b.x), (a.y - b.y), (a.z - b.z) };
-    return result;
-}
-
-inline f32 V3Length(v3 a)
-{
-	f32 result = sqrtf(V3Dot(a, a));
-    return result;
-}
-
-inline v3 V3Normalize(v3 a)
-{
-	v3 result = { 0.0f, 0.0f, 0.0f };
-
-    f32 len = V3Length(a);
-    if (len > 0.00001f)
-    {
-		result = { (a.x / len), (a.y / len), (a.z / len) };
-    }
-    return result;
-}
-
-// > TODO: Replace with our own rand()
-#include <stdlib.h>
-inline f32 Randomf32InRange(f32 min, f32 max)
-{
-	f32 result = min + ((max - min) * ((f32)rand() / (f32)RAND_MAX));
-	return result;
-}
-
-inline v4 GetRandomColor()
-{
-	v4 color = { 0 , 0, 0, 1 };
-	color.r = Randomf32InRange(0.0f, 1.0f);
-	color.g = Randomf32InRange(0.0f, 1.0f);
-	color.b = Randomf32InRange(0.0f, 1.0f);
-	return color;
 }
 
 // ────────────────────────────────────────────────────────────────────────
