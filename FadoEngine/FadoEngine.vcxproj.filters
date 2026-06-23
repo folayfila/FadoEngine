@@ -1,129 +1,76 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="Code">
+      <UniqueIdentifier>{60B2837C-4CE9-840D-F5D5-6A10E1EB000F}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="Code\glb">
+      <UniqueIdentifier>{A46CF1A1-9039-4CAD-B952-3A55A57E813B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Code\imgui">
+      <UniqueIdentifier>{CA0724E4-B6BF-6531-1FC7-3E8D0B9E0022}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders">
-      <UniqueIdentifier>{918fa7bd-55d0-46ef-8c93-8ae60badca02}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\glb">
-      <UniqueIdentifier>{f7736571-cd2f-41ae-a31d-78233f999448}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\imgui">
-      <UniqueIdentifier>{c86e3fb6-2952-445e-82c2-9a0857ae8a0b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\imgui\backends">
-      <UniqueIdentifier>{c6d9c884-23cd-4a5b-9586-b5f9ab69b8fe}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\imgui">
-      <UniqueIdentifier>{01788b03-547a-4b72-b1bc-29eb27a58a62}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\imgui\backends">
-      <UniqueIdentifier>{73edadbb-841e-4809-af5e-8250214e69d9}</UniqueIdentifier>
+    <Filter Include="Code\imgui\backends">
+      <UniqueIdentifier>{34E58734-A046-6542-29B4-ABF495149C01}</UniqueIdentifier>
     </Filter>
     <Filter Include="Tools">
-      <UniqueIdentifier>{426e2182-92a9-457c-ae93-0c802070fa4e}</UniqueIdentifier>
+      <UniqueIdentifier>{16CF2D0E-82E3-55BF-4B65-F91EB73852F0}</UniqueIdentifier>
     </Filter>
     <Filter Include="Tools\FadoConverter">
-      <UniqueIdentifier>{500bddc5-de80-4af4-8196-36ea76a7e9d7}</UniqueIdentifier>
+      <UniqueIdentifier>{D7A6E0B7-4308-BEC5-CC75-047838D6F484}</UniqueIdentifier>
     </Filter>
     <Filter Include="Tools\FadoConverter\stb">
-      <UniqueIdentifier>{3f23b2ff-978d-4810-b8c5-e6b74aa1fa13}</UniqueIdentifier>
+      <UniqueIdentifier>{AFF81173-1B30-5A0A-243A-BE2D90F08003}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="FadoEngine\code\win32_fado.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="FadoEngine\code\fado_d3d.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="FadoEngine\Code\imgui\imgui.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="FadoEngine\Code\imgui\imgui_demo.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="FadoEngine\Code\imgui\imgui_draw.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="FadoEngine\Code\imgui\imgui_tables.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="FadoEngine\Code\imgui\imgui_widgets.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="FadoEngine\Code\imgui\backends\imgui_impl_dx11.cpp">
-      <Filter>Source Files\imgui\backends</Filter>
-    </ClCompile>
-    <ClCompile Include="FadoEngine\Code\imgui\backends\imgui_impl_win32.cpp">
-      <Filter>Source Files\imgui\backends</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="FadoEngine\code\glb\fado_glb.h">
-      <Filter>Header Files\glb</Filter>
+    <ClInclude Include="FadoEngine\Code\fado_collision.h">
+      <Filter>Code</Filter>
     </ClInclude>
-    <ClInclude Include="FadoEngine\code\fado_collision.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="FadoEngine\Code\fado_d3d.h">
+      <Filter>Code</Filter>
     </ClInclude>
-    <ClInclude Include="FadoEngine\code\fado_d3d.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="FadoEngine\Code\fado_math.h">
+      <Filter>Code</Filter>
     </ClInclude>
-    <ClInclude Include="FadoEngine\code\fado_math.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="FadoEngine\Code\fado_types.h">
+      <Filter>Code</Filter>
     </ClInclude>
-    <ClInclude Include="FadoEngine\code\fado_types.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="FadoEngine\Code\fado_ui.h">
+      <Filter>Code</Filter>
     </ClInclude>
-    <ClInclude Include="FadoEngine\code\win32_fado.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="FadoEngine\Code\fado_win32.h">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Code\glb\fado_glb.h">
+      <Filter>Code\glb</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Code\imgui\backends\imgui_impl_dx11.h">
+      <Filter>Code\imgui\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Code\imgui\backends\imgui_impl_win32.h">
+      <Filter>Code\imgui\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Code\imgui\imconfig.h">
+      <Filter>Code\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Code\imgui\imgui.h">
+      <Filter>Code\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Code\imgui\imgui_internal.h">
+      <Filter>Code\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Code\imgui\imstb_rectpack.h">
+      <Filter>Code\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Code\imgui\imstb_textedit.h">
+      <Filter>Code\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Code\imgui\imstb_truetype.h">
+      <Filter>Code\imgui</Filter>
     </ClInclude>
     <ClInclude Include="FadoEngine\Tools\FadoConverter\fado_asset_format.h">
       <Filter>Tools\FadoConverter</Filter>
-    </ClInclude>
-    <ClInclude Include="FadoEngine\Code\imgui\backends\imgui_impl_dx11.h">
-      <Filter>Header Files\imgui\backends</Filter>
-    </ClInclude>
-    <ClInclude Include="FadoEngine\Code\imgui\backends\imgui_impl_win32.h">
-      <Filter>Header Files\imgui\backends</Filter>
-    </ClInclude>
-    <ClInclude Include="FadoEngine\Code\imgui\imstb_textedit.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="FadoEngine\Code\imgui\imstb_truetype.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="FadoEngine\Code\imgui\imconfig.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="FadoEngine\Code\imgui\imgui.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="FadoEngine\Code\imgui\imgui_internal.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="FadoEngine\Code\imgui\imstb_rectpack.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="FadoEngine\Code\fado_ui.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_image_resize2.h">
-      <Filter>Tools\FadoConverter\stb</Filter>
-    </ClInclude>
-    <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_truetype.h">
-      <Filter>Tools\FadoConverter\stb</Filter>
     </ClInclude>
     <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_dxt.h">
       <Filter>Tools\FadoConverter\stb</Filter>
@@ -131,23 +78,40 @@
     <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_image.h">
       <Filter>Tools\FadoConverter\stb</Filter>
     </ClInclude>
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_image_resize2.h">
+      <Filter>Tools\FadoConverter\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_truetype.h">
+      <Filter>Tools\FadoConverter\stb</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="cpp.hint" />
-    <None Include="FadoEngine\shaders\color.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="FadoEngine\Shaders\lit_texture.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="FadoEngine\Shaders\ui.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="FadoEngine\Shaders\unlit_texture.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="FadoEngine\Tools\FadoConverter\fado_converter.cpp">
-      <Filter>Tools\FadoConverter</Filter>
-    </None>
+    <ClCompile Include="FadoEngine\Code\fado_d3d.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="FadoEngine\Code\fado_win32.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="FadoEngine\Code\imgui\backends\imgui_impl_dx11.cpp">
+      <Filter>Code\imgui\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="FadoEngine\Code\imgui\backends\imgui_impl_win32.cpp">
+      <Filter>Code\imgui\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="FadoEngine\Code\imgui\imgui.cpp">
+      <Filter>Code\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="FadoEngine\Code\imgui\imgui_demo.cpp">
+      <Filter>Code\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="FadoEngine\Code\imgui\imgui_draw.cpp">
+      <Filter>Code\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="FadoEngine\Code\imgui\imgui_tables.cpp">
+      <Filter>Code\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="FadoEngine\Code\imgui\imgui_widgets.cpp">
+      <Filter>Code\imgui</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

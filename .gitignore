@@ -108,11 +108,11 @@ Dist/
 Artifacts/
 
 # =========================
-# Keep these in source control
-# =========================
-# *.sln
-# *.vcxproj
-# *.vcxproj.filters
-# *.vcxproj.user   <-- usually ignore
-FadoEngine/src/code/glb/files.zip
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
 FadoEngine/imgui.ini
+*.slnx
+*.vcxproj
+*.filters
