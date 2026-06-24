@@ -118,3 +118,8 @@ FadoEngine/imgui.ini
 *.filters
 *.vcxproj
 *.filters
+FadoEngine/FadoEngine/GameLog.txt
+FadoEngine/FadoEngine/Log.txt
+FadoEngine/FadoEngine/imgui.ini
+FadoEngine/FadoEngine.vcxproj
+FadoEngine/FadoEngine.vcxproj.filters

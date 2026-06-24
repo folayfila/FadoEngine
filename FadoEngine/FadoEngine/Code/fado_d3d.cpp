@@ -1,7 +1,5 @@
 // (C) Copyright 2026 by Abdallah Maaliki / folayfila.
 
-#define _CRT_SECURE_NO_WARNINGS
-
 #include "fado_d3d.h"
 #include "Tools/FadoConverter/fado_asset_format.h"
 
@@ -1223,7 +1221,8 @@ internal DXMatrix BuildEntityWorldMatrix(HEntity hEntity, FSharedStuff* shared)
 // ────────────────────────────────────────────────────────────────────────
 HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 {
-	FILE* file = fopen(fileName, "rb");
+	FILE* file = nullptr;
+	fopen_s(&file, fileName, "rb");
 	Assert(file);
 
 	FAssetHeader assetHeader = {};
@@ -1359,7 +1358,8 @@ HMesh LoadGLBModel(FRenderWorld* world, cc8* fileName)
 
 HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFont)
 {
-	FILE* file = fopen(filename, "rb");
+	FILE* file = nullptr;
+	fopen_s(&file, filename, "rb");
 	if (!file)
 	{
 		return false;

@@ -70,6 +70,8 @@ project "Game"
     language "C++"
     cppdialect "C++17"
 
+    defines { "GAME_DLL" }
+
     targetdir "%{wks.location}%{cfg.platform}/%{cfg.buildcfg}/"
     objdir    "%{prj.name}/%{cfg.platform}/%{cfg.buildcfg}/"
 
