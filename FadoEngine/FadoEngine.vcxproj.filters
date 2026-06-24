@@ -22,6 +22,9 @@
     <Filter Include="Tools\FadoConverter">
       <UniqueIdentifier>{D7A6E0B7-4308-BEC5-CC75-047838D6F484}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Tools\FadoConverter\lz4">
+      <UniqueIdentifier>{80DB1173-EC12-5A0A-F51C-BE2D61D38003}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Tools\FadoConverter\stb">
       <UniqueIdentifier>{AFF81173-1B30-5A0A-243A-BE2D90F08003}</UniqueIdentifier>
     </Filter>
@@ -75,6 +78,9 @@
     <ClInclude Include="FadoEngine\Tools\FadoConverter\fado_asset_format.h">
       <Filter>Tools\FadoConverter</Filter>
     </ClInclude>
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\lz4\lz4.h">
+      <Filter>Tools\FadoConverter\lz4</Filter>
+    </ClInclude>
     <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_dxt.h">
       <Filter>Tools\FadoConverter\stb</Filter>
     </ClInclude>
@@ -118,6 +124,9 @@
     </ClCompile>
     <ClCompile Include="FadoEngine\Tools\FadoConverter\fado_converter.cpp">
       <Filter>Tools\FadoConverter</Filter>
+    </ClCompile>
+    <ClCompile Include="FadoEngine\Tools\FadoConverter\lz4\lz4.c">
+      <Filter>Tools\FadoConverter\lz4</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -8,6 +8,8 @@
 #define STB_DXT_IMPLEMENTATION
 #include "stb/stb_dxt.h"
 
+#include "lz4/lz4.h"
+
 #include "fado_asset_format.h"
 #include <stdio.h>
 #include <sys/stat.h>
@@ -29,6 +31,9 @@
 *   Skips over undefined types and files assets that weren't updated since the last bake.
 *   For more on the bakers, check the section "Asset Pipeline Dispatcher" below.
 * 
+* LZ4 Compression:
+* - All assets go through a typical size compression, and get converted to .fasset.
+*   That means even files who are not GPU compressed like images, get just a regular compression to save space.
 */
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
@@ -46,7 +51,104 @@ internal u32 ComputeMipCount(u32 width, u32 height)
     }
     return count;
 }
+// ─────────────────────────────────────────
+// -- BC1 --
+internal u32 CompressBC1(u8* rgba, u32 width, u32 height, u8* outBuffer)
+{
+    if (width < 4) { width = 4; }
+    if (height < 4) { height = 4; }
 
+    u32 blocksX = (width + 3) / 4;
+    u32 blocksY = (height + 3) / 4;
+
+    u8* dst = outBuffer;
+    for (u32 by = 0; by < blocksY; ++by)
+        for (u32 bx = 0; bx < blocksX; ++bx)
+        {
+            u8 block[64] = {};
+            for (u32 py = 0; py < 4; ++py)
+                for (u32 px = 0; px < 4; ++px)
+                {
+                    u32 srcX = bx * 4 + px;
+                    if (srcX >= width) { srcX = width - 1; }
+                    u32 srcY = by * 4 + py;
+                    if (srcY >= height) { srcY = height - 1; }
+                    memcpy(&block[(py * 4 + px) * 4], &rgba[(srcY * width + srcX) * 4], 4);
+                }
+            stb_compress_dxt_block(dst, block, 0, STB_DXT_NORMAL); // 0 = no alpha = BC1
+            dst += 8; // BC1 is 8 bytes per block, BC3 is 16
+        }
+    return (u32)(dst - outBuffer);
+}
+
+internal u32 BakeMippedBC1_UpperBound(u32 width, u32 height)
+{
+    u32 mip0 = ((width + 3) / 4) * ((height + 3) / 4) * 8; // BC1 = 8 bytes per block
+    return mip0 * 2 + ComputeMipCount(width, height) * 32;
+}
+
+internal u32 BakeMippedBC1(u8* rgba, u32 width, u32 height, u8* dstBuffer,
+    u32 mipOffsets[FASSET_MAX_MIPS], u32 mipSizes[FASSET_MAX_MIPS],
+    u32* outMipCount)
+{
+    u32 mipCount = ComputeMipCount(width, height);
+    if (mipCount > FASSET_MAX_MIPS)
+    {
+        mipCount = FASSET_MAX_MIPS;
+    }
+
+    u32 total = 0;
+    u32 mipWidth = width, mipHeight = height;
+    u8* prevMip = rgba;
+    u8* prevAlloc = nullptr;
+
+    for (u32 mip = 0; mip < mipCount; ++mip)
+    {
+        u8* mipPixels;
+        if (mip == 0)
+        {
+            mipPixels = rgba;
+        }
+        else
+        {
+            mipPixels = (u8*)malloc(mipWidth * mipHeight * 4);
+            u32 srcW = (mip == 1) ? width : (mipWidth << 1);
+            u32 srcH = (mip == 1) ? height : (mipHeight << 1);
+            stbir_resize_uint8_srgb(prevMip, (i32)srcW, (i32)srcH, 0,
+                mipPixels, (i32)mipWidth, (i32)mipHeight, 0, STBIR_RGBA);
+            if (prevAlloc)
+            {
+                free(prevAlloc);
+            }
+            prevAlloc = mipPixels;
+        }
+
+        u32 compSize = CompressBC1(mipPixels, mipWidth, mipHeight, dstBuffer + total);
+        mipOffsets[mip] = total;
+        mipSizes[mip] = compSize;
+        total += compSize;
+
+        prevMip = mipPixels;
+        if (mipWidth > 1)
+        {
+            mipWidth >>= 1;
+        }
+        if (mipHeight > 1)
+        {
+            mipHeight >>= 1;
+        }
+    }
+
+    if (prevAlloc)
+    {
+        free(prevAlloc);
+    }
+    *outMipCount = mipCount;
+    return total;
+}
+
+// ─────────────────────────────────────────
+// -- BC3 --
 internal u32 CompressBC3(u8* rgba, u32 width, u32 height, u8* outBuffer)
 {
     if (width < 4)  { width = 4; }
@@ -165,18 +267,20 @@ struct AssetImporter
     AssetBakeFn* bake;
 };
 
+// Bake functions forwards
 bool BakeImage(const char* src, const char* dst);
+bool BakeFont(const char* src, const char* dst);
 
 // All types here
 // >> Important: Increase the count if you add more/new types.
-#define ASSET_IMPOSTERS_COUNT 4
+#define ASSET_IMPOSTERS_COUNT 5
 AssetImporter importers[ASSET_IMPOSTERS_COUNT] =
 {
     { ".png",  BakeImage },
     { ".jpg",  BakeImage },
     { ".jpeg", BakeImage },
     { ".tga",  BakeImage },
-    //{ ".glb",  BakeGLB   },
+    { ".ttf",  BakeFont  }
 };
 
 AssetImporter* FindImporter(const char* path)
@@ -212,20 +316,39 @@ bool BakeImage(const char* src, const char* dst)
         return false;
     }
 
-    // Compress and generate mip chain.
-    u32 compressedCapacity = BakeMippedBC3_UpperBound((u32)width, (u32)height);
-    u8* compressed = (u8*)malloc(compressedCapacity);
+    bool hasAlpha = (channels == 4);
+
+    // BC compression first
+    u32 bcCapacity = hasAlpha
+        ? BakeMippedBC3_UpperBound((u32)width, (u32)height)
+        : BakeMippedBC1_UpperBound((u32)width, (u32)height);
+    u8* bcData = (u8*)malloc(bcCapacity);
 
     u32 mipOffsets[FASSET_MAX_MIPS] = {};
     u32 mipSizes[FASSET_MAX_MIPS] = {};
     u32 mipCount = 0;
-    u32 compressedSize = BakeMippedBC3(pixels, (u32)width, (u32)height, compressed,
-        mipOffsets, mipSizes, &mipCount);
+    u32 bcSize = 0;
+
+    bcSize = hasAlpha
+        ? BakeMippedBC3(pixels, (u32)width, (u32)height, bcData, mipOffsets, mipSizes, &mipCount)
+        : BakeMippedBC1(pixels, (u32)width, (u32)height, bcData, mipOffsets, mipSizes, &mipCount);
 
     stbi_image_free(pixels);
 
-    // --- Write .fasset file ---
-    // Header + mip offset table + mip size table + compressed data.
+    // LZ4 compress the BC data
+    i32 lz4Capacity = LZ4_compressBound((i32)bcSize);
+    u8* lz4Data = (u8*)malloc(lz4Capacity);
+    i32 lz4Size = LZ4_compress_default((const char*)bcData, (char*)lz4Data, (i32)bcSize, lz4Capacity);
+
+    free(bcData);
+
+    if (lz4Size <= 0)
+    {
+        printf("lz4 compression failed for %s\n", src);
+        free(lz4Data);
+        return false;
+    }
+
     FAssetHeader header = {};
     header.magic = FASSET_MAGIC;
     header.assetType = FASSET_TYPE_IMAGE;
@@ -235,25 +358,88 @@ bool BakeImage(const char* src, const char* dst)
     FImageHeader imageHeader = {};
     imageHeader.width = (u32)width;
     imageHeader.height = (u32)height;
-    imageHeader.channels = 4;
-    imageHeader.dataSize = compressedSize;
-    imageHeader.format = FIMAGE_FORMAT_BC3;
+    imageHeader.channels = (u32)channels;
+    imageHeader.dataSize = (u32)lz4Size;
+    imageHeader.uncompressedSize = bcSize;
+    imageHeader.format = hasAlpha ? FIMAGE_FORMAT_BC3 : FIMAGE_FORMAT_BC1;
     imageHeader.mipCount = mipCount;
+    imageHeader.flags = FASSET_FLAG_LZ4;
 
     FILE* out = fopen(dst, "wb");
     fwrite(&header, sizeof(header), 1, out);
     fwrite(&imageHeader, sizeof(imageHeader), 1, out);
     fwrite(mipOffsets, sizeof(u32), mipCount, out);
     fwrite(mipSizes, sizeof(u32), mipCount, out);
-    fwrite(compressed, compressedSize, 1, out);
+    fwrite(lz4Data, lz4Size, 1, out);
     fclose(out);
 
-    free(compressed);
+    free(lz4Data);
 
-    printf("wrote %s (%dx%d, %u mips) %.2fMB -> %.2fMB BC3\n",
+    printf("wrote %s (%dx%d, %u mips, %s) %.2fMB -> BC %.2fMB -> LZ4 %.2fMB\n",
         dst, width, height, mipCount,
+        hasAlpha ? "BC3" : "BC1",
         (width * height * 4) / (1024.0f * 1024.0f),
-        compressedSize / (1024.0f * 1024.0f));
+        bcSize / (1024.0f * 1024.0f),
+        lz4Size / (1024.0f * 1024.0f));
+
+    return true;
+}
+
+// -- Fonts --
+bool BakeFont(const char* src, const char* dst)
+{
+    FILE* in = fopen(src, "rb");
+    if (!in)
+    {
+        printf("failed to load %s\n", src);
+        return false;
+    }
+
+    fseek(in, 0, SEEK_END);
+    u32 dataSize = (u32)ftell(in);
+    fseek(in, 0, SEEK_SET);
+
+    u8* fontData = (u8*)malloc(dataSize);
+    fread(fontData, 1, dataSize, in);
+    fclose(in);
+
+    // LZ4 compress
+    i32 lz4Capacity = LZ4_compressBound((i32)dataSize);
+    u8* lz4Data = (u8*)malloc(lz4Capacity);
+    i32 lz4Size = LZ4_compress_default((const char*)fontData, (char*)lz4Data, (i32)dataSize, lz4Capacity);
+
+    free(fontData);
+
+    if (lz4Size <= 0)
+    {
+        printf("lz4 compression failed for %s\n", src);
+        free(lz4Data);
+        return false;
+    }
+
+    FAssetHeader header = {};
+    header.magic = FASSET_MAGIC;
+    header.assetType = FASSET_TYPE_FONT;
+    header.version = FASSET_VERSION;
+    header.reserved = 0;
+
+    FFontAssetHeader fontHeader = {};
+    fontHeader.dataSize = (u32)lz4Size;
+    fontHeader.uncompressedSize = dataSize;
+    fontHeader.flags = FASSET_FLAG_LZ4;
+
+    FILE* out = fopen(dst, "wb");
+    fwrite(&header, sizeof(header), 1, out);
+    fwrite(&fontHeader, sizeof(fontHeader), 1, out);
+    fwrite(lz4Data, lz4Size, 1, out);
+    fclose(out);
+
+    free(lz4Data);
+
+    printf("wrote %s (font) %.2fKB -> LZ4 %.2fKB\n",
+        dst,
+        dataSize / 1024.0f,
+        lz4Size / 1024.0f);
 
     return true;
 }

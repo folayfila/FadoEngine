@@ -46,9 +46,12 @@ struct FAssetHeader
 
 // Types:
 #define FASSET_TYPE_IMAGE 0
+#define FASSET_TYPE_FONT  1
 
 //
 #define FASSET_MAX_MIPS 16
+
+#define FASSET_FLAG_LZ4 (1 << 0)
 
 // ────────────────────────────────────────────────────────────────────────
 // Image payload (assetType == FASSET_TYPE_IMAGE)
@@ -57,13 +60,24 @@ struct FImageHeader
     u32 width;
     u32 height;
     u32 channels;
-    u32 dataSize;
-    u32 format;     // FIM_FORMAT_RGBA or FIM_FORMAT_BC3
+    u32 dataSize;           // compressed (lz4) size
+    u32 uncompressedSize;
+    u32 format;             // FIM_FORMAT_RGBA or FIM_FORMAT_BC3
     u32 mipCount;
+    u32 flags;
 };
 
-#define FIMAGE_FORMAT_RGBA 0
+#define FIMAGE_FORMAT_BC1  0
 #define FIMAGE_FORMAT_BC3  1
+
+// ────────────────────────────────────────────────────────────────────────
+// Font payload (assetType == FASSET_TYPE_FONT)
+struct FFontAssetHeader
+{
+    u32 dataSize;           // compressed (lz4) size
+    u32 uncompressedSize;
+    u32 flags;
+};
 
 // ────────────────────────────────────────────────────────────────────────
 #pragma pack(pop)

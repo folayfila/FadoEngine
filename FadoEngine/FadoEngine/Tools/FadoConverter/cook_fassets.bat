@@ -21,7 +21,7 @@ if not exist "%CONVERTER%" (
     exit /b 1
 )
 
-for /r "%SRC_DIR%" %%f in (*.png *.jpg *.tga *.bmp *.glb) do (
+for /r "%SRC_DIR%" %%f in (*.png *.jpg *.tga *.bmp *.ttf) do (
     set "rel=%%~dpf"
     set "rel=!rel:%SRC_DIR%\=!"
 

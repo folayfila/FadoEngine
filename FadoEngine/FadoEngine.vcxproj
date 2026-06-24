@@ -128,6 +128,7 @@ xcopy /Q /E /Y /I $(SolutionDir)\FadoEngine\Shaders Release\Shaders</Command>
     <ClInclude Include="FadoEngine\Code\imgui\imstb_textedit.h" />
     <ClInclude Include="FadoEngine\Code\imgui\imstb_truetype.h" />
     <ClInclude Include="FadoEngine\Tools\FadoConverter\fado_asset_format.h" />
+    <ClInclude Include="FadoEngine\Tools\FadoConverter\lz4\lz4.h" />
     <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_dxt.h" />
     <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_image.h" />
     <ClInclude Include="FadoEngine\Tools\FadoConverter\stb\stb_image_resize2.h" />
@@ -146,6 +147,7 @@ xcopy /Q /E /Y /I $(SolutionDir)\FadoEngine\Shaders Release\Shaders</Command>
     <ClCompile Include="FadoEngine\Tools\FadoConverter\fado_converter.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="FadoEngine\Tools\FadoConverter\lz4\lz4.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="FadoEngine\FadoEngine.ico" />

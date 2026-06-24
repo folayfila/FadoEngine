@@ -116,3 +116,5 @@ FadoEngine/imgui.ini
 *.slnx
 *.vcxproj
 *.filters
+*.vcxproj
+*.filters

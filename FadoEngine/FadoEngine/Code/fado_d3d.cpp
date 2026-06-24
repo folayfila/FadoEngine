@@ -8,6 +8,8 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "Tools/FadoConverter/stb/stb_truetype.h"
 
+#include "Tools/FadoConverter/lz4/lz4.h"
+
 #include "glb/fado_glb.h"
 #include "fado_math.h"
 
@@ -1224,31 +1226,33 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	FILE* file = fopen(fileName, "rb");
 	Assert(file);
 
-	// Read and validate generic asset header.
 	FAssetHeader assetHeader = {};
 	fread(&assetHeader, sizeof(assetHeader), 1, file);
 	Assert(assetHeader.magic == FASSET_MAGIC && assetHeader.assetType == FASSET_TYPE_IMAGE);
 
-	// Read image-specific header.
 	FImageHeader header = {};
 	fread(&header, sizeof(header), 1, file);
 
-	// Read per-mip offset and size tables.
 	u32* mipOffsets = ArenaPushArray(world->shared->scratchArena, header.mipCount, u32);
 	u32* mipSizes = ArenaPushArray(world->shared->scratchArena, header.mipCount, u32);
 	fread(mipOffsets, sizeof(u32), header.mipCount, file);
 	fread(mipSizes, sizeof(u32), header.mipCount, file);
 
-	// Read all compressed mip data in one shot.
-	u8* allMipData = ArenaPushArray(world->shared->scratchArena, header.dataSize, u8);
-	fread(allMipData, header.dataSize, 1, file);
+	// Read compressed data
+	u8* compressedData = ArenaPushArray(world->shared->scratchArena, header.dataSize, u8);
+	fread(compressedData, header.dataSize, 1, file);
 	fclose(file);
 
+	// Decompress into allMipData
+	u8* allMipData = ArenaPushArray(world->shared->scratchArena, header.uncompressedSize, u8);
+	LZ4_decompress_safe((const char*)compressedData, (char*)allMipData,
+		(i32)header.dataSize, (i32)header.uncompressedSize);
+
+	// Everything below unchanged
 	DXGI_FORMAT dxgiFormat = (header.format == FIMAGE_FORMAT_BC3)
 		? DXGI_FORMAT_BC3_UNORM
-		: DXGI_FORMAT_R8G8B8A8_UNORM;
+		: DXGI_FORMAT_BC1_UNORM;
 
-	// Create texture with full mip chain.
 	D3D11_TEXTURE2D_DESC texDesc = {};
 	texDesc.Width = header.width;
 	texDesc.Height = header.height;
@@ -1258,9 +1262,8 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	texDesc.SampleDesc.Count = 1;
 	texDesc.Usage = D3D11_USAGE_DEFAULT;
 	texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	texDesc.MiscFlags = 0; // no GENERATE_MIPS flag needed
+	texDesc.MiscFlags = 0;
 
-	// Fill one D3D11_SUBRESOURCE_DATA per mip level.
 	D3D11_SUBRESOURCE_DATA* mipData = ArenaPushArray(world->shared->scratchArena, header.mipCount, D3D11_SUBRESOURCE_DATA);
 
 	u32 mipWidth = header.width;
@@ -1268,17 +1271,15 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	for (u32 mip = 0; mip < header.mipCount; ++mip)
 	{
 		mipData[mip].pSysMem = allMipData + mipOffsets[mip];
+		mipData[mip].SysMemSlicePitch = 0;
 
 		if (header.format == FIMAGE_FORMAT_BC3)
 		{
-			u32 blockW = (mipWidth + 3) / 4;
-			mipData[mip].SysMemPitch = blockW * 16; // 16 bytes per BC3 block
-			mipData[mip].SysMemSlicePitch = 0;
+			mipData[mip].SysMemPitch = ((mipWidth + 3) / 4) * 16;
 		}
-		else
+		else if (header.format == FIMAGE_FORMAT_BC1)
 		{
-			mipData[mip].SysMemPitch = mipWidth * 4;
-			mipData[mip].SysMemSlicePitch = 0;
+			mipData[mip].SysMemPitch = ((mipWidth + 3) / 4) * 8;
 		}
 
 		if (mipWidth > 1) { mipWidth >>= 1; }
@@ -1294,7 +1295,6 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	Assert(!FAILED(result));
 	tex->Release();
 
-	// Store in world texture pool.
 	Assert(world->texturesCount < FMAX_TEXTURES);
 	HTexture handle = world->texturesCount++;
 	world->textures[handle].textureView = srv;
@@ -1359,42 +1359,49 @@ HMesh LoadGLBModel(FRenderWorld* world, cc8* fileName)
 
 HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFont)
 {
-	// Read font file into memory
 	FILE* file = fopen(filename, "rb");
 	if (!file)
 	{
 		return false;
 	}
 
-	fseek(file, 0, SEEK_END);
-	u32 size = ftell(file);
-	fseek(file, 0, SEEK_SET);
-	u8* fontBuffer = ArenaPushSize(world->shared->scratchArena, u8, size);
-	fread(fontBuffer, 1, size, file);
+	FAssetHeader header = {};
+	fread(&header, sizeof(header), 1, file);
+	Assert(header.magic == FASSET_MAGIC);
+	Assert(header.assetType == FASSET_TYPE_FONT);
+
+	FFontAssetHeader fontHeader = {};
+	fread(&fontHeader, sizeof(fontHeader), 1, file);
+
+	// Read compressed data
+	u8* compressedData = ArenaPushSize(world->shared->scratchArena, u8, fontHeader.dataSize);
+	fread(compressedData, 1, fontHeader.dataSize, file);
 	fclose(file);
 
-	// Bake atlas (single channel, 512x512 — can be adjusted)
+	// Decompress into fontBuffer
+	u8* fontBuffer = ArenaPushSize(world->shared->scratchArena, u8, fontHeader.uncompressedSize);
+	LZ4_decompress_safe((const char*)compressedData, (char*)fontBuffer,
+		(i32)fontHeader.dataSize, (i32)fontHeader.uncompressedSize);
+
+	// Everything below unchanged
 	i32 atlasW = 512, atlasH = 512;
 	u8* atlasPixels = ArenaPushSize(world->shared->scratchArena, u8, (atlasW * atlasH));
 
 	stbtt_bakedchar bakedChars[96];
 	i32 result = stbtt_BakeFontBitmap(fontBuffer, 0, fontSize,
 		atlasPixels, atlasW, atlasH, 32, 96, bakedChars);
-	Assert(result > 0); // didn't fit, increase atlas size
+	Assert(result > 0);
 
-	// Convert single-channel to RGBA (so it uses same shader/pipeline as rects)
 	u32* rgbaPixels = ArenaPushSize(world->shared->scratchArena, u32, (atlasW * atlasH * 4));
 	for (i32 i = 0; i < (atlasW * atlasH); ++i)
 	{
 		u8 a = atlasPixels[i];
-		rgbaPixels[i] = (a << 24) | (0x00FFFFFF); // white with alpha = coverage
+		rgbaPixels[i] = (a << 24) | (0x00FFFFFF);
 	}
 
-	// Upload as texture (reuse your existing texture creation path)
 	outFont->atlas = CreateTextureFromPixels(world, rgbaPixels, atlasW, atlasH);
 	outFont->size = fontSize;
 
-	// Convert baked chars to our glyph format
 	for (u32 i = 0; i < GLYPHS_COUNT; ++i)
 	{
 		stbtt_bakedchar* bc = &bakedChars[i];
@@ -1404,13 +1411,10 @@ HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFo
 		glyph->coords.v0 = bc->y0 / (f32)atlasH;
 		glyph->coords.u1 = bc->x1 / (f32)atlasW;
 		glyph->coords.v1 = bc->y1 / (f32)atlasH;
-
-		glyph->width  = bc->x1 - bc->x0;
+		glyph->width = bc->x1 - bc->x0;
 		glyph->height = bc->y1 - bc->y0;
-
 		glyph->offset.x = bc->xoff;
 		glyph->offset.y = bc->yoff;
-
 		glyph->xadvance = bc->xadvance;
 	}
 

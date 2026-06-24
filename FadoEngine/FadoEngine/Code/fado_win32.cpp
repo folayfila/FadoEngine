@@ -491,7 +491,7 @@ internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
 	gameState->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fasset");
 
 	//LoadFont(world, "AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, gameState->font);
-	LoadFont(world, "Assets\\Fonts\\arialbd.ttf", 25.0f, gameState->font);
+	LoadFont(world, "Assets\\Fonts\\arialbd.fasset", 25.0f, gameState->font);
 }
 
 // ────────────────────────────────────────────────────────────────────────
