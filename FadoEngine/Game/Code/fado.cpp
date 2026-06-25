@@ -52,10 +52,8 @@ internal void Initialize(FGameState* gameState)
         { 1.0f, 0.01f, 1.0f }, ECollisionFlags::Static);
 
     // sky box
-    gameState->skyBox = SpawnEntity(shared, gameState->hCubeMesh, gameState->hSkyBoxTexture, {}, EShaderTypes::UnlitTexture);
-    transforms->positions[gameState->skyBox] = { 10.0f, 10.0f, 10.0f };
-    CollisionAddCollider(shared->collisionWorld, gameState->skyBox,
-        GetTransformHandle(entityTable, gameState->skyBox), extents, ECollisionFlags::Static);
+    gameState->skyBox = SpawnEntity(shared, gameState->hSkyBoxMesh, gameState->hSkyBoxTexture, {}, EShaderTypes::UnlitTexture);
+    transforms->scales[gameState->skyBox] = {500.0f, 500.0f, 500.0f };
 
     // Other entities
     gameState->cube1 = SpawnEntity(shared, gameState->hCubeMesh, 0, { 0.63f, 1, 0.21f, 1 }, EShaderTypes::Color);
@@ -258,7 +256,7 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
         v3 right = cam->right;
         v3 up = cam->up;
 
-        f32 moveSpeed = 10.0f * input->deltaTime;
+        f32 moveSpeed = 100.0f * input->deltaTime;
         v3* movedPos = &shared->transforms->positions[shared->camera.handle];
         if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Up))
         {
@@ -376,6 +374,11 @@ GAME_UPDATE(GameUpdate)
     // The infinite plane follows the camera to give the illusion of infinite stretch.
     shared->transforms->positions[gameState->infinitePlane].x = shared->transforms->positions[shared->camera.handle].x;
     shared->transforms->positions[gameState->infinitePlane].z = shared->transforms->positions[shared->camera.handle].z;
+
+    // The skybox follows the camera to give the of infinite sky.
+    FEntity* skybox = GetEntity(shared->entityTable, gameState->skyBox);
+    shared->transforms->positions[skybox->hTransform] = shared->transforms->positions[shared->camera.handle];
+
 
     Rotate(shared->transforms, gameState->cube1, { 50.0f*input->deltaTime, 50.0f * input->deltaTime, 0.0f });
     Rotate(shared->transforms, gameState->cube2, { -50.0f * input->deltaTime, 0.0f, 0.0f });

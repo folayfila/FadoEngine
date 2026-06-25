@@ -467,7 +467,7 @@ int main(int argc, char** argv)
 
     if (!SourceIsNewer(argv[1], argv[2]))
     {
-        printf("skipped %s (up to date)\n", argv[1]);
+        //printf("skipped %s (up to date)\n", argv[1]);
         return 0;
     }
 

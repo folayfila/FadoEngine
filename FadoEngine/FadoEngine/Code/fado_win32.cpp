@@ -482,12 +482,13 @@ internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
 	gameState->hPlaneMesh = LoadGLBModel(world, "Assets\\Models\\plane.glb");
 	gameState->hCubeMesh = LoadGLBModel(world, "Assets\\Models\\cube.glb");
 	gameState->hSphereMesh = LoadGLBModel(world, "Assets\\Models\\sphere.glb");
+	gameState->hSkyBoxMesh = LoadGLBModel(world, "Assets\\Models\\skybox.glb");
 	//HMesh hMonkey = LoadGLBIntoWorld(world, "models\\monkey.glb");
 
 	gameState->hGridTexture = LoadFImage(world, "Assets\\Textures\\grid.fasset");
 	gameState->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fasset");
 	gameState->hGraniteTexture = LoadFImage(world, "Assets\\Textures\\granite.fasset");
-	gameState->hSkyBoxTexture = LoadFImage(world, "Assets\\Textures\\sky_box.fasset");
+	gameState->hSkyBoxTexture = LoadFImage(world, "Assets\\Textures\\Cubemap_Sky_04.fasset");
 	gameState->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fasset");
 
 	//LoadFont(world, "AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, gameState->font);

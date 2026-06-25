@@ -115,6 +115,7 @@ struct FGameState
 
     // Mesh handles
     HEntity hPlaneMesh;
+    HMesh hSkyBoxMesh;
     HMesh hCubeMesh;
     HMesh hSphereMesh;
 
