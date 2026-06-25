@@ -263,7 +263,7 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
         v3 right = cam->right;
         v3 up = cam->up;
 
-        f32 moveSpeed = 50.0f * input->deltaTime;
+        f32 moveSpeed = 10.0f * input->deltaTime;
         v3* movedPos = &shared->transforms->positions[shared->camera.handle];
         if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Up) || IsInputButtonHeld(&controllerInput->dpadUp))
         {
