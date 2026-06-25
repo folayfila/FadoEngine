@@ -45,7 +45,7 @@ internal void Initialize(FGameState* gameState)
         { 1.0f, 1.0f, 1.0f }, ECollisionFlags::Physics);
 
     // infinite plane
-    gameState->infinitePlane = SpawnEntity(shared, gameState->hPlaneMesh, gameState->hGridTexture, {}, EShaderTypes::UnlitTexture);
+    gameState->infinitePlane = SpawnEntity(shared, gameState->hPlaneMesh, gameState->hGridTexture, {}, EShaderTypes::LitTexture);
     transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f };
     CollisionAddCollider(shared->collisionWorld, gameState->infinitePlane,
         entityTable->entities[gameState->infinitePlane].hTransform,
@@ -177,6 +177,13 @@ internal b8 IsInputButtonClick(FGameButtonState* button)
     return isClick;
 }
 
+// Return true if a button was just clicked.
+internal b8 IsInputButtonHeld(FGameButtonState* button)
+{
+    b8 isHeld = (button->isDown && button->wasDown);
+    return isHeld;
+}
+
 // Checks if a stick is held in a specific directions
 internal b8 IsStickHeld(v2 stickAverage, EStickDirection direction)
 {
@@ -256,21 +263,21 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
         v3 right = cam->right;
         v3 up = cam->up;
 
-        f32 moveSpeed = 100.0f * input->deltaTime;
+        f32 moveSpeed = 50.0f * input->deltaTime;
         v3* movedPos = &shared->transforms->positions[shared->camera.handle];
-        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Up))
+        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Up) || IsInputButtonHeld(&controllerInput->dpadUp))
         {
             *movedPos += forward * moveSpeed;
         }
-        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Down))
+        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Down) || IsInputButtonHeld(&controllerInput->dpadDown))
         {
             *movedPos -= forward * moveSpeed;
         }
-        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Right))
+        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Right) || IsInputButtonHeld(&controllerInput->dpadRight))
         {
             *movedPos += right * moveSpeed;
         }
-        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Left))
+        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Left) || IsInputButtonHeld(&controllerInput->dpadLeft))
         {
             *movedPos -= right * moveSpeed;
         }
