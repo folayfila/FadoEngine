@@ -9,7 +9,10 @@
 // ────────────────────────────────────────────────────────────────────────
 #define Pi32 3.141459265359f
 
-#define MAX_FLOAT 3.402823466e+38F
+#define F32_MAX_VALUE 3.402823466e+38F
+
+#define I16_MIN_VALUE (-32768)
+#define I16_MAX_VALUE (32767)
 
 #define Min(a, b) (((a) < (b)) ? (a) : (b))
 #define Max(a, b) (((a) > (b)) ? (a) : (b))
@@ -37,6 +40,22 @@ inline f32 Clampf32(f32 value, f32 min, f32 max)
 }
 
 inline i32 Clampi32(i32 value, i32 min, i32 max)
+{
+	if (value < min)
+	{
+		return min;
+	}
+	else if (value > max)
+	{
+		return max;
+	}
+	else
+	{
+		return value;
+	}
+}
+
+inline i16 Clampi16(i16 value, i16 min, i16 max)
 {
 	if (value < min)
 	{

@@ -118,7 +118,7 @@ struct FContactInfo
 	HEntity entityB;
 	v3      normal;       // points from B -> A (push A out)
 	f32     penetration;  // depth of overlap
-	b32  isTrigger;    // at least one side is a trigger no MTV applied
+	b32  isTrigger;		  // at least one side is a trigger no MTV applied
 };
 // MTV: Minimum Translation Vector. It's the smallest possible movement to separate two overlapping objects.
 

@@ -94,7 +94,9 @@ ForceInline void fmemcpy(void* dst, const void* src, u64 size)
 	memcpy(dst, src, size);
 }
 
-#define ZeroStruct(Struct) fmemset((Struct), 0, sizeof(*(Struct)))
+#define FadoZeroStruct(Struct) fmemset((Struct), 0, sizeof(*(Struct)))
+#define FadoZeroArray(Array) fmemset((Array), 0, sizeof((Array)))
+#define FadoZeroMemory(Memory, Size) fmemset((Memory), 0, Size)
 
 // ─────────────────────────────────────────────
 /*
@@ -206,6 +208,7 @@ struct FTransformTable
 typedef u32 HEntity;
 typedef u32 HMesh;
 typedef u32 HTexture;
+typedef u32 HSound;
 
 #define FMAX_ENTITIES 512
 #define FMAX_MESHES 265
@@ -249,6 +252,9 @@ ForceInline HTransform GetTransformHandle(FEntityTable* entityTable, HEntity hEn
 // ─────────────────────────────────────────────
 // ──────────────── Arena ──────────────────────
 
+#define PERMANENT_ARENA_SIZE Megabytes(64)
+#define SCRATCH_ARENA_SIZE Megabytes(16)
+
 // Preallocated memory block. Usually allocated on startup and used across the code.
 struct FMemoryArena
 {
@@ -276,7 +282,7 @@ struct FEngineMemory
 
 // Saves an array into the arena by passing its cound and type.
 // e.g. ArenaPushArray(arena, maxEntities, FEntity) 
-#define ArenaPushArray(Arena, Count, type) (type *)AreaPushSize_(Arena, (Count)*sizeof(type))
+#define ArenaPushArray(Arena, type, Count) (type *)AreaPushSize_(Arena, (Count)*sizeof(type))
 
 internal void* AreaPushSize_(FMemoryArena* arena, u32 size)
 {
@@ -375,6 +381,7 @@ struct FSharedStuff
 	struct FCollisionWorld* collisionWorld;
 	struct FUICommandBucket* uiCommands;
 
+	FMemoryArena* permenantArena;
 	FMemoryArena* scratchArena;
 
 #if FADO_DEBUG

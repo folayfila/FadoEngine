@@ -3,25 +3,7 @@
 #ifndef FADO_ASSET_FORMAT_H
 #define FADO_ASSET_FORMAT_H
 
-// Copy pasting these typedefs to avoid including anything from fado engine code here.
-// ─────────────────────────────────────────────
-typedef signed char i8;
-typedef short i16;
-typedef int i32;
-typedef long long i64;
-
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef unsigned long long u64;
-
-typedef float f32;
-typedef double f64;
-
-typedef i32 b32;
-
-#define internal static
-// ─────────────────────────────────────────────
+#include "fado_types.h"
 
 #pragma pack(push, 1)
 
@@ -47,6 +29,7 @@ struct FAssetHeader
 // Types:
 #define FASSET_TYPE_IMAGE 0
 #define FASSET_TYPE_FONT  1
+#define FASSET_TYPE_SOUND 2
 
 //
 #define FASSET_MAX_MIPS 16
@@ -80,6 +63,19 @@ struct FFontAssetHeader
 };
 
 // ────────────────────────────────────────────────────────────────────────
+
+// ────────────────────────────────────────────────────────────────────────
+// Sound payload (assetType == FASSET_TYPE_SOUND)
+struct FSoundAssetHeader
+{
+    u32 dataSize;          // compressed (lz4) size
+    u32 uncompressedSize;  // raw PCM bytes
+    u32 sampleCount;       // per channel
+    u32 channels;
+    u32 sampleRate;
+    u32 flags;
+};
+
 #pragma pack(pop)
 
 #endif  // FADO_ASSET_FORMAT_H

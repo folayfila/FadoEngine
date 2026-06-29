@@ -264,8 +264,8 @@ internal void CollisionBroadPhase(FCollisionWorld* collisionWorld, FMemoryArena*
     // We use a simple tag array (per-frame stamp) to avoid duplicate pairs
     // when a large AABB spans multiple cells.
     // A pair (a,b) is canonical when a < b.
-    u32* pairTagA = ArenaPushArray(scratchArena, MAX_COLLISION_PAIRS, u32);
-    u32* pairTagB = ArenaPushArray(scratchArena, MAX_COLLISION_PAIRS, u32);
+    u32* pairTagA = ArenaPushArray(scratchArena, u32, MAX_COLLISION_PAIRS);
+    u32* pairTagB = ArenaPushArray(scratchArena, u32, MAX_COLLISION_PAIRS);
     // We will just do a linear scan to de-duplicate — fast enough for < 4k pairs.
 
     for (i32 cellIdx = 0; cellIdx < (GRID_WIDTH * GRID_HEIGHT); ++cellIdx)
@@ -559,7 +559,7 @@ b8 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEn
 b8 RayIntersectsAABB(FRay ray, FAABB aabb, f32* outDistance)
 {
     f32 tMin = 0.0f;
-    f32 tMax = MAX_FLOAT;
+    f32 tMax = F32_MAX_VALUE;
 
     for (i32 axis = 0; axis < 3; ++axis)
     {

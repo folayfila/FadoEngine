@@ -10,7 +10,7 @@
 
 #include "lz4/lz4.h"
 
-#include "fado_asset_format.h"
+#include "../../Code/fado_asset_format.h"
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>
@@ -270,17 +270,19 @@ struct AssetImporter
 // Bake functions forwards
 bool BakeImage(const char* src, const char* dst);
 bool BakeFont(const char* src, const char* dst);
+bool BakeSound(const char* src, const char* dst);
 
 // All types here
 // >> Important: Increase the count if you add more/new types.
-#define ASSET_IMPOSTERS_COUNT 5
+#define ASSET_IMPOSTERS_COUNT 6
 AssetImporter importers[ASSET_IMPOSTERS_COUNT] =
 {
     { ".png",  BakeImage },
     { ".jpg",  BakeImage },
     { ".jpeg", BakeImage },
     { ".tga",  BakeImage },
-    { ".ttf",  BakeFont  }
+    { ".ttf",  BakeFont  },
+    { ".wav",  BakeSound }
 };
 
 AssetImporter* FindImporter(const char* path)
@@ -440,6 +442,104 @@ bool BakeFont(const char* src, const char* dst)
         dst,
         dataSize / 1024.0f,
         lz4Size / 1024.0f);
+
+    return true;
+}
+
+// -- Sound --
+bool BakeSound(const char* src, const char* dst)
+{
+    FILE* file = fopen(src, "rb");
+    if (!file)
+    {
+        printf("failed to load %s\n", src);
+        return false;
+    }
+
+    // -- parse WAV header minimally --
+    // WAV: "RIFF" -> chunk size -> "WAVE" -> "format " -> "data"
+    u32 riff, fileSize, wave;
+    fread(&riff, 4, 1, file); // "RIFF"
+    fread(&fileSize, 4, 1, file);
+    fread(&wave, 4, 1, file); // "WAVE"
+
+    // format chunk
+    u32 formatId, formatSize;
+    u16 audioformat, channels;
+    u32 sampleRate, byteRate;
+    u16 blockAlign, bitsPerSample;
+    fread(&formatId, 4, 1, file);
+    fread(&formatSize, 4, 1, file);
+    fread(&audioformat, 2, 1, file); // 1 = PCM
+    fread(&channels, 2, 1, file);
+    fread(&sampleRate, 4, 1, file);
+    fread(&byteRate, 4, 1, file);
+    fread(&blockAlign, 2, 1, file);
+    fread(&bitsPerSample, 2, 1, file);
+
+    Assert(audioformat == 1);       // must be PCM
+    Assert(bitsPerSample == 16);    // we only handle i16
+
+    // skip any extra format bytes
+    if (formatSize > 16)
+    {
+        fseek(file, formatSize - 16, SEEK_CUR);
+    }
+
+    // find data chunk (skip non-data chunks)
+    u32 chunkId, chunkSize;
+    while (true)
+    {
+        fread(&chunkId, 4, 1, file);
+        fread(&chunkSize, 4, 1, file);
+        if (chunkId == 0x61746164/*"data"*/)
+        {
+            break;
+        }
+        fseek(file, chunkSize, SEEK_CUR);
+    }
+
+    u8* pcmData = (u8*)malloc(chunkSize);
+    fread(pcmData, 1, chunkSize, file);
+    fclose(file);
+
+    u32 sampleCount = chunkSize / (channels * sizeof(i16));
+
+    // LZ4 compress
+    i32 lz4Capacity = LZ4_compressBound((i32)chunkSize);
+    u8* lz4Data = (u8*)malloc(lz4Capacity);
+    i32 lz4Size = LZ4_compress_default((const char*)pcmData, (char*)lz4Data, (i32)chunkSize, lz4Capacity);
+    free(pcmData);
+
+    if (lz4Size <= 0)
+    {
+        printf("lz4 failed for %s\n", src);
+        free(lz4Data);
+        return false;
+    }
+
+    FAssetHeader header = {};
+    header.magic = FASSET_MAGIC;
+    header.assetType = FASSET_TYPE_SOUND;
+    header.version = FASSET_VERSION;
+
+    FSoundAssetHeader sndHeader = {};
+    sndHeader.dataSize = (u32)lz4Size;
+    sndHeader.uncompressedSize = chunkSize;
+    sndHeader.sampleCount = sampleCount;
+    sndHeader.channels = channels;
+    sndHeader.sampleRate = sampleRate;
+    sndHeader.flags = FASSET_FLAG_LZ4;
+
+    FILE* out = fopen(dst, "wb");
+    fwrite(&header, sizeof(header), 1, out);
+    fwrite(&sndHeader, sizeof(sndHeader), 1, out);
+    fwrite(lz4Data, lz4Size, 1, out);
+    fclose(out);
+    free(lz4Data);
+
+    printf("wrote %s (sound) %.2fKB -> LZ4 %.2fKB | %dch %dHz\n",
+        dst, chunkSize / 1024.0f, lz4Size / 1024.0f, channels, sampleRate);
 
     return true;
 }

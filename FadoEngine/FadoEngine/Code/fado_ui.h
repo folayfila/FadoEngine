@@ -52,6 +52,13 @@ struct FUIButtonStyle
 	HTexture texture;
 };
 
+enum EUIButtonState
+{
+	Idle,
+	Hovered,
+	Clicked
+};
+
 // Controller UI navigation state.
 struct FUINavState
 {

@@ -1,12 +1,14 @@
 // (C) Copyright 2026 by Abdallah Maaliki / folayfila.
 
 #include "fado_d3d.h"
-#include "Tools/FadoConverter/fado_asset_format.h"
+#include "fado_asset_format.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "Tools/FadoConverter/stb/stb_truetype.h"
 
 #include "Tools/FadoConverter/lz4/lz4.h"
+
+#include "fado_sound.h"
 
 #include "glb/fado_glb.h"
 #include "fado_math.h"
@@ -59,7 +61,7 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 
 	// Create a list to hold all the possible display modes for this monitor/video card combination.
 	DXGI_MODE_DESC* displayModeList;
-	displayModeList = (DXGI_MODE_DESC*)ArenaPushArray(scratchArena, numModes, DXGI_MODE_DESC);
+	displayModeList = ArenaPushArray(scratchArena, DXGI_MODE_DESC, numModes);
 	Assert(displayModeList)
 
 	// Now fill the display mode list structures.
@@ -1081,7 +1083,7 @@ internal void FlushUIBucket(FRenderWorld* world)
 	if (bucket->count == 0)
 	{ return; }
 
-	FUIVertex* verts = ArenaPushArray(world->shared->scratchArena, MAX_UI_VERTS, FUIVertex);
+	FUIVertex* verts = ArenaPushArray(world->shared->scratchArena, FUIVertex, MAX_UI_VERTS);
 	u32 vertCount = 0;
 
 	// Set pipeline state once
@@ -1232,18 +1234,18 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	FImageHeader header = {};
 	fread(&header, sizeof(header), 1, file);
 
-	u32* mipOffsets = ArenaPushArray(world->shared->scratchArena, header.mipCount, u32);
-	u32* mipSizes = ArenaPushArray(world->shared->scratchArena, header.mipCount, u32);
+	u32* mipOffsets = ArenaPushArray(world->shared->scratchArena,  u32, header.mipCount);
+	u32* mipSizes = ArenaPushArray(world->shared->scratchArena, u32, header.mipCount);
 	fread(mipOffsets, sizeof(u32), header.mipCount, file);
 	fread(mipSizes, sizeof(u32), header.mipCount, file);
 
 	// Read compressed data
-	u8* compressedData = ArenaPushArray(world->shared->scratchArena, header.dataSize, u8);
+	u8* compressedData = ArenaPushArray(world->shared->scratchArena, u8, header.dataSize);
 	fread(compressedData, header.dataSize, 1, file);
 	fclose(file);
 
 	// Decompress into allMipData
-	u8* allMipData = ArenaPushArray(world->shared->scratchArena, header.uncompressedSize, u8);
+	u8* allMipData = ArenaPushArray(world->shared->scratchArena, u8, header.uncompressedSize);
 	LZ4_decompress_safe((const char*)compressedData, (char*)allMipData,
 		(i32)header.dataSize, (i32)header.uncompressedSize);
 
@@ -1263,7 +1265,7 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 	texDesc.MiscFlags = 0;
 
-	D3D11_SUBRESOURCE_DATA* mipData = ArenaPushArray(world->shared->scratchArena, header.mipCount, D3D11_SUBRESOURCE_DATA);
+	D3D11_SUBRESOURCE_DATA* mipData = ArenaPushArray(world->shared->scratchArena, D3D11_SUBRESOURCE_DATA, header.mipCount);
 
 	u32 mipWidth = header.width;
 	u32 mipHeight = header.height;
@@ -1311,7 +1313,7 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 HMesh LoadGLBModel(FRenderWorld* world, cc8* fileName)
 {
 	FGLBAsset* asset = ArenaPushType(world->shared->scratchArena, FGLBAsset);
-	ZeroStruct(asset);
+	FadoZeroStruct(asset);
 
 	// Load the .glb file
 	Assert(GLB_Load(fileName, asset));
@@ -1334,7 +1336,7 @@ HMesh LoadGLBModel(FRenderWorld* world, cc8* fileName)
 			// NOTE: FGLBVertex and the texture struct need to match in layout.
 			// FLitTextureVertex contains all attributes currently imported from GLB (position, normal, uv),
 			// so it can be uploaded regardless of which shader will eventually render the mesh.
-			FLitTextureVertex* converted = (FLitTextureVertex*)ArenaPushArray(world->shared->scratchArena, prim->vertexCount, FLitTextureVertex);
+			FLitTextureVertex* converted = ArenaPushArray(world->shared->scratchArena, FLitTextureVertex, prim->vertexCount);
 			if (converted)
 			{
 				for (u32 v = 0; v < prim->vertexCount; v++)
@@ -1420,6 +1422,42 @@ HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFo
 
 	ArenaReset(world->shared->scratchArena);
 	return outFont->atlas;
+}
+
+HSound LoadSound(FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryArena* scratch, cc8* filename)
+{
+	FILE* file;
+	fopen_s(&file, filename, "rb");
+	Assert(file);
+
+	FAssetHeader header = {};
+	fread(&header, sizeof(header), 1, file);
+	Assert(header.magic == FASSET_MAGIC);
+	Assert(header.assetType == FASSET_TYPE_SOUND);
+
+	FSoundAssetHeader sndHeader = {};
+	fread(&sndHeader, sizeof(sndHeader), 1, file);
+
+	u8* compressed = ArenaPushSize(scratch, u8, sndHeader.dataSize);
+	fread(compressed, 1, sndHeader.dataSize, file);
+	fclose(file);
+
+	// decompress into permanent arena (sound stays alive)
+	i16* pcm = ArenaPushSize(permanent, i16, sndHeader.uncompressedSize);
+	LZ4_decompress_safe((cc8*)compressed,
+		(c8*)pcm,
+		(i32)sndHeader.dataSize,
+		(i32)sndHeader.uncompressedSize);
+
+	HSound handle = GetFirstFreeInstanceSlot(SoundManager);
+	FSoundBuffer* soundBuf = &SoundManager->instances[handle].buffer;
+	soundBuf->samples = pcm;
+	soundBuf->sampleCount = sndHeader.sampleCount;
+	soundBuf->channels = sndHeader.channels;
+	soundBuf->sampleRate = sndHeader.sampleRate;
+
+	ArenaReset(scratch);
+	return handle;
 }
 
 // ────────────────────────────────────────────────────────────────────────

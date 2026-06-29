@@ -93,6 +93,53 @@ internal void Win32UnloadGameCode(Win32GameCode* gameCode)
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// Sound
+// ────────────────────────────────────────────────────────────────────────
+
+// Initializes XAudio2 and creates the voices used for audio playback.
+internal void Win32InitSound(Win32SoundState* soundState)
+{
+	HRESULT result = XAudio2Create(&soundState->xaudio2);
+	Assert(!FAILED(result));
+
+	result = soundState->xaudio2->CreateMasteringVoice(&soundState->masterVoice);
+	Assert(!FAILED(result));
+
+	WAVEFORMATEX format = {};
+	format.wFormatTag = WAVE_FORMAT_PCM;
+	format.nChannels = SOUND_CHANNELS;
+	format.nSamplesPerSec = SOUND_SAMPLE_RATE;
+	format.wBitsPerSample = 16;
+	format.nBlockAlign = (format.nChannels * format.wBitsPerSample) / 8;	// in bytes
+	format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
+
+	result = soundState->xaudio2->CreateSourceVoice(&soundState->sourceVoice, &format, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &GlobalVoiceCallback);
+	Assert(!FAILED(result));
+
+	// Start playback. It will remain idle until buffers are submitted.
+	soundState->sourceVoice->Start(0);
+
+	soundState->initialized = true;
+	soundState->currentBuffer = 0;
+}
+
+// Copies a mixed audio buffer into the next XAudio2 buffer and submits it.
+internal void Win32SubmitSound(Win32SoundState* soundState, FSoundOutput* output)
+{
+	i16* dst = soundState->buffers[soundState->currentBuffer];
+
+	fmemcpy(dst, output->samples, (output->sampleCount * SOUND_CHANNELS * sizeof(i16)));
+
+	XAUDIO2_BUFFER xbuf = {};
+	xbuf.AudioBytes = (output->sampleCount * SOUND_CHANNELS * sizeof(i16));
+	xbuf.pAudioData = (BYTE*)dst;
+
+	// Queue it for playback and advance to the next buffer in the ring.
+	soundState->sourceVoice->SubmitSourceBuffer(&xbuf);
+	soundState->currentBuffer = (soundState->currentBuffer + 1) % WIN32_SOUND_BUFFER_COUNT;		// The % (modulo) wraps back to the beginning.
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // Input
 // ────────────────────────────────────────────────────────────────────────
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE *pState)
@@ -477,7 +524,7 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 
 // Called before starting the game loop.
 // Loads all assets at startup.
-internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
+internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 {
 	gameState->hPlaneMesh = LoadGLBModel(world, "Assets\\Models\\plane.glb");
 	gameState->hCubeMesh = LoadGLBModel(world, "Assets\\Models\\cube.glb");
@@ -493,6 +540,14 @@ internal void InitLoadAssets(FRenderWorld* world, FGameState* gameState)
 
 	//LoadFont(world, "AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, gameState->font);
 	LoadFont(world, "Assets\\Fonts\\arialbd.fasset", 25.0f, gameState->font);
+
+	// Temporary test, using royalty free sounds:
+	// https://pixabay.com/music/video-games-sinnesl%C3%B6schen-beam-117362/
+	gameState->hMusic = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\Music\\sinneschlosen-sinnesloschen-beam-117362.fasset");
+	// https://pixabay.com/sound-effects/film-special-effects-impact-sound-effect-8-bit-retro-151796/
+	gameState->hCollideSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\lesiakower-impact-sound-effect-8-bit-retro-151796.fasset");
+	// https://pixabay.com/sound-effects/technology-click-21156/
+	gameState->hUIHoverSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\666herohero-click-21156.fasset");
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -510,34 +565,52 @@ int WINAPI wWinMain(
 	LARGE_INTEGER lastCounter;
 	QueryPerformanceCounter(&lastCounter);
 
+	c8 sourceGameCodeDLLFullPath[MAX_PATH] = "..\\Debug\\Game.dll";
+	c8 tempGameCodeDLLFullPath[MAX_PATH] = "..\\Debug\\tempGame.dll";;
+	Win32GameCode gameCode = Win32LoadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
+
 	// Create all memory for the game upfront, and use it across the game.
 	FEngineMemory engineMemory = {};
-	u32 totalSize = Megabytes(64) + Megabytes(16);	// 80 MB
+	u32 totalSize = PERMANENT_ARENA_SIZE + SCRATCH_ARENA_SIZE;	// 80 MB
 	void* base = VirtualAlloc(0, totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	engineMemory.permanent = ArenaMake((u8*)base, Megabytes(64));
-	engineMemory.scratch = ArenaMake((u8*)base + Megabytes(64), Megabytes(16));
-	
+	engineMemory.permanent = ArenaMake((u8*)base, PERMANENT_ARENA_SIZE);
+	engineMemory.scratch = ArenaMake((u8*)base + PERMANENT_ARENA_SIZE, SCRATCH_ARENA_SIZE);
+
+	// Game state
 	FGameState* gameState = ArenaPushType(&engineMemory.permanent, FGameState);
 	gameState->shared = ArenaPushType(&engineMemory.permanent, FSharedStuff);
 	gameState->shared->transforms = ArenaPushType(&engineMemory.permanent, FTransformTable);
 	gameState->shared->entityTable = ArenaPushType(&engineMemory.permanent, FEntityTable);
 	gameState->shared->collisionWorld = ArenaPushType(&engineMemory.permanent, FCollisionWorld);
 	gameState->shared->uiCommands = ArenaPushType(&engineMemory.permanent, FUICommandBucket);
+	gameState->shared->permenantArena = &engineMemory.permanent;
 	gameState->shared->scratchArena = &engineMemory.scratch;
 	gameState->font = ArenaPushType(&engineMemory.permanent, FFont);
 
+	// Renderer
 	Win32System win32System = {};
 	win32System.world = ArenaPushType(&engineMemory.permanent, FRenderWorld);
 	win32System.world->shared = gameState->shared;
 	Win32InitializeWindowAndD3D(&engineMemory, &win32System);
-	InitLoadAssets(win32System.world, gameState);
 
+	// Input
 	Win32LoadXInput();
 	FGameInput* input = ArenaPushType(&engineMemory.permanent, FGameInput);
 
-	char sourceGameCodeDLLFullPath[MAX_PATH] = "..\\Debug\\Game.dll";
-	char tempGameCodeDLLFullPath[MAX_PATH] = "..\\Debug\\tempGame.dll";;
-	Win32GameCode gameCode = Win32LoadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
+	// Sound
+	Win32SoundState win32Sound = *ArenaPushType(&engineMemory.permanent, Win32SoundState);
+	Win32InitSound(&win32Sound);
+	FSoundManager soundManager = *ArenaPushType(&engineMemory.permanent, FSoundManager);
+	soundManager.masterVolume = 1.0f;
+	for (i32 i = 0; i < SOUND_CATEGORY_COUNT; i++)
+	{
+		soundManager.categoryVolume[i] = 1.0f;
+	}
+	soundManager.mixBuffer = ArenaPushArray(&engineMemory.permanent, i16, (WIN32_SOUND_SAMPLES_PER_FRAME * SOUND_CHANNELS));
+	gameState->soundManager = &soundManager;
+
+	// Load all assets
+	LoadAssets(win32System.world, gameState);
 
 	// Game loop.
 	gameState->running = true;
@@ -574,12 +647,29 @@ int WINAPI wWinMain(
 		Win32HandleWindowsMessageLoop(keyboardInput, deltaTime);
 		Win32HandleControllerInput(win32System.window, input);
 
-		// Update game and render.
+		// Update game.
 		if (gameCode.gameUpdate)
 		{
 			gameCode.gameUpdate(gameState, input);
 		}
 
+		// Update sound
+		// check how many buffers XAudio2 still has queued.
+		XAUDIO2_VOICE_STATE state;
+		win32Sound.sourceVoice->GetState(&state);
+
+		// only mix and submit if XAudio2 is hungry.
+		if (state.BuffersQueued < WIN32_SOUND_BUFFER_COUNT)
+		{
+			FSoundOutput output = {};
+			output.samples = soundManager.mixBuffer;
+			output.sampleCount = WIN32_SOUND_SAMPLES_PER_FRAME;
+
+			SoundMix(&soundManager, &output);
+			Win32SubmitSound(&win32Sound, &output);
+		}
+
+		// Render
 #if FADO_DEBUG
 		DebugRender(win32System.world);
 #else

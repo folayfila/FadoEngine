@@ -5,6 +5,7 @@
 
 #include "fado_types.h"
 #include "fado_ui.h"
+#include "fado_sound.h"
 
 /*
 * Game Layer
@@ -14,6 +15,8 @@
 */
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
+
+// -- Input -- 
 
 // State of a button
 // - !wasDown && isDown -> was just clicked
@@ -125,6 +128,12 @@ struct FGameState
     HTexture hMosaicTexture;
     HTexture hGraniteTexture;
     HTexture hWhiteTexture;
+
+    // Sound
+    FSoundManager* soundManager;
+    HSound hMusic;
+    HSound hCollideSFX;
+    HSound hUIHoverSFX;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────

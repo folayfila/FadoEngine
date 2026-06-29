@@ -76,6 +76,11 @@ internal void Initialize(FGameState* gameState)
     transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
     CollisionAddCollider(shared->collisionWorld, gameState->sphere2,
         GetTransformHandle(entityTable, gameState->sphere2), extents, ECollisionFlags::Physics);
+
+    // Sound
+    SoundPlay(gameState->soundManager, gameState->hMusic, ESoundCategory::Music, 0.5f, true);
+    SoundInit(gameState->soundManager, gameState->hCollideSFX, ESoundCategory::SFX, 0.25f, false);
+    SoundInit(gameState->soundManager, gameState->hUIHoverSFX, ESoundCategory::UI, 0.25f, false);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -85,8 +90,9 @@ internal b8 IsInputButtonClick(FGameButtonState* button);   // forward
 
 // Creates a stylized button and pushes it to ui bucket.
 // Returns if the button was clicked.
-internal b8 UIButton(FUICommandBucket* bucket, FFont* font, FGameInput* input, FUINavState* nav, v4 rect, cc8* text, FUIButtonStyle* style)
+internal u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* text, FUIButtonStyle* style)
 {
+    FUINavState* nav = &gameState->uiNavState;
     i32 myIndex = nav->buttonCount++;
 
     b8 hovered = false;
@@ -104,7 +110,14 @@ internal b8 UIButton(FUICommandBucket* bucket, FFont* font, FGameInput* input, F
         clicked = hovered && input->mouse.buttons[0].isDown && !input->mouse.buttons[0].wasDown;
     }
 
-    UIPushButton(rect, text, bucket, style, font, clicked, hovered);
+    FUICommandBucket* bucket = gameState->shared->uiCommands;
+    UIPushButton(rect, text, bucket, style, gameState->font, clicked, hovered);
+
+    if (clicked)
+    {
+        SoundReplay(gameState->soundManager, gameState->hUIHoverSFX);
+    }
+
     return clicked;
 }
 
@@ -126,17 +139,17 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
 
     v2 textPos = { 500, 500 };
     v4 textColor = { 1, 0.5f, 1, 1 };
-    if (UIButton(uiBucket, gameState->font, input, &gameState->uiNavState, rect, "Fado Engine", &buttonStyle))
+    if (UIButton(gameState, input, rect, "Fado Engine", &buttonStyle))
     {
         UIPushText(uiBucket, gameState->font, "Button Is Working !!! :))", textPos, textColor);
     }
     rect.y += rect.height + buttonsYOffset;
-    if (UIButton(uiBucket, gameState->font, input, &gameState->uiNavState, rect, "Is The", &buttonStyle))
+    if (UIButton(gameState, input, rect, "Is The", &buttonStyle))
     {
         UIPushText(uiBucket, gameState->font, "Button Is Working !!! :))", textPos, textColor);
     }
     rect.y += rect.height + buttonsYOffset;
-    if (UIButton(uiBucket, gameState->font, input, &gameState->uiNavState, rect, "Best!!!", &buttonStyle))
+    if (UIButton(gameState, input, rect, "Best!!!", &buttonStyle))
     {
         UIPushText(uiBucket, gameState->font, "Button Is Working !!! :))", textPos, textColor);
     }
@@ -150,7 +163,7 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
 internal HEntity PickEntity(FRay ray, FCollisionWorld* collisions)
 {
     i32 closestIndex = 0;
-    f32 closestDist = MAX_FLOAT;
+    f32 closestDist = F32_MAX_VALUE;
 
     // start from 1 to skip the camera
     for (u32 i = 1; i < collisions->colliders.count; ++i)
@@ -401,13 +414,9 @@ GAME_UPDATE(GameUpdate)
     for (u32 i = 0; i < shared->collisionWorld->contactCount; ++i)
     {
         FContactInfo* c = &shared->collisionWorld->contacts[i];
-        if (c->isTrigger)
+        if (c->entityA == gameState->shared->camera.handle || c->entityB == gameState->shared->camera.handle)
         {
-            // Example: Doing something specific if sphere1 collides with sphere2
-            if (AreEntitiesColliding(c, gameState->sphere1, gameState->sphere2))
-            {
-
-            }
+            SoundReplay(gameState->soundManager, gameState->hCollideSFX);
         }
     }
 }
