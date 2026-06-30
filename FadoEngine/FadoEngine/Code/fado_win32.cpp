@@ -6,9 +6,9 @@
 #include "fado_collision.h"
 
 #if FADO_DEBUG
-#include "imgui/imgui.h"
-#include "imgui/backends/imgui_impl_win32.h"
-#include "imgui/backends/imgui_impl_dx11.h"
+#include "ThirdParty/imgui/imgui.h"
+#include "ThirdParty/imgui/backends/imgui_impl_win32.h"
+#include "ThirdParty/imgui/backends/imgui_impl_dx11.h"
 #endif // FADO_DEBUG
 
 // ────────────────────────────────────────────────────────────────────────
@@ -99,21 +99,22 @@ internal void Win32UnloadGameCode(Win32GameCode* gameCode)
 // Initializes XAudio2 and creates the voices used for audio playback.
 internal void Win32InitSound(Win32SoundState* soundState)
 {
+	// -- 2D --
 	HRESULT result = XAudio2Create(&soundState->xaudio2);
 	Assert(!FAILED(result));
 
 	result = soundState->xaudio2->CreateMasteringVoice(&soundState->masterVoice);
 	Assert(!FAILED(result));
 
-	WAVEFORMATEX format = {};
-	format.wFormatTag = WAVE_FORMAT_PCM;
-	format.nChannels = SOUND_CHANNELS;
-	format.nSamplesPerSec = SOUND_SAMPLE_RATE;
-	format.wBitsPerSample = 16;
-	format.nBlockAlign = (format.nChannels * format.wBitsPerSample) / 8;	// in bytes
-	format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
+	WAVEFORMATEX format2D = {};
+	format2D.wFormatTag = WAVE_FORMAT_PCM;
+	format2D.nChannels = SOUND_CHANNELS;
+	format2D.nSamplesPerSec = SOUND_SAMPLE_RATE;
+	format2D.wBitsPerSample = 16;
+	format2D.nBlockAlign = (format2D.nChannels * format2D.wBitsPerSample) / 8;	// in bytes
+	format2D.nAvgBytesPerSec = format2D.nSamplesPerSec * format2D.nBlockAlign;
 
-	result = soundState->xaudio2->CreateSourceVoice(&soundState->sourceVoice, &format, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &GlobalVoiceCallback);
+	result = soundState->xaudio2->CreateSourceVoice(&soundState->sourceVoice, &format2D, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &GlobalVoiceCallback);
 	Assert(!FAILED(result));
 
 	// Start playback. It will remain idle until buffers are submitted.
@@ -121,9 +122,28 @@ internal void Win32InitSound(Win32SoundState* soundState)
 
 	soundState->initialized = true;
 	soundState->currentBuffer = 0;
+
+	// -- 3D --
+	// Mono format, since panning is computed manually and applied via the output matrix.
+	WAVEFORMATEX format3D = {};
+	format3D.wFormatTag = WAVE_FORMAT_PCM;
+	format3D.nChannels = 1; // mono source, we pan manually
+	format3D.nSamplesPerSec = SOUND_SAMPLE_RATE;
+	format3D.wBitsPerSample = 16;
+	format3D.nBlockAlign = (format3D.nChannels * format3D.wBitsPerSample) / 8;
+	format3D.nAvgBytesPerSec = format3D.nSamplesPerSec * format3D.nBlockAlign;
+
+	for (i32 i = 0; i < WIN32_MAX_3D_VOICES; i++)
+	{
+		soundState->xaudio2->CreateSourceVoice(&Global_3DVoiceSlots[i].voice, &format3D, 0,
+			XAUDIO2_DEFAULT_FREQ_RATIO,
+			nullptr);	// no callback needed, we poll GetState() instead
+
+		Global_3DVoiceSlots[i].inUse = false;
+	}
 }
 
-// Copies a mixed audio buffer into the next XAudio2 buffer and submits it.
+// Copies a mixed audio buffer into the next XAudio2 buffer and submits it (2D).
 internal void Win32SubmitSound(Win32SoundState* soundState, FSoundOutput* output)
 {
 	i16* dst = soundState->buffers[soundState->currentBuffer];
@@ -137,6 +157,85 @@ internal void Win32SubmitSound(Win32SoundState* soundState, FSoundOutput* output
 	// Queue it for playback and advance to the next buffer in the ring.
 	soundState->sourceVoice->SubmitSourceBuffer(&xbuf);
 	soundState->currentBuffer = (soundState->currentBuffer + 1) % WIN32_SOUND_BUFFER_COUNT;		// The % (modulo) wraps back to the beginning.
+}
+
+internal i32 Win32Acquire3DVoice()
+{
+	for (i32 i = 0; i < WIN32_MAX_3D_VOICES; i++)
+	{
+		if (!Global_3DVoiceSlots[i].inUse)
+		{
+			Global_3DVoiceSlots[i].inUse = true;
+			return i;
+		}
+	}
+	return -1; // pool exhausted
+}
+
+internal void Win32Release3DVoice(i32 slot)
+{
+	if (slot < 0)
+	{
+		return;
+	}
+	Global_3DVoiceSlots[slot].voice->Stop(0);
+	Global_3DVoiceSlots[slot].voice->FlushSourceBuffers();
+	Global_3DVoiceSlots[slot].inUse = false;
+}
+
+internal void Win32Update3DSoundInstance(FSoundManager* manager, FSoundInstance* instance, i32 instanceHandle, IXAudio2MasteringVoice* masterVoice)
+{
+	Win32VoiceSlot3D* slot = nullptr;
+
+	// Acquire + submit buffer once
+	if (instance->voiceSlot < 0)
+	{
+		instance->voiceSlot = Win32Acquire3DVoice();
+		if (instance->voiceSlot < 0)
+		{
+			return; // pool exhausted this frame
+		}
+
+		slot = &Global_3DVoiceSlots[instance->voiceSlot];
+
+		FSoundBuffer* buf = &manager->assetBank->assets[instance->bufferIndex];
+
+		XAUDIO2_BUFFER xbuf = {};
+		xbuf.AudioBytes = buf->sampleCount * sizeof(i16);
+		xbuf.pAudioData = (BYTE*)buf->samples;
+		xbuf.LoopCount = instance->loop ? XAUDIO2_LOOP_INFINITE : 0;
+
+		slot->voice->SubmitSourceBuffer(&xbuf);
+		slot->voice->Start(0);
+	}
+	else
+	{
+		slot = &Global_3DVoiceSlots[instance->voiceSlot];
+	}
+
+	// Check if finished (non-looping only)
+	if (!instance->loop)
+	{
+		XAUDIO2_VOICE_STATE state;
+		slot->voice->GetState(&state);
+
+		if (state.BuffersQueued == 0)
+		{
+			Win32Release3DVoice(instance->voiceSlot);
+			SoundStop(manager, instanceHandle);
+			return;
+		}
+	}
+
+	// Compute + apply matrix every frame (position/listener may have moved)
+	f32 distance = V3Distance(manager->listener.position, instance->position);
+	f32 atten = SoundCalculateAttenuation(distance, instance->minDistance, instance->maxDistance);
+	f32 pan = SoundCalculatePan(&manager->listener, instance->position);
+
+	f32 matrix[2];
+	SoundCalculateStereoMatrix(pan, instance->volume * atten, matrix);
+
+	slot->voice->SetOutputMatrix(masterVoice, 1, 2, matrix);
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -547,7 +646,9 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 	// https://pixabay.com/sound-effects/film-special-effects-impact-sound-effect-8-bit-retro-151796/
 	gameState->hCollideSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\lesiakower-impact-sound-effect-8-bit-retro-151796.fasset");
 	// https://pixabay.com/sound-effects/technology-click-21156/
-	gameState->hUIHoverSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\666herohero-click-21156.fasset");
+	gameState->hUIClickSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\666herohero-click-21156.fasset");
+	// https://pixabay.com/sound-effects/nature-fire-crackling-sounds-427410/
+	gameState->hFireSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\dragon-studio-fire-crackling-sounds-427410.fasset");
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -600,7 +701,8 @@ int WINAPI wWinMain(
 	// Sound
 	Win32SoundState win32Sound = *ArenaPushType(&engineMemory.permanent, Win32SoundState);
 	Win32InitSound(&win32Sound);
-	FSoundManager soundManager = *ArenaPushType(&engineMemory.permanent, FSoundManager);
+	FSoundManager soundManager = {};
+	soundManager.assetBank = ArenaPushType(&engineMemory.permanent, FSoundAssetBank);
 	soundManager.masterVolume = 1.0f;
 	for (i32 i = 0; i < SOUND_CATEGORY_COUNT; i++)
 	{
@@ -657,15 +759,34 @@ int WINAPI wWinMain(
 		// check how many buffers XAudio2 still has queued.
 		XAUDIO2_VOICE_STATE state;
 		win32Sound.sourceVoice->GetState(&state);
-
 		// only mix and submit if XAudio2 is hungry.
 		if (state.BuffersQueued < WIN32_SOUND_BUFFER_COUNT)
 		{
 			FSoundOutput output = {};
 			output.samples = soundManager.mixBuffer;
 			output.sampleCount = WIN32_SOUND_SAMPLES_PER_FRAME;
+			FadoZeroMemory(output.samples, (output.sampleCount * SOUND_CHANNELS * sizeof(i16)));
 
-			SoundMix(&soundManager, &output);
+			// Update 2D and 3D sounds in one loop.
+			for (i32 i = 0; i < FMAX_SOUND_INSTANCES; ++i)
+			{
+				FSoundInstance* instance = &soundManager.assetBank->instances[i];
+				if (!instance->active || !instance->playing)
+				{
+					continue;
+				}
+
+				if (instance->is3D)
+				{
+					// Udpate each 3D sound individually.
+					Win32Update3DSoundInstance(&soundManager, instance, i, win32Sound.masterVoice);
+				}
+				else
+				{
+					SoundMixInstance(&soundManager, instance, i, &output);
+				}
+			}
+			// Submit the 2D mixed sound output.
 			Win32SubmitSound(&win32Sound, &output);
 		}
 

@@ -77,10 +77,16 @@ internal void Initialize(FGameState* gameState)
     CollisionAddCollider(shared->collisionWorld, gameState->sphere2,
         GetTransformHandle(entityTable, gameState->sphere2), extents, ECollisionFlags::Physics);
 
+    gameState->fire = SpawnEntity(shared, gameState->hCubeMesh, 0, {1, 0, 0, 1}, EShaderTypes::Color);
+    CollisionAddCollider(shared->collisionWorld, gameState->fire,
+        GetTransformHandle(entityTable, gameState->fire), extents, ECollisionFlags::Physics);
+    HTransform hFireTransform = GetTransformHandle(entityTable, gameState->fire);
+    transforms->positions[hFireTransform] = { 5.0f, 2.0f, 0 };
+    transforms->scales[hFireTransform] = { 0.25f, 0.25f, 0.25f };
+    gameState->hFireSFXInstance = SoundPlay3D(gameState->soundManager, gameState->hFireSFX, ESoundCategory::SFX, 1.0f, true, transforms->positions[hFireTransform], 0.0f, 5.0f);
+
     // Sound
-    SoundPlay(gameState->soundManager, gameState->hMusic, ESoundCategory::Music, 0.5f, true);
-    SoundInit(gameState->soundManager, gameState->hCollideSFX, ESoundCategory::SFX, 0.25f, false);
-    SoundInit(gameState->soundManager, gameState->hUIHoverSFX, ESoundCategory::UI, 0.25f, false);
+    SoundPlay2D(gameState->soundManager, gameState->hMusic, ESoundCategory::Music, 0.5f, true);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -115,7 +121,7 @@ internal u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* te
 
     if (clicked)
     {
-        SoundReplay(gameState->soundManager, gameState->hUIHoverSFX);
+        SoundPlay2D(gameState->soundManager, gameState->hUIClickSFX, ESoundCategory::UI, 0.25f, false);
     }
 
     return clicked;
@@ -375,6 +381,14 @@ GAME_UPDATE(GameUpdate)
 
     FSharedStuff* shared = gameState->shared;
 
+    // Each frame, feed camera into the listener for 3D audio.
+    FSoundListener listener = {};
+    v3 camPos = shared->transforms->positions[shared->camera.handle];
+    listener.position = camPos;
+    listener.forward = shared->camera.forward;
+    listener.up = shared->camera.up;
+    gameState->soundManager->listener = listener;
+
 #if FADO_DEBUG
     // Clicking on entites
     if (IsInputButtonClick(&input->mouse.buttons[0]) && shared->canSelect)
@@ -416,7 +430,10 @@ GAME_UPDATE(GameUpdate)
         FContactInfo* c = &shared->collisionWorld->contacts[i];
         if (c->entityA == gameState->shared->camera.handle || c->entityB == gameState->shared->camera.handle)
         {
-            SoundReplay(gameState->soundManager, gameState->hCollideSFX);
+            SoundPlay2D(gameState->soundManager, gameState->hCollideSFX, ESoundCategory::SFX, 0.1f, false);
         }
     }
+
+    // Update the fire sfx pos to match the fire entity's.
+    gameState->soundManager->assetBank->instances[gameState->hFireSFXInstance].position = shared->transforms->positions[GetTransformHandle(shared->entityTable, gameState->fire)];
 }

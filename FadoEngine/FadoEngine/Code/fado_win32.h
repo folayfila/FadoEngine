@@ -26,6 +26,8 @@
 #include<xaudio2.h>
 #include "fado_sound.h"
 
+// -- 2D Audio --
+
 // Double buffer so XAudio2 always has something while we're filling the next.
 #define WIN32_SOUND_BUFFER_COUNT 2
 #define WIN32_SOUND_SAMPLES_PER_FRAME 4800  // 100ms at 48000hz, tweak for latency
@@ -76,6 +78,19 @@ struct Win32VoiceCallback : IXAudio2VoiceCallback
 };
 
 global_variable Win32VoiceCallback GlobalVoiceCallback;
+
+// ────────────────────
+// -- 3D Audio --
+
+#define WIN32_MAX_3D_VOICES 32
+
+struct Win32VoiceSlot3D
+{
+    IXAudio2SourceVoice* voice;
+    b32 inUse;
+};
+
+global_variable Win32VoiceSlot3D Global_3DVoiceSlots[WIN32_MAX_3D_VOICES];
 
 // ─────────────────────────────────────────────
 // Holds the game code dll and the main update function.

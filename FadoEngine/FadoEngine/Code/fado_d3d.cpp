@@ -4,9 +4,9 @@
 #include "fado_asset_format.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "Tools/FadoConverter/stb/stb_truetype.h"
+#include "ThirdParty/stb/stb_truetype.h"
 
-#include "Tools/FadoConverter/lz4/lz4.h"
+#include "ThirdParty/lz4/lz4.h"
 
 #include "fado_sound.h"
 
@@ -14,9 +14,9 @@
 #include "fado_math.h"
 
 #if FADO_DEBUG
-#include "imgui/imgui.h"
-#include "imgui/backends/imgui_impl_win32.h"
-#include "imgui/backends/imgui_impl_dx11.h"
+#include "ThirdParty/imgui/imgui.h"
+#include "ThirdParty/imgui/backends/imgui_impl_win32.h"
+#include "ThirdParty/imgui/backends/imgui_impl_dx11.h"
 #endif // FADO_DEBUG
 
 // ───────────────────────────
@@ -1449,8 +1449,9 @@ HSound LoadSound(FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryAr
 		(i32)sndHeader.dataSize,
 		(i32)sndHeader.uncompressedSize);
 
-	HSound handle = GetFirstFreeInstanceSlot(SoundManager);
-	FSoundBuffer* soundBuf = &SoundManager->instances[handle].buffer;
+	Assert(SoundManager->assetBank->assetsCount < FMAX_SOUND_ASSETS);
+	HSound handle = SoundManager->assetBank->assetsCount++;
+	FSoundBuffer* soundBuf = &SoundManager->assetBank->assets[handle];
 	soundBuf->samples = pcm;
 	soundBuf->sampleCount = sndHeader.sampleCount;
 	soundBuf->channels = sndHeader.channels;

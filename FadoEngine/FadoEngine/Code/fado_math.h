@@ -367,7 +367,8 @@ inline v3 V3One()
 
 inline f32 V3Dot(v3 a, v3 b)
 {
-	return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
+	f32 dot = (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
+	return dot;
 }
 
 inline v3 V3Cross(v3 a, v3 b)
@@ -383,6 +384,12 @@ inline f32 V3Length(v3 a)
 {
 	f32 result = sqrtf(V3Dot(a, a));
 	return result;
+}
+
+inline f32 V3Distance(v3 a, v3 b)
+{
+	f32 dist = V3Length(a - b);
+	return dist;
 }
 
 inline v3 V3Normalize(v3 a)

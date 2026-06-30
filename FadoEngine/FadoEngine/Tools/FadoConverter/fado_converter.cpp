@@ -2,13 +2,13 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb/stb_image.h"
+#include "../../ThirdParty/stb/stb_image.h"
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include "stb/stb_image_resize2.h"
+#include "../../ThirdParty/stb/stb_image_resize2.h"
 #define STB_DXT_IMPLEMENTATION
-#include "stb/stb_dxt.h"
+#include "../../ThirdParty/stb/stb_dxt.h"
 
-#include "lz4/lz4.h"
+#include "../../ThirdParty/lz4/lz4.h"
 
 #include "../../Code/fado_asset_format.h"
 #include <stdio.h>

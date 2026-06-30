@@ -22,19 +22,20 @@ project "FadoEngine"
     {
         "FadoEngine/Code/**.h",
         "FadoEngine/Code/**.cpp",
-        "FadoEngine/Tools/FadoConverter/**.h",
         "FadoEngine/Tools/FadoConverter/**.cpp",
-        "FadoEngine/Tools/FadoConverter/**.c",
         "FadoEngine/Shaders/**.hlsl",
         "FadoEngine/FadoEngine.rc",
-        "FadoEngine/FadoEngine.ico"
+        "FadoEngine/FadoEngine.ico",
+        "FadoEngine/ThirdParty/**.h",
+        "FadoEngine/ThirdParty/**.cpp",
+        "FadoEngine/ThirdParty/**.c",
     }
 
     includedirs
     {
-        "%{wks.location}/FadoEngine/",
-        "%{wks.location}/FadoEngine/Code/imgui/",
-        "%{wks.location}/Game/Code/",
+        "$(SolutionDir)/FadoEngine/",
+        "$(SolutionDir)/FadoEngine/ThirdParty/imgui/",
+        "$(SolutionDir)/Game/Code/",
     }
 
     postbuildcommands
@@ -83,7 +84,7 @@ project "Game"
 
     includedirs
     {
-        "%{wks.location}/FadoEngine/Code/"
+        "$(SolutionDir)/FadoEngine/Code/"
     }
 
     disablewarnings { "6297", "28251", "6387", "6386" }

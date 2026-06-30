@@ -115,6 +115,7 @@ struct FGameState
     HEntity cube2;
     HEntity sphere1;
     HEntity sphere2;
+    HEntity fire;
 
     // Mesh handles
     HEntity hPlaneMesh;
@@ -133,7 +134,10 @@ struct FGameState
     FSoundManager* soundManager;
     HSound hMusic;
     HSound hCollideSFX;
-    HSound hUIHoverSFX;
+    HSound hUIClickSFX;
+
+    HSound hFireSFX;
+    HSound hFireSFXInstance;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
