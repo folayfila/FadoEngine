@@ -98,6 +98,10 @@ struct FSoundManager
     f32 masterVolume;
     FSoundListener listener;
     i16* mixBuffer;         // the 2D mix buffer that get used to output the 2D audio mix.
+
+    // Set to false when we want to stop all 2D and 3D soudns.
+    // Used so that the platform layer can stop 3D audios.
+    b32 active;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -274,6 +278,8 @@ inline void SoundStopCategory(FSoundManager* manager, ESoundCategory category)
 inline void SoundStopAll(FSoundManager* manager)
 {
     FadoZeroArray(manager->assetBank->instances);
+    manager->listener = {};
+    manager->active = false;
 }
 
 /*

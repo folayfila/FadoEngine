@@ -222,9 +222,25 @@ enum EShaderTypes
     LitTexture
 };
 
+// For now, this is literally all kinds of entities we have.
+// TODO: Update the system once we have a working version of save\load.
+enum EEntityType
+{
+	EntityType_None,
+	EntityType_Camera,
+	EntityType_Plane,
+	EntityType_Skybox,
+	EntityType_Cube1,
+	EntityType_Cube2,
+	EntityType_Sphere1,
+	EntityType_Sphere2,
+	EntityType_Fire
+};
+
 // Main entity struct.
 struct FEntity
 {
+	EEntityType type;
     HTransform hTransform;
     HMesh hMesh;
     HTexture hTexture;
@@ -391,6 +407,20 @@ struct FSharedStuff
 #endif // FADO_DEBUG
 };
 
+ForceInline v3 GetEntityPosition(FSharedStuff* shared, HEntity hEntity)
+{
+	return shared->transforms->positions[shared->entityTable->entities[hEntity].hTransform];
+}
+
+ForceInline quat GetEntityRotation(FSharedStuff* shared, HEntity hEntity)
+{
+	return shared->transforms->rotations[shared->entityTable->entities[hEntity].hTransform];
+}
+
+ForceInline v3 GetEntityScale(FSharedStuff* shared, HEntity hEntity)
+{
+	return shared->transforms->scales[shared->entityTable->entities[hEntity].hTransform];
+}
 
 // ─────────────────────────────────────────────
 // Other:

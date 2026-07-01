@@ -138,6 +138,9 @@ struct FGameState
 
     HSound hFireSFX;
     HSound hFireSFXInstance;
+
+    // Levels
+    enum ELevel currentLevel;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────

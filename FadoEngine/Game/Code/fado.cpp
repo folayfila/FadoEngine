@@ -3,91 +3,7 @@
 #include "fado.h"
 #include "fado_math.h"
 #include "fado_collision.h"
-
-// Adds an entity to the entity table and gives it a transform.
-//  - No dynamic allocation of any sorts, just setting values to an existing array.
-internal HEntity SpawnEntity(FSharedStuff* shared, HMesh hMesh, HTexture hTex, v4 color, EShaderTypes shaderType)
-{
-    FEntityTable* entityTable = shared->entityTable;
-    FTransformTable* transforms = shared->transforms;
-
-    HEntity handle = entityTable->count++;
-    FEntity* e = &entityTable->entities[handle];
-    e->hMesh = hMesh;
-    e->hTexture = hTex;
-    e->hTransform = transforms->count++;
-    e->color = color;
-    e->shaderType = shaderType;
-    transforms->scales[e->hTransform] = V3One();
-    transforms->rotations[e->hTransform] = QuatIdentity();
-    return handle;
-}
-
-// Called once when the game starts
-internal void Initialize(FGameState* gameState)
-{
-    gameState->initialized = true;
-
-    FSharedStuff* shared = gameState->shared;
-    shared->canSelect = true;
-
-    FTransformTable* transforms = shared->transforms;
-    FEntityTable* entityTable = shared->entityTable;
-
-    CollisionInitialize(shared->collisionWorld);
-    v3 extents = { 1.0f, 1.0f, 1.0f };
-
-    // >> IMPORTANT: Camera MUST be handle 0!
-    shared->camera.handle = SpawnEntity(shared, INVALID_HANDLE, INVALID_HANDLE, {}, EShaderTypes::Shader_None);
-    shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
-    CollisionAddCollider(shared->collisionWorld, shared->camera.handle,
-        entityTable->entities[shared->camera.handle].hTransform,
-        { 1.0f, 1.0f, 1.0f }, ECollisionFlags::Physics);
-
-    // infinite plane
-    gameState->infinitePlane = SpawnEntity(shared, gameState->hPlaneMesh, gameState->hGridTexture, {}, EShaderTypes::LitTexture);
-    transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f };
-    CollisionAddCollider(shared->collisionWorld, gameState->infinitePlane,
-        entityTable->entities[gameState->infinitePlane].hTransform,
-        { 1.0f, 0.01f, 1.0f }, ECollisionFlags::Static);
-
-    // sky box
-    gameState->skyBox = SpawnEntity(shared, gameState->hSkyBoxMesh, gameState->hSkyBoxTexture, {}, EShaderTypes::UnlitTexture);
-    transforms->scales[gameState->skyBox] = {500.0f, 500.0f, 500.0f };
-
-    // Other entities
-    gameState->cube1 = SpawnEntity(shared, gameState->hCubeMesh, 0, { 0.63f, 1, 0.21f, 1 }, EShaderTypes::Color);
-    transforms->positions[gameState->cube1] = { -3.5f, 5.0f, 0 };
-    transforms->scales[gameState->cube1] = { 2.5f, 0.25f, 1.0f };
-    CollisionAddCollider(shared->collisionWorld, gameState->cube1,
-        GetTransformHandle(entityTable, gameState->cube1), extents, ECollisionFlags::Kinematic);
-
-    gameState->cube2 = SpawnEntity(shared, gameState->hCubeMesh, 0, { 1, 0.21f, 0.63f, 1 }, EShaderTypes::Color);
-    transforms->positions[gameState->cube2] = { 1.5f, 5.0f, 0 };
-    CollisionAddCollider(shared->collisionWorld, gameState->cube2,
-        GetTransformHandle(entityTable, gameState->cube2), extents, ECollisionFlags::Static);
-
-    gameState->sphere1 = SpawnEntity(shared, gameState->hSphereMesh, gameState->hGraniteTexture, {}, EShaderTypes::LitTexture);
-    transforms->positions[gameState->sphere1] = { -1.5f, 2.0f, 0 };
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere1,
-        GetTransformHandle(entityTable, gameState->sphere1), extents, ECollisionFlags::Dynamic);
-
-    gameState->sphere2 = SpawnEntity(shared, gameState->hSphereMesh, gameState->hMosaicTexture, {}, EShaderTypes::LitTexture);
-    transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere2,
-        GetTransformHandle(entityTable, gameState->sphere2), extents, ECollisionFlags::Physics);
-
-    gameState->fire = SpawnEntity(shared, gameState->hCubeMesh, 0, {1, 0, 0, 1}, EShaderTypes::Color);
-    CollisionAddCollider(shared->collisionWorld, gameState->fire,
-        GetTransformHandle(entityTable, gameState->fire), extents, ECollisionFlags::Physics);
-    HTransform hFireTransform = GetTransformHandle(entityTable, gameState->fire);
-    transforms->positions[hFireTransform] = { 5.0f, 2.0f, 0 };
-    transforms->scales[hFireTransform] = { 0.25f, 0.25f, 0.25f };
-    gameState->hFireSFXInstance = SoundPlay3D(gameState->soundManager, gameState->hFireSFX, ESoundCategory::SFX, 1.0f, true, transforms->positions[hFireTransform], 0.0f, 5.0f);
-
-    // Sound
-    SoundPlay2D(gameState->soundManager, gameState->hMusic, ESoundCategory::Music, 0.5f, true);
-}
+#include "fado_level.h"
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 // -- UI --
@@ -145,19 +61,22 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
 
     v2 textPos = { 500, 500 };
     v4 textColor = { 1, 0.5f, 1, 1 };
-    if (UIButton(gameState, input, rect, "Fado Engine", &buttonStyle))
+    if (UIButton(gameState, input, rect, "Save Level", &buttonStyle))
     {
-        UIPushText(uiBucket, gameState->font, "Button Is Working !!! :))", textPos, textColor);
+        if (SaveCurrentLevel(gameState))
+        {
+            UIPushText(uiBucket, gameState->font, "Level Saved", textPos, { 0, 1, 0, 1 });
+        }
     }
     rect.y += rect.height + buttonsYOffset;
-    if (UIButton(gameState, input, rect, "Is The", &buttonStyle))
+    if (UIButton(gameState, input, rect, "Load Level_01", &buttonStyle))
     {
-        UIPushText(uiBucket, gameState->font, "Button Is Working !!! :))", textPos, textColor);
+        LoadLevelById(gameState, Level_01);
     }
     rect.y += rect.height + buttonsYOffset;
-    if (UIButton(gameState, input, rect, "Best!!!", &buttonStyle))
+    if (UIButton(gameState, input, rect, "Load Level_02", &buttonStyle))
     {
-        UIPushText(uiBucket, gameState->font, "Button Is Working !!! :))", textPos, textColor);
+        LoadLevelById(gameState, Level_02);
     }
 }
 
@@ -328,8 +247,11 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input)
             gameState->cameraYaw -= sensitivity;
         }
         gameState->cameraPitch = Clampf32(gameState->cameraPitch, -89.0f, 89.0f);
-        SetRotation(shared->transforms, shared->camera.handle,
-            { gameState->cameraPitch, gameState->cameraYaw, 0 });
+        if ((gameState->cameraPitch > 0.0f) || (gameState->cameraYaw > 0.0f))
+        {
+            SetRotation(shared->transforms, shared->camera.handle,
+                { gameState->cameraPitch, gameState->cameraYaw, 0 });
+        }
        
         // Mouse Rotation
         // Mouse deltaY maps to pitch and deltaX maps to yaw.
@@ -376,7 +298,11 @@ GAME_UPDATE(GameUpdate)
 {
     if (!gameState->initialized)
     {
-        Initialize(gameState);
+        gameState->initialized = true;
+        gameState->shared->canSelect = true;
+
+        // Load level 01 by default.
+        LoadLevelById(gameState, Level_01);
     }
 
     FSharedStuff* shared = gameState->shared;

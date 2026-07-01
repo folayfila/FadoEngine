@@ -238,6 +238,21 @@ internal void Win32Update3DSoundInstance(FSoundManager* manager, FSoundInstance*
 	slot->voice->SetOutputMatrix(masterVoice, 1, 2, matrix);
 }
 
+// Force end all current 3D instances.
+internal void Win32StopAll3DSounds()
+{
+	for (i32 i = 0; i < WIN32_MAX_3D_VOICES; i++)
+	{
+		Win32VoiceSlot3D* slot = &Global_3DVoiceSlots[i];
+		if (slot->inUse)
+		{
+			slot->voice->Stop(0);
+			slot->voice->FlushSourceBuffers();
+			slot->inUse = false;
+		}
+	}
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Input
 // ────────────────────────────────────────────────────────────────────────
@@ -631,24 +646,24 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 	gameState->hSkyBoxMesh = LoadGLBModel(world, "Assets\\Models\\skybox.glb");
 	//HMesh hMonkey = LoadGLBIntoWorld(world, "models\\monkey.glb");
 
-	gameState->hGridTexture = LoadFImage(world, "Assets\\Textures\\grid.fasset");
-	gameState->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fasset");
-	gameState->hGraniteTexture = LoadFImage(world, "Assets\\Textures\\granite.fasset");
-	gameState->hSkyBoxTexture = LoadFImage(world, "Assets\\Textures\\skybox_0.fasset");
-	gameState->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fasset");
+	gameState->hGridTexture = LoadFImage(world, "Assets\\Textures\\grid.fimage");
+	gameState->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fimage");
+	gameState->hGraniteTexture = LoadFImage(world, "Assets\\Textures\\granite.fimage");
+	gameState->hSkyBoxTexture = LoadFImage(world, "Assets\\Textures\\skybox_0.fimage");
+	gameState->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fimage");
 
 	//LoadFont(world, "AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, gameState->font);
-	LoadFont(world, "Assets\\Fonts\\arialbd.fasset", 25.0f, gameState->font);
+	LoadFont(world, "Assets\\Fonts\\arialbd.ffont", 25.0f, gameState->font);
 
 	// Temporary test, using royalty free sounds:
 	// https://pixabay.com/music/video-games-sinnesl%C3%B6schen-beam-117362/
-	gameState->hMusic = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\Music\\sinneschlosen-sinnesloschen-beam-117362.fasset");
+	gameState->hMusic = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\Music\\sinneschlosen-sinnesloschen-beam-117362.fsound");
 	// https://pixabay.com/sound-effects/film-special-effects-impact-sound-effect-8-bit-retro-151796/
-	gameState->hCollideSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\lesiakower-impact-sound-effect-8-bit-retro-151796.fasset");
+	gameState->hCollideSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\lesiakower-impact-sound-effect-8-bit-retro-151796.fsound");
 	// https://pixabay.com/sound-effects/technology-click-21156/
-	gameState->hUIClickSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\666herohero-click-21156.fasset");
+	gameState->hUIClickSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\666herohero-click-21156.fsound");
 	// https://pixabay.com/sound-effects/nature-fire-crackling-sounds-427410/
-	gameState->hFireSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\dragon-studio-fire-crackling-sounds-427410.fasset");
+	gameState->hFireSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\dragon-studio-fire-crackling-sounds-427410.fsound");
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -702,6 +717,7 @@ int WINAPI wWinMain(
 	Win32SoundState win32Sound = *ArenaPushType(&engineMemory.permanent, Win32SoundState);
 	Win32InitSound(&win32Sound);
 	FSoundManager soundManager = {};
+	soundManager.active = true;
 	soundManager.assetBank = ArenaPushType(&engineMemory.permanent, FSoundAssetBank);
 	soundManager.masterVolume = 1.0f;
 	for (i32 i = 0; i < SOUND_CATEGORY_COUNT; i++)
@@ -762,6 +778,12 @@ int WINAPI wWinMain(
 		// only mix and submit if XAudio2 is hungry.
 		if (state.BuffersQueued < WIN32_SOUND_BUFFER_COUNT)
 		{
+			if (!soundManager.active)
+			{
+				Win32StopAll3DSounds();
+				soundManager.active = true;
+			}
+
 			FSoundOutput output = {};
 			output.samples = soundManager.mixBuffer;
 			output.sampleCount = WIN32_SOUND_SAMPLES_PER_FRAME;

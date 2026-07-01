@@ -425,7 +425,7 @@ bool BakeFont(const char* src, const char* dst)
     header.version = FASSET_VERSION;
     header.reserved = 0;
 
-    FFontAssetHeader fontHeader = {};
+    FFontHeader fontHeader = {};
     fontHeader.dataSize = (u32)lz4Size;
     fontHeader.uncompressedSize = dataSize;
     fontHeader.flags = FASSET_FLAG_LZ4;
@@ -523,17 +523,17 @@ bool BakeSound(const char* src, const char* dst)
     header.assetType = FASSET_TYPE_SOUND;
     header.version = FASSET_VERSION;
 
-    FSoundAssetHeader sndHeader = {};
-    sndHeader.dataSize = (u32)lz4Size;
-    sndHeader.uncompressedSize = chunkSize;
-    sndHeader.sampleCount = sampleCount;
-    sndHeader.channels = channels;
-    sndHeader.sampleRate = sampleRate;
-    sndHeader.flags = FASSET_FLAG_LZ4;
+    FSoundHeader soundHeader = {};
+    soundHeader.dataSize = (u32)lz4Size;
+    soundHeader.uncompressedSize = chunkSize;
+    soundHeader.sampleCount = sampleCount;
+    soundHeader.channels = channels;
+    soundHeader.sampleRate = sampleRate;
+    soundHeader.flags = FASSET_FLAG_LZ4;
 
     FILE* out = fopen(dst, "wb");
     fwrite(&header, sizeof(header), 1, out);
-    fwrite(&sndHeader, sizeof(sndHeader), 1, out);
+    fwrite(&soundHeader, sizeof(soundHeader), 1, out);
     fwrite(lz4Data, lz4Size, 1, out);
     fclose(out);
     free(lz4Data);

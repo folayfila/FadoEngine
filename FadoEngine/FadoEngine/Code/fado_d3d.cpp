@@ -1372,7 +1372,7 @@ HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFo
 	Assert(header.magic == FASSET_MAGIC);
 	Assert(header.assetType == FASSET_TYPE_FONT);
 
-	FFontAssetHeader fontHeader = {};
+	FFontHeader fontHeader = {};
 	fread(&fontHeader, sizeof(fontHeader), 1, file);
 
 	// Read compressed data
@@ -1435,7 +1435,7 @@ HSound LoadSound(FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryAr
 	Assert(header.magic == FASSET_MAGIC);
 	Assert(header.assetType == FASSET_TYPE_SOUND);
 
-	FSoundAssetHeader sndHeader = {};
+	FSoundHeader sndHeader = {};
 	fread(&sndHeader, sizeof(sndHeader), 1, file);
 
 	u8* compressed = ArenaPushSize(scratch, u8, sndHeader.dataSize);

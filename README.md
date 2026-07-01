@@ -8,6 +8,8 @@ The engine is heavily data oriented; we have a bunch of structs, and create func
 ![Description](media/showcase.gif)
 
 ### Latest Features
+- Levels save/load.
+- 2D and 3D custom sound system. (XAusio2 for Windows).
 - Seamless Cubemap Skybox.
 - Real-time entities transform editing with ImGui.
 - Added functioning buttons.

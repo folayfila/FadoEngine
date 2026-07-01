@@ -10,8 +10,10 @@
 /*
  * Fado Asset Type
    - This file includes structs for all file format that are compressed and
-     converted to ".fasset".
-   - TODO: Check if we can have all files be ".fasset".
+     converted to ".f*asset*".
+     Exampless: 
+        .wav -> .fsound
+        .png -> .fimage
 */
 
 // Every .fasset file starts with this.
@@ -30,6 +32,8 @@ struct FAssetHeader
 #define FASSET_TYPE_IMAGE 0
 #define FASSET_TYPE_FONT  1
 #define FASSET_TYPE_SOUND 2
+#define FASSET_TYPE_LEVEL 3
+#define FASSET_TYPE_SAVE  4
 
 //
 #define FASSET_MAX_MIPS 16
@@ -55,7 +59,7 @@ struct FImageHeader
 
 // ────────────────────────────────────────────────────────────────────────
 // Font payload (assetType == FASSET_TYPE_FONT)
-struct FFontAssetHeader
+struct FFontHeader
 {
     u32 dataSize;           // compressed (lz4) size
     u32 uncompressedSize;
@@ -63,10 +67,8 @@ struct FFontAssetHeader
 };
 
 // ────────────────────────────────────────────────────────────────────────
-
-// ────────────────────────────────────────────────────────────────────────
 // Sound payload (assetType == FASSET_TYPE_SOUND)
-struct FSoundAssetHeader
+struct FSoundHeader
 {
     u32 dataSize;          // compressed (lz4) size
     u32 uncompressedSize;  // raw PCM bytes
@@ -75,6 +77,71 @@ struct FSoundAssetHeader
     u32 sampleRate;
     u32 flags;
 };
+
+// ────────────────────────────────────────────────────────────────────────
+// Level payload (assetType == FASSET_TYPE_LEVEL)
+struct FLevelHeader
+{
+    u32 index;              // 0, 1, 2...
+    u32 entityCount;
+    u32 flags;
+};
+
+// What actually gets saved/loaded per entity
+struct FEntityDesc
+{
+    EEntityType  type;
+    v3           pos;
+    quat         rot;
+    v3           scale;
+    HMesh        hMesh;
+    HTexture     hTexture;
+    v4           color;
+    EShaderTypes shaderType;
+    u32          reserved;
+};
+
+// ────────────────────────────────────────────────────────────────────────
+// Save(game) payload (assetType == FASSET_TYPE_SAVE)
+// Any future games should follow this structrue to save game files/progress.
+// We use chunks and just add them insteead of manually increasing one SaveAsset header.
+
+/* Load chunk would look something like this:
+* FSaveChunkHeader chunk;
+    while (fread(&chunk, sizeof(chunk), 1, f) == 1)
+    {
+        switch (chunk.chunkId)
+        {
+            case SAVE_CHUNK_PLAYER:
+            {
+                FPlayerSave player;
+                fread(&player, sizeof(player), 1, f);
+                ApplyPlayerSave(gs, &player);
+            } break;
+        // .. etc
+
+* Writeing would look something like this:
+*     #define WRITE_CHUNK(id, ver, data) \
+    { \
+        FSaveChunkHeader ch = {id, ver, sizeof(data)}; \
+        fwrite(&ch,   sizeof(ch),   1, f); \
+        fwrite(&data, sizeof(data), 1, f); \
+    }
+
+    FPlayerSave playerSave = BuildPlayerSave(gs);
+    WRITE_CHUNK(SAVE_CHUNK_PLAYER, 1, playerSave);
+*/
+
+// Chunks
+#define SAVE_CHUNK_HEADER    0x00000001  // FSaveHeader, always first
+
+struct FSaveChunkHeader
+{
+    u32 chunkId;   // e.g. SAVE_CHUNK_PLAYER, SAVE_CHUNK_ENTITIES, SAVE_CHUNK_PROGRESS
+    u32 version;   // per-chunk version
+    u32 byteSize;  // so unknown/old chunks can be skipped
+};
+// ────────────────────────────────────────────────────────────────────────
 
 #pragma pack(pop)
 

@@ -29,7 +29,21 @@ for /r "%SRC_DIR%" %%f in (%FORMATS%) do (
     mkdir "%OUT_DIR%\!rel!" 2>nul
 
     set "name=%%~nf"
-    %CONVERTER% "%%f" "%OUT_DIR%\!rel!!name!.fasset"
+    set "ext=%%~xf"
+
+    rem Default extension
+    set "outExt=.fasset"
+
+    if /I "!ext!"==".png" set "outExt=.fimage"
+    if /I "!ext!"==".jpg" set "outExt=.fimage"
+    if /I "!ext!"==".tga" set "outExt=.fimage"
+    if /I "!ext!"==".bmp" set "outExt=.fimage"
+
+    if /I "!ext!"==".ttf" set "outExt=.ffont"
+
+    if /I "!ext!"==".wav" set "outExt=.fsound"
+
+    %CONVERTER% "%%f" "%OUT_DIR%\!rel!!name!!outExt!"
 )
 
 echo.
