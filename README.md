@@ -8,6 +8,7 @@ The engine is heavily data oriented; we have a bunch of structs, and create func
 ![Description](media/showcase.gif)
 
 ### Latest Features
+- Custom compressed file format for textures, models, fonts and audios.
 - Levels save/load.
 - 2D and 3D custom sound system. (XAusio2 for Windows).
 - Seamless Cubemap Skybox.
@@ -15,14 +16,12 @@ The engine is heavily data oriented; we have a bunch of structs, and create func
 - Added functioning buttons.
 - Implemented a UI commands bucket with custom UI system and ImGui for debugging.
 - Game hot reloading.
-- Image loading and compressing into custom file format with stb.
 - AABB and OBB collision detection.
 - Entities in an Entity Component System. Transforms, meshes and textures are set in arrays through handles. 
 - Multiple shaders support (currenlty: simple unlit colors, lit/unlit textures).
 - Memory Arena system that allocates memeory only at startup and uses it throughout the session.
 - Fully resizable and full-screen toggle-supported window.
 - Keyboard and multiple controllers input support with XInput.
-- Custom .glb parser to load 3D models.
 
 ### Current Structure
 ##### Shared Code

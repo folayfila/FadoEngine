@@ -640,11 +640,11 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 // Loads all assets at startup.
 internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 {
-	gameState->hPlaneMesh = LoadGLBModel(world, "Assets\\Models\\plane.glb");
-	gameState->hCubeMesh = LoadGLBModel(world, "Assets\\Models\\cube.glb");
-	gameState->hSphereMesh = LoadGLBModel(world, "Assets\\Models\\sphere.glb");
-	gameState->hSkyBoxMesh = LoadGLBModel(world, "Assets\\Models\\skybox.glb");
-	//HMesh hMonkey = LoadGLBIntoWorld(world, "models\\monkey.glb");
+	gameState->hPlaneMesh = LoadFModel(world, "Assets\\Models\\plane.fmodel");
+	gameState->hCubeMesh = LoadFModel(world, "Assets\\Models\\cube.fmodel");
+	gameState->hSphereMesh = LoadFModel(world, "Assets\\Models\\sphere.fmodel");
+	gameState->hSkyBoxMesh = LoadFModel(world, "Assets\\Models\\skybox.fmodel");
+	//HMesh hMonkey = LoadGLBIntoWorld(world, "models\\monkey.fmodel");
 
 	gameState->hGridTexture = LoadFImage(world, "Assets\\Textures\\grid.fimage");
 	gameState->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fimage");
@@ -653,17 +653,17 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 	gameState->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fimage");
 
 	//LoadFont(world, "AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, gameState->font);
-	LoadFont(world, "Assets\\Fonts\\arialbd.ffont", 25.0f, gameState->font);
+	LoadFFont(world, "Assets\\Fonts\\arialbd.ffont", 25.0f, gameState->font);
 
 	// Temporary test, using royalty free sounds:
 	// https://pixabay.com/music/video-games-sinnesl%C3%B6schen-beam-117362/
-	gameState->hMusic = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\Music\\sinneschlosen-sinnesloschen-beam-117362.fsound");
+	gameState->hMusic = LoadFSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\Music\\sinneschlosen-sinnesloschen-beam-117362.fsound");
 	// https://pixabay.com/sound-effects/film-special-effects-impact-sound-effect-8-bit-retro-151796/
-	gameState->hCollideSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\lesiakower-impact-sound-effect-8-bit-retro-151796.fsound");
+	gameState->hCollideSFX = LoadFSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\lesiakower-impact-sound-effect-8-bit-retro-151796.fsound");
 	// https://pixabay.com/sound-effects/technology-click-21156/
-	gameState->hUIClickSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\666herohero-click-21156.fsound");
+	gameState->hUIClickSFX = LoadFSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\666herohero-click-21156.fsound");
 	// https://pixabay.com/sound-effects/nature-fire-crackling-sounds-427410/
-	gameState->hFireSFX = LoadSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\dragon-studio-fire-crackling-sounds-427410.fsound");
+	gameState->hFireSFX = LoadFSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\dragon-studio-fire-crackling-sounds-427410.fsound");
 }
 
 // ────────────────────────────────────────────────────────────────────────

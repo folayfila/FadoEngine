@@ -302,10 +302,10 @@ void	 InitializeFD3D  (FRenderWorld* world, FD3DInitParams* d3dInitParams);
 void	 Render			 (FRenderWorld* world);
 
 // Loaders
-HTexture LoadFImage		 (FRenderWorld* world, cc8* fileName);
-HMesh	 LoadGLBModel	 (FRenderWorld* world, cc8* filename);
-HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFont);
-HSound LoadSound(struct FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryArena* scratch, cc8* filename);
+HTexture LoadFImage	(FRenderWorld* world, cc8* fileName);
+HMesh	 LoadFModel	(FRenderWorld* world, cc8* filename);
+HTexture LoadFFont	(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFont);
+HSound   LoadFSound	(struct FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryArena* scratch, cc8* filename);
 
 // Resize the swap chain buffers, recreate the render target view (depth/stencil buffer and view), update the viewport and projection matrix aspect ratio.
 void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 screenDepth);

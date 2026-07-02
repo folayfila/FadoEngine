@@ -11,6 +11,9 @@
 #include "../../ThirdParty/lz4/lz4.h"
 
 #include "../../Code/fado_asset_format.h"
+
+#include "glb/fado_glb.h"
+
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>
@@ -269,18 +272,20 @@ struct AssetImporter
 
 // Bake functions forwards
 bool BakeImage(const char* src, const char* dst);
+bool BakeModel(const char* src, const char* dst);
 bool BakeFont(const char* src, const char* dst);
 bool BakeSound(const char* src, const char* dst);
 
 // All types here
 // >> Important: Increase the count if you add more/new types.
-#define ASSET_IMPOSTERS_COUNT 6
+#define ASSET_IMPOSTERS_COUNT 7
 AssetImporter importers[ASSET_IMPOSTERS_COUNT] =
 {
     { ".png",  BakeImage },
     { ".jpg",  BakeImage },
     { ".jpeg", BakeImage },
     { ".tga",  BakeImage },
+    { ".glb",  BakeModel },
     { ".ttf",  BakeFont  },
     { ".wav",  BakeSound }
 };
@@ -383,6 +388,107 @@ bool BakeImage(const char* src, const char* dst)
         (width * height * 4) / (1024.0f * 1024.0f),
         bcSize / (1024.0f * 1024.0f),
         lz4Size / (1024.0f * 1024.0f));
+
+    return true;
+}
+
+// -- .glb Models --
+bool BakeModel(const char* src, const char* dst)
+{
+    FGLBAsset asset = {};
+    if (!GLB_Load(src, &asset))
+    {
+        return false;
+    }
+
+    // Flatten all primitives into two blobs
+    u32 totalVerts = 0;
+    u32 totalIndices = 0;
+    for (u32 mi = 0; mi < asset.meshCount; mi++)
+        for (u32 pi = 0; pi < asset.meshes[mi].primitiveCount; pi++)
+        {
+            totalVerts += asset.meshes[mi].primitives[pi].vertexCount;
+            totalIndices += asset.meshes[mi].primitives[pi].indexCount;
+        }
+
+    u32 vbSize = totalVerts * sizeof(GLB_FLitTextureVertex);
+    u32 ibSize = totalIndices * sizeof(u32);
+
+    u8* vbData = (u8*)malloc(vbSize);
+    u8* ibData = (u8*)malloc(ibSize);
+
+    FMeshDesc descs[GLB_MAX_MESHES * GLB_MAX_PRIMITIVES] = {};
+    u32 descCount = 0;
+    u32 vbCursor = 0;
+    u32 ibCursor = 0;
+
+    for (u32 mi = 0; mi < asset.meshCount; mi++)
+    {
+        FGLBMesh* mesh = &asset.meshes[mi];
+        for (u32 pi = 0; pi < mesh->primitiveCount; pi++)
+        {
+            FGLBPrimitive* prim = &mesh->primitives[pi];
+            if (!prim->vertices || !prim->indices)
+            {
+                continue;
+            }
+
+            FMeshDesc* desc = &descs[descCount++];
+            strncpy_s(desc->name, mesh->name, GLB_MAX_NAME - 1);
+            desc->vertexCount = prim->vertexCount;
+            desc->indexCount = prim->indexCount;
+            desc->vertexOffset = vbCursor;
+            desc->indexOffset = ibCursor;
+
+            // Convert and write directly into blob
+            GLB_FLitTextureVertex* dst_v = (GLB_FLitTextureVertex*)(vbData + vbCursor);
+            for (u32 v = 0; v < prim->vertexCount; v++)
+            {
+                dst_v[v].position = { prim->vertices[v].px, prim->vertices[v].py, prim->vertices[v].pz };
+                dst_v[v].normal = { prim->vertices[v].nx, prim->vertices[v].ny, prim->vertices[v].nz };
+                dst_v[v].texture = { prim->vertices[v].u,  prim->vertices[v].v };
+            }
+            memcpy(ibData + ibCursor, prim->indices, prim->indexCount * sizeof(u32));
+
+            vbCursor += prim->vertexCount * sizeof(GLB_FLitTextureVertex);
+            ibCursor += prim->indexCount * sizeof(u32);
+        }
+    }
+
+    // LZ4 compress both blobs
+    i32 vbLZ4Cap = LZ4_compressBound((i32)vbSize);
+    i32 ibLZ4Cap = LZ4_compressBound((i32)ibSize);
+    u8* vbLZ4 = (u8*)malloc(vbLZ4Cap);
+    u8* ibLZ4 = (u8*)malloc(ibLZ4Cap);
+    i32 vbLZ4Size = LZ4_compress_default((const char*)vbData, (char*)vbLZ4, (i32)vbSize, vbLZ4Cap);
+    i32 ibLZ4Size = LZ4_compress_default((const char*)ibData, (char*)ibLZ4, (i32)ibSize, ibLZ4Cap);
+
+    free(vbData);
+    free(ibData);
+
+    FAssetHeader header = { FASSET_MAGIC, FASSET_TYPE_MODEL, FASSET_VERSION, 0 };
+    FModelHeader modelHeader = {};
+    modelHeader.meshCount = descCount;
+    modelHeader.vertexDataSize = (u32)vbLZ4Size;
+    modelHeader.vertexDataUncompressed = vbSize;
+    modelHeader.indexDataSize = (u32)ibLZ4Size;
+    modelHeader.indexDataUncompressed = ibSize;
+
+    FILE* out = fopen(dst, "wb");
+    fwrite(&header, sizeof(header), 1, out);
+    fwrite(&modelHeader, sizeof(modelHeader), 1, out);
+    fwrite(descs, sizeof(FMeshDesc), descCount, out);
+    fwrite(vbLZ4, vbLZ4Size, 1, out);
+    fwrite(ibLZ4, ibLZ4Size, 1, out);
+    fclose(out);
+
+    free(vbLZ4); free(ibLZ4);
+    GLB_Free(&asset);
+
+    printf("wrote %s — %u meshes, VB %.2fKB->%.2fKB, IB %.2fKB->%.2fKB\n",
+        dst, descCount,
+        vbSize / 1024.f, vbLZ4Size / 1024.f,
+        ibSize / 1024.f, ibLZ4Size / 1024.f);
 
     return true;
 }

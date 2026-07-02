@@ -1,51 +1,87 @@
 // (C) Copyright 2026 by Abdallah Maaliki / folayfila.
 
+#pragma warning(push)
+#pragma warning(disable : 6262)
+
 #ifndef FADO_GLB_H
 #define FADO_GLB_H
 
 #include <stdio.h>
-#include "fado_types.h"
 
 /*
  * fado_glb.h  —  GLB 2.0 parser, no external dependencies
  *
- * WHAT THIS COVERS:
+ * A very simple .glb loader that extracts only the meshes data, no materials, textures or whatsoever.
+ * It Covers:
  *   - GLB binary container parsing (header + JSON chunk + BIN chunk)
  *   - Minimal hand-rolled JSON parser (enough for glTF)
  *   - Buffer / BufferView / Accessor resolution
  *   - Mesh primitive extraction: POSITION, NORMAL, TEXCOORD_0, indices
  *   - Node hierarchy (flat array, parent index)
- *   - Scene root nodes
- *   - Material base color texture index
  *
  *
- * USAGE:
- *   FGLBAsset asset = {};
- *   if (GLB_Load("model.glb", &asset))
- *   {
- *       // access asset.meshes[], asset.nodes[], etc.
- *       GLB_Free(&asset);
- *   }
- *
- * OUTPUT VERTEX FORMAT:
- *   Each mesh primitive is flattened to interleaved FGLBVertex[] + uint32 indices[].
- *   Ready to drop straight into UploadMesh().
- * 
  * Note:
- * In all honesty, this was based on a really good claude prompt, with a few tweaks here and there.
- * I might consider replacing it with "tinygltf" header.
+ * The JSON parser is based on a really good Clause prompt, the .glb loading code was however simplified to our needs only.
  */
+
+
+ // Copied so we don't include fado_types.h
+ // ─────────────────────────────────────────────
+typedef signed char i8;
+typedef short		i16;
+typedef int			i32;
+typedef long long	i64;
+
+typedef unsigned char		u8;
+typedef unsigned short		u16;
+typedef unsigned int		u32;
+typedef unsigned long long  u64;
+
+typedef float f32;
+typedef double f64;
+
+typedef bool b8;
+typedef i32 b32;
+
+typedef char c8;
+typedef const char cc8;
+typedef wchar_t wchar;
+
+struct GLB_V2
+{
+    f32 x, y;
+};
+
+struct GLB_V3
+{
+    f32 x, y, z;
+};
+// ─────────────────────────────────────────────
 
 #define GLB_MAX_MESHES      64
 #define GLB_MAX_PRIMITIVES  16      // per mesh
-#define GLB_MAX_NODES       256
-#define GLB_MAX_MATERIALS   64
-#define GLB_MAX_TEXTURES    64
-#define GLB_MAX_IMAGES      64
 #define GLB_MAX_ACCESSORS   256
 #define GLB_MAX_BUFFERVIEWS 256
 #define GLB_MAX_NAME        128
 #define GLB_INVALID         -1
+// ─────────────────────────────────────────────
+
+/*
+//> Important: Copy this from fado_d3d.h main texture vertex layout
+Current:
+struct FLitTextureVertex
+{
+    DXFloat3 position;
+    DXFloat3 normal;
+    DXFloat2 texture;
+};
+*/
+struct GLB_FLitTextureVertex
+{
+    GLB_V3 position;
+    GLB_V3 normal;
+    GLB_V2 texture;
+};
 
  /* -----------------------------------------------------------------------
     Vertex — interleaved, DX11-ready
@@ -69,7 +105,6 @@ struct FGLBPrimitive
     u32*        indices;
     u32         vertexCount;
     u32         indexCount;
-    i32         materialIndex;   // -1 = none
 };
 
 /* -----------------------------------------------------------------------
@@ -77,52 +112,9 @@ struct FGLBPrimitive
    ----------------------------------------------------------------------- */
 struct FGLBMesh
 {
-    c8            name[GLB_MAX_NAME];
+    c8              name[GLB_MAX_NAME];
     FGLBPrimitive   primitives[GLB_MAX_PRIMITIVES];
     u32             primitiveCount;
-};
-
-/* -----------------------------------------------------------------------
-   Node
-   ----------------------------------------------------------------------- */
-struct FGLBNode
-{
-    c8  name[GLB_MAX_NAME];
-    i32   meshIndex;        // -1 = none
-    i32   parentIndex;      // -1 = root
-    f32   scale[3];
-    f32   rotation[4];      // quaternion xyzw
-    f32   translation[3];   // local transform components
-    b32  hasSRT;         // true if any SRT values were present
-};
-
-/* -----------------------------------------------------------------------
-   Material (minimal - just base color texture for now)
-   ----------------------------------------------------------------------- */
-struct FGLBMaterial
-{
-    c8  name[GLB_MAX_NAME];
-    i32   baseColorTextureIndex;   // index into asset.textures[], -1 = none
-    f32   baseColorFactor[4];      // RGBA, default 1,1,1,1
-};
-
-/* -----------------------------------------------------------------------
-   Texture / Image
-   ----------------------------------------------------------------------- */
-struct FGLBTexture
-{
-    i32 imageIndex;    // index into asset.images[]
-    i32 samplerIndex;  // -1 if none
-};
-
-struct FGLBImage
-{
-    // If the image is embedded in the BIN chunk, data/byteLength are valid.
-    // mimeType is "image/png" or "image/jpeg".
-    const u8* data;
-    u32       byteLength;
-    c8        mimeType[32];
-    c8        name[GLB_MAX_NAME];
 };
 
 /* -----------------------------------------------------------------------
@@ -132,25 +124,6 @@ struct FGLBAsset
 {
     FGLBMesh      meshes[GLB_MAX_MESHES];
     u32           meshCount;
-
-    FGLBNode      nodes[GLB_MAX_NODES];
-    u32           nodeCount;
-
-    FGLBMaterial  materials[GLB_MAX_MATERIALS];
-    u32           materialCount;
-
-    FGLBTexture   textures[GLB_MAX_TEXTURES];
-    u32           textureCount;
-
-    FGLBImage     images[GLB_MAX_IMAGES];
-    u32           imageCount;
-
-    i32           sceneRootNodes[GLB_MAX_NODES];
-    u32           sceneRootCount;
-
-    // Internal — the raw file bytes, kept alive while asset is live.
-    u8* _fileData;
-    u32  _fileSize;
 };
 
 /* =======================================================================
@@ -876,10 +849,6 @@ internal b8 GLB_Load(cc8* filename, FGLBAsset* out)
         return false;
     }
 
-    // Set file data only if parsing succeeded.
-    out->_fileData = fileData;
-    out->_fileSize = fileSize;
-
     // Root object is always pool[0]
     i32 rootIdx = 0;
 
@@ -952,127 +921,7 @@ internal b8 GLB_Load(cc8* filename, FGLBAsset* out)
     }
 
     // ----------------------------------------------------------------
-    // 5.8  Parse images
-    // ----------------------------------------------------------------
-    i32 imgArrayIdx = json_child_idx(&doc, rootIdx, "images");
-    if (imgArrayIdx != GLB_INVALID)
-    {
-        i32 ci = doc.pool[imgArrayIdx].firstChild;
-        while ((ci != GLB_INVALID) && (out->imageCount < GLB_MAX_IMAGES))
-        {
-            FJSONValue* imgNode = &doc.pool[ci];
-            if (!imgNode || (imgNode->type != JSON_OBJECT))
-            {
-                ci = imgNode->nextSibling;
-                continue;
-            }
-            i32 iIdx = ci;
-            u32 i = out->imageCount;
-
-            cc8* name = json_str(&doc, iIdx, "name", "");
-            cc8* mime = json_str(&doc, iIdx, "mimeType", "");
-            strncpy_s(out->images[i].name, name, GLB_MAX_NAME - 1);
-            strncpy_s(out->images[i].mimeType, mime, 31);
-
-            i32 bvIndex = json_int(&doc, iIdx, "bufferView", GLB_INVALID);
-            if (bvIndex >= 0 && binData && (u32)bvIndex < bufferViewCount)
-            {
-                FGLBBufferView* bv = &bufferViews[bvIndex];
-                out->images[i].data = binData + bv->byteOffset;
-                out->images[i].byteLength = bv->byteLength;
-            }
-
-            out->imageCount++;
-            ci = imgNode->nextSibling;
-        }
-    }
-
-    // ----------------------------------------------------------------
-    // 5.9  Parse textures
-    // ----------------------------------------------------------------
-    i32 texArrayIdx = json_child_idx(&doc, rootIdx, "textures");
-    if (texArrayIdx != GLB_INVALID)
-    {
-        i32 ci = doc.pool[texArrayIdx].firstChild;
-        while ((ci != GLB_INVALID) && (out->textureCount < GLB_MAX_TEXTURES))
-        {
-            FJSONValue* texNode = &doc.pool[ci];
-            if (!texNode || (texNode->type != JSON_OBJECT))
-            {
-                ci = texNode->nextSibling;
-                continue;
-            }
-            i32 tIdx = ci;
-            u32 i = out->textureCount;
-
-            out->textures[i].imageIndex = json_int(&doc, tIdx, "source", -1);
-            out->textures[i].samplerIndex = json_int(&doc, tIdx, "sampler", -1);
-
-            out->textureCount++;
-            ci = texNode->nextSibling;
-        }
-    }
-
-    // ----------------------------------------------------------------
-    // 5.10  Parse materials
-    // ----------------------------------------------------------------
-    i32 matArrayIdx = json_child_idx(&doc, rootIdx, "materials");
-    if (matArrayIdx != -1)
-    {
-        i32 ci = doc.pool[matArrayIdx].firstChild;
-        while ((ci != GLB_INVALID) && (out->materialCount < GLB_MAX_MATERIALS))
-        {
-            FJSONValue* matNode = &doc.pool[ci];
-            if (!matNode || (matNode->type != JSON_OBJECT))
-            {
-                ci = matNode->nextSibling;
-                continue;
-            }
-            i32 mIdx = ci;
-            u32 i = out->materialCount;
-
-            cc8* name = json_str(&doc, mIdx, "name", "");
-            strncpy_s(out->materials[i].name, name, GLB_MAX_NAME - 1);
-
-            // Default base color factor
-            out->materials[i].baseColorFactor[0] = 1.0f;
-            out->materials[i].baseColorFactor[1] = 1.0f;
-            out->materials[i].baseColorFactor[2] = 1.0f;
-            out->materials[i].baseColorFactor[3] = 1.0f;
-            out->materials[i].baseColorTextureIndex = -1;
-
-            i32 pbrIdx = json_child_idx(&doc, mIdx, "pbrMetallicRoughness");
-            if (pbrIdx != GLB_INVALID)
-            {
-                // Base color factor
-                i32 bcfIdx = json_child_idx(&doc, pbrIdx, "baseColorFactor");
-                if (bcfIdx != GLB_INVALID)
-                {
-                    for (u32 c = 0; c < 4; c++)
-                    {
-                        FJSONValue* comp = json_arr_get(&doc, bcfIdx, c);
-                        if (comp && comp->type == JSON_NUMBER)
-                        {
-                            out->materials[i].baseColorFactor[c] = (f32)comp->numVal;
-                        }
-                    }
-                }
-
-                // Base color texture
-                i32 bctIdx = json_child_idx(&doc, pbrIdx, "baseColorTexture");
-                if (bctIdx != GLB_INVALID)
-                {
-                    out->materials[i].baseColorTextureIndex = json_int(&doc, bctIdx, "index", -1);
-                }
-            }
-
-            ci = matNode->nextSibling;
-            out->materialCount++;
-        }
-    }
-
-    // ----------------------------------------------------------------
-    // 5.11  Parse meshes and their primitives
+    // 5.8  Parse meshes and their primitives
     // ----------------------------------------------------------------
     i32 meshArrayIdx = json_child_idx(&doc, rootIdx, "meshes");
     if (meshArrayIdx != GLB_INVALID)
@@ -1113,7 +962,6 @@ internal b8 GLB_Load(cc8* filename, FGLBAsset* out)
                 u32 pi = out->meshes[mi].primitiveCount;
 
                 FGLBPrimitive* prim = &out->meshes[mi].primitives[pi];
-                prim->materialIndex = json_int(&doc, primNodeIdx, "material", -1);
 
                 // ---- Attributes ----
                 i32 attribIdx = json_child_idx(&doc, primNodeIdx, "attributes");
@@ -1234,127 +1082,6 @@ internal b8 GLB_Load(cc8* filename, FGLBAsset* out)
         }
     }
 
-    // ----------------------------------------------------------------
-    // 5.12  Parse nodes
-    // ----------------------------------------------------------------
-    i32 nodeArrayIdx = json_child_idx(&doc, rootIdx, "nodes");
-    if (nodeArrayIdx != GLB_INVALID)
-    {
-        i32 nci = doc.pool[nodeArrayIdx].firstChild;
-        while ((nci != GLB_INVALID) && (out->nodeCount < GLB_MAX_NODES))
-        {
-            FJSONValue* nodeNode = &doc.pool[nci];
-            if (!nodeNode || (nodeNode->type != JSON_OBJECT))
-            {
-                nci = nodeNode->nextSibling;
-                continue;
-            }
-            i32 nIdx = nci;
-            u32 ni = out->nodeCount;
-
-            FGLBNode* node = &out->nodes[ni];
-            node->meshIndex = json_int(&doc, nIdx, "mesh", -1);
-            node->parentIndex = -1; // filled in second pass below
-
-            cc8* name = json_str(&doc, nIdx, "name", "");
-            strncpy_s(node->name, name, GLB_MAX_NAME - 1);
-
-            // TRS
-            i32 sIdx = json_child_idx(&doc, nIdx, "scale");
-            i32 rIdx = json_child_idx(&doc, nIdx, "rotation");
-            i32 tIdx = json_child_idx(&doc, nIdx, "translation");
-
-            node->scale[0] = node->scale[1] = node->scale[2] = 1.0f;
-            node->rotation[3] = 1.0f; // identity quaternion
-
-            if (tIdx != GLB_INVALID)
-            {
-                for (u32 c = 0; c < 3; c++)
-                {
-                    FJSONValue* v = json_arr_get(&doc, tIdx, c);
-                    if (v)
-                    {
-                        node->translation[c] = (f32)v->numVal;
-                    }
-                } node->hasSRT = true;
-            }
-            if (rIdx != GLB_INVALID)
-            {
-                for (u32 c = 0; c < 4; c++)
-                {
-                    FJSONValue* v = json_arr_get(&doc, rIdx, c);
-                    if (v)
-                    {
-                        node->rotation[c] = (f32)v->numVal;
-                    }
-                } node->hasSRT = true;
-            }
-            if (sIdx != GLB_INVALID)
-            {
-                for (u32 c = 0; c < 3; c++)
-                {
-                    FJSONValue* v = json_arr_get(&doc, sIdx, c);
-                    if (v)
-                    {
-                        node->scale[c] = (f32)v->numVal;
-                    }
-                } node->hasSRT = true;
-            }
-
-            // Record parent for children
-            i32 childrenIdx = json_child_idx(&doc, nIdx, "children");
-            if (childrenIdx != GLB_INVALID)
-            {
-                i32 ci = doc.pool[childrenIdx].firstChild;
-                while (ci != GLB_INVALID)
-                {
-                    FJSONValue* childRef = &doc.pool[ci];
-                    if (childRef->type == JSON_NUMBER)
-                    {
-                        u32 childNodeIndex = (u32)childRef->numVal;
-                        if (childNodeIndex < GLB_MAX_NODES)
-                        {
-                            out->nodes[childNodeIndex].parentIndex = (i32)ni;
-                        }
-                    }
-                    ci = childRef->nextSibling;
-                }
-            }
-
-            nci = nodeNode->nextSibling;
-            out->nodeCount++;
-        }
-    }
-
-    // ----------------------------------------------------------------
-    // 5.13  Parse scene root nodes
-    // ----------------------------------------------------------------
-    i32 sceneArrayIdx = json_child_idx(&doc, rootIdx, "scenes");
-    i32 defaultScene = json_int(&doc, rootIdx, "scene", 0);
-
-    if (sceneArrayIdx != GLB_INVALID)
-    {
-        FJSONValue* sceneVal = json_arr_get(&doc, sceneArrayIdx, (u32)defaultScene);
-        if (sceneVal && sceneVal->type == JSON_OBJECT)
-        {
-            u32 sceneObjIdx = (u32)(sceneVal - doc.pool);
-            i32 nodesArrIdx = json_child_idx(&doc, sceneObjIdx, "nodes");
-            if (nodesArrIdx != GLB_INVALID)
-            {
-                i32 ci = doc.pool[nodesArrIdx].firstChild;
-                while ((ci != GLB_INVALID) && (out->sceneRootCount < GLB_MAX_NODES))
-                {
-                    FJSONValue* rootRef = &doc.pool[ci];
-                    out->sceneRootNodes[out->sceneRootCount] = (rootRef->type == JSON_NUMBER)
-                        ? (i32)rootRef->numVal : GLB_INVALID;
-
-                    out->sceneRootCount++;
-                    ci = rootRef->nextSibling;
-                }
-            }
-        }
-    }
-
     return true;
 }
 
@@ -1374,12 +1101,8 @@ internal void GLB_Free(FGLBAsset* asset)
             prim->indices = nullptr;
         }
     }
-
-    // The image data pointers point into fileData — don't free them separately.
-
-    free(asset->_fileData);
-    asset->_fileData = nullptr;
-    asset->_fileSize = 0;
 }
 
 #endif // FADO_GLB_H
+
+#pragma warning(pop)

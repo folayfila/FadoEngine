@@ -1,6 +1,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4996)
-
+#pragma warning(disable : 26450)
+#pragma warning(disable : 26454)
 
 /* stb_image_resize2 - v2.18 - public domain image resizing
 

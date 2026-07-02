@@ -21,7 +21,7 @@ if not exist "%CONVERTER%" (
     exit /b 1
 )
 
-set FORMATS=*.png *.jpg *.tga *.bmp *.ttf *.wav
+set FORMATS=*.png *.jpg *.tga *.bmp *.glb *.ttf *.wav
 for /r "%SRC_DIR%" %%f in (%FORMATS%) do (
     set "rel=%%~dpf"
     set "rel=!rel:%SRC_DIR%\=!"
@@ -38,6 +38,8 @@ for /r "%SRC_DIR%" %%f in (%FORMATS%) do (
     if /I "!ext!"==".jpg" set "outExt=.fimage"
     if /I "!ext!"==".tga" set "outExt=.fimage"
     if /I "!ext!"==".bmp" set "outExt=.fimage"
+
+    if /I "!ext!"==".glb" set "outExt=.fmodel"
 
     if /I "!ext!"==".ttf" set "outExt=.ffont"
 

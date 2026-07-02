@@ -23,6 +23,7 @@ project "FadoEngine"
         "FadoEngine/Code/**.h",
         "FadoEngine/Code/**.cpp",
         "FadoEngine/Tools/FadoConverter/**.cpp",
+        "FadoEngine/Tools/FadoConverter/**.h",
         "FadoEngine/Shaders/**.hlsl",
         "FadoEngine/FadoEngine.rc",
         "FadoEngine/FadoEngine.ico",

@@ -30,10 +30,11 @@ struct FAssetHeader
 
 // Types:
 #define FASSET_TYPE_IMAGE 0
-#define FASSET_TYPE_FONT  1
-#define FASSET_TYPE_SOUND 2
-#define FASSET_TYPE_LEVEL 3
-#define FASSET_TYPE_SAVE  4
+#define FASSET_TYPE_MODEL 1
+#define FASSET_TYPE_FONT  2
+#define FASSET_TYPE_SOUND 3
+#define FASSET_TYPE_LEVEL 4
+#define FASSET_TYPE_SAVE  5
 
 //
 #define FASSET_MAX_MIPS 16
@@ -56,6 +57,32 @@ struct FImageHeader
 
 #define FIMAGE_FORMAT_BC1  0
 #define FIMAGE_FORMAT_BC3  1
+
+// ────────────────────────────────────────────────────────────────────────
+// Model payload (assetType == FASSET_TYPE_MODEL)
+// File layout:
+//   FAssetHeader
+//   FModelHeader
+//   FMeshDesc[meshCount]        -- per-mesh metadata
+//   vertex data (all meshes, sequential)
+//   index data  (all meshes, sequential)
+struct FModelHeader
+{
+    u32 meshCount;
+    u32 vertexDataSize;     // compressed
+    u32 vertexDataUncompressed;
+    u32 indexDataSize;      // compressed
+    u32 indexDataUncompressed;
+};
+
+struct FMeshDesc
+{
+    c8   name[FMAX_PATH];
+    u32  vertexCount;
+    u32  indexCount;
+    u32  vertexOffset;  // byte offset into decompressed vertex blob
+    u32  indexOffset;   // byte offset into decompressed index blob
+};
 
 // ────────────────────────────────────────────────────────────────────────
 // Font payload (assetType == FASSET_TYPE_FONT)

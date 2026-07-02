@@ -2,22 +2,20 @@
 
 #include "fado_d3d.h"
 #include "fado_asset_format.h"
+#include "fado_sound.h"
+#include "fado_math.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "ThirdParty/stb/stb_truetype.h"
-
 #include "ThirdParty/lz4/lz4.h"
-
-#include "fado_sound.h"
-
-#include "glb/fado_glb.h"
-#include "fado_math.h"
 
 #if FADO_DEBUG
 #include "ThirdParty/imgui/imgui.h"
 #include "ThirdParty/imgui/backends/imgui_impl_win32.h"
 #include "ThirdParty/imgui/backends/imgui_impl_dx11.h"
 #endif // FADO_DEBUG
+
+#include <stdio.h>
 
 // ───────────────────────────
 // Constants
@@ -1307,58 +1305,64 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Model loader — .glb model
-// > TODO: Check if we can replace it with a .fasset
+// Model loader — .fmodel
 // ────────────────────────────────────────────────────────────────────────
-HMesh LoadGLBModel(FRenderWorld* world, cc8* fileName)
+HMesh LoadFModel(FRenderWorld* world, cc8* fileName)
 {
-	FGLBAsset* asset = ArenaPushType(world->shared->scratchArena, FGLBAsset);
-	FadoZeroStruct(asset);
-
-	// Load the .glb file
-	Assert(GLB_Load(fileName, asset));
-
-	HMesh handle = 0;
-
-	// Walk every mesh -> every primitive
-	for (u32 mi = 0; mi < asset->meshCount; mi++)
+	FILE* file = nullptr;
+	fopen_s(&file, fileName, "rb");
+	if (!file)
 	{
-		FGLBMesh* mesh = &asset->meshes[mi];
+		return INVALID_HANDLE;
+	}
 
-		for (u32 pi = 0; pi < mesh->primitiveCount; pi++)
-		{
-			FGLBPrimitive* prim = &mesh->primitives[pi];
-			if (!prim->vertices || !prim->indices || prim->vertexCount == 0)
-			{
-				continue;
-			}
+	FAssetHeader header = {};
+	fread(&header, sizeof(header), 1, file);
+	Assert(header.magic == FASSET_MAGIC);
+	Assert(header.assetType == FASSET_TYPE_MODEL);
 
-			// NOTE: FGLBVertex and the texture struct need to match in layout.
-			// FLitTextureVertex contains all attributes currently imported from GLB (position, normal, uv),
-			// so it can be uploaded regardless of which shader will eventually render the mesh.
-			FLitTextureVertex* converted = ArenaPushArray(world->shared->scratchArena, FLitTextureVertex, prim->vertexCount);
-			if (converted)
-			{
-				for (u32 v = 0; v < prim->vertexCount; v++)
-				{
-					converted[v].position = { prim->vertices[v].px, prim->vertices[v].py, prim->vertices[v].pz };
-					converted[v].normal = { prim->vertices[v].nx, prim->vertices[v].ny, prim->vertices[v].nz };
-					converted[v].texture = { prim->vertices[v].u, prim->vertices[v].v };
-				}
-				handle = world->meshCount++;
-				FMeshBuffer* mesh = &world->meshes[handle];
-				mesh->vertexStride = sizeof(FLitTextureVertex);
-				UploadMesh(mesh, world->d3d.device, converted, prim->vertexCount, mesh->vertexStride, prim->indices, prim->indexCount);
-			}
-		}
+	FModelHeader modelHeader = {};
+	fread(&modelHeader, sizeof(modelHeader), 1, file);
+
+	FMeshDesc* descs = ArenaPushArray(world->shared->scratchArena, FMeshDesc, modelHeader.meshCount);
+	fread(descs, sizeof(FMeshDesc), modelHeader.meshCount, file);
+
+	// Read + decompress vertex blob
+	u8* vbCompressed = ArenaPushSize(world->shared->scratchArena, u8, modelHeader.vertexDataSize);
+	fread(vbCompressed, 1, modelHeader.vertexDataSize, file);
+	u8* vbData = ArenaPushSize(world->shared->scratchArena, u8, modelHeader.vertexDataUncompressed);
+	LZ4_decompress_safe((const char*)vbCompressed, (c8*)vbData,
+		(i32)modelHeader.vertexDataSize, (i32)modelHeader.vertexDataUncompressed);
+
+	// Read + decompress index blob
+	u8* ibCompressed = ArenaPushSize(world->shared->scratchArena, u8, modelHeader.indexDataSize);
+	fread(ibCompressed, 1, modelHeader.indexDataSize, file);
+	u8* ibData = ArenaPushSize(world->shared->scratchArena, u8, modelHeader.indexDataUncompressed);
+	LZ4_decompress_safe((const char*)ibCompressed, (char*)ibData,
+		(i32)modelHeader.indexDataSize, (i32)modelHeader.indexDataUncompressed);
+
+	fclose(file);
+
+	u32 handle = world->meshCount;
+	Assert(world->meshCount < FMAX_MESHES);
+
+	for (u32 i = 0; i < modelHeader.meshCount; i++)
+	{
+		FMeshDesc* desc = &descs[i];
+		FLitTextureVertex* verts = (FLitTextureVertex*)(vbData + desc->vertexOffset);
+		u32* indices = (u32*)(ibData + desc->indexOffset);
+
+		FMeshBuffer* mesh = &world->meshes[world->meshCount++];
+		mesh->vertexStride = sizeof(FLitTextureVertex);
+		UploadMesh(mesh, world->d3d.device, verts, desc->vertexCount,
+			mesh->vertexStride, indices, desc->indexCount);
 	}
 
 	ArenaReset(world->shared->scratchArena);
-	GLB_Free(asset);
 	return handle;
 }
 
-HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFont)
+HTexture LoadFFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFont)
 {
 	FILE* file = nullptr;
 	fopen_s(&file, filename, "rb");
@@ -1424,7 +1428,7 @@ HTexture LoadFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFo
 	return outFont->atlas;
 }
 
-HSound LoadSound(FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryArena* scratch, cc8* filename)
+HSound LoadFSound(FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryArena* scratch, cc8* filename)
 {
 	FILE* file;
 	fopen_s(&file, filename, "rb");
