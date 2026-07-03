@@ -69,7 +69,7 @@ struct GLB_V3
 /*
 //> Important: Copy this from fado_d3d.h main texture vertex layout
 Current:
-struct FLitTextureVertex
+struct FTextureVertex
 {
     DXFloat3 position;
     DXFloat3 normal;

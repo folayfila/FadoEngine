@@ -122,9 +122,7 @@ struct FEntityDesc
     quat         rot;
     v3           scale;
     HMesh        hMesh;
-    HTexture     hTexture;
-    v4           color;
-    EShaderTypes shaderType;
+    FMaterial    material;
     u32          reserved;
 };
 

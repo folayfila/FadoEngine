@@ -193,6 +193,7 @@ typedef u32 HTransform;
 
 #define FMAX_TRANSFORMS 512
 #define INVALID_HANDLE 0xFFFFFFFF
+#define WHITE_TEXTURE 0
 
 struct FTransformTable
 {
@@ -214,14 +215,6 @@ typedef u32 HSound;
 #define FMAX_MESHES 265
 #define FMAX_TEXTURES 265
 
-enum EShaderTypes
-{
-    Shader_None,
-    Color,
-    UnlitTexture,
-    LitTexture
-};
-
 // For now, this is literally all kinds of entities we have.
 // TODO: Update the system once we have a working version of save\load.
 enum EEntityType
@@ -237,15 +230,26 @@ enum EEntityType
 	EntityType_Fire
 };
 
+// Material
+// Used to draw entities.
+// A material can be based on a loaded texture, or can be an rgb color.
+// If the texture is valid, the color is applied as tint to it.
+// Optional lit/unlit.
+struct FMaterial
+{
+	v4 color;			// Used as the main texture or applied as tint to a texture.
+	HTexture texture;   // INVALID_HANDLE = no texture (color)
+	b32 isLit;			// Whether the material calculates light or not.
+};
+
+
 // Main entity struct.
 struct FEntity
 {
 	EEntityType type;
     HTransform hTransform;
     HMesh hMesh;
-    HTexture hTexture;
-    v4 color;
-    EShaderTypes shaderType;
+	FMaterial material;
 };
 
 struct FEntityTable

@@ -299,7 +299,10 @@ GAME_UPDATE(GameUpdate)
     if (!gameState->initialized)
     {
         gameState->initialized = true;
+
+#if FADO_DEBUG
         gameState->shared->canSelect = true;
+#endif // FADO_DEBUG
 
         // Load level 01 by default.
         LoadLevelById(gameState, Level_01);

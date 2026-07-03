@@ -92,6 +92,7 @@ struct FD3DInitParams
 #if FADO_DEBUG
 // ─────────────────────────────────
 /// Debug lines
+// ─────────────────────────────────
 #define MAX_DEBUG_LINES 4096
 
 struct FDebugLine
@@ -119,6 +120,34 @@ struct FDebugLineBucket
 /// Shaders
 // ─────────────────────────────────
 
+// One main shader. It can be colored, tinted with a texture and supports transparency.
+struct FMaterialShader
+{
+	// Compiled shaders.
+	ID3D11VertexShader* vertexShader;
+	ID3D11PixelShader* pixelShader;
+
+	// Vertex input layout.
+	ID3D11InputLayout* layout;
+
+	// Texture sampling state.
+	ID3D11SamplerState* sampleState;
+
+	// GPU constant buffers.
+	ID3D11Buffer* matrixBuffer;		// VS b0
+	ID3D11Buffer* lightBuffer;		// PS b0
+	ID3D11Buffer* materialBuffer;	// PS b1
+};
+
+// ────────────
+// GPU Constant Buffers
+// ────────────
+
+// Constant buffers are uploaded from the CPU and bound to HLSL `cbuffer`s
+// (registers b0, b1, etc.). Every constant buffer must have a size that is
+// a multiple of 16 bytes to satisfy Direct3D 11 requirements.
+
+// VS b0
 struct FMatrixBuffer
 {
 	DXMatrix world;
@@ -126,86 +155,92 @@ struct FMatrixBuffer
 	DXMatrix projection;
 };
 
+// PS b0
+struct FLightBuffer
+{
+	DXFloat4 ambientColor;
+	DXFloat4 diffuseColor;
+	DXFloat3 lightDirection;
+	f32 padding; // Pad to 16-byte alignment.
+};
+
+// PS b1
+struct FMaterialBuffer
+{
+	DXFloat4 color;		// Material tint.
+	b32 hasTexture;		// Sample texture if true.
+	b32 isLit;			// Apply lighting if true.
+	f32 pad[2];			// Pad to 16-byte alignment.
+};
+
 // ────────────
-// Color Shader
-// A simple rbga color shader. Unlit.
-struct FColorShader
-{
-	ID3D11VertexShader* vertexShader;
-	ID3D11PixelShader* pixelShader;
-	ID3D11InputLayout* layout;
-	ID3D11Buffer* matrixBuffer;
-	ID3D11Buffer* colorBuffer;
-};
+// CPU-side Shader Data
 
-struct FColorBuffer
+// Global directional light.
+struct FDirectionalLight
 {
-	DXFloat4 color;
-};
-
-// ────────────
-// Unlit Texture Shader
-struct FUnlitTextureShader
-{
-	ID3D11VertexShader* vertexShader;
-	ID3D11PixelShader* pixelShader;
-	ID3D11InputLayout* layout;
-	ID3D11Buffer* matrixBuffer;
-	ID3D11SamplerState* sampleState;	// This pointer will be used to interface with the texture shader.
-};
-
-// ───────────
-// Lit Textured Shader (texture shader that also calcules light)
-struct FLitTextureShader
-{
-	ID3D11VertexShader* vertexShader;
-	ID3D11PixelShader* pixelShader;
-	ID3D11InputLayout* layout;
-	ID3D11SamplerState* sampleState;
-	ID3D11Buffer* matrixBuffer;
-	ID3D11Buffer* lightBuffer;
 	DXFloat4 ambientColor;
 	DXFloat4 diffuseColor;
 	DXFloat3 lightDirection;
 };
 
-struct FLitTextureVertex
+// Vertex layout.
+// Must exactly match:
+//   - D3D11_INPUT_ELEMENT_DESC
+//   - VertexInput in material.hlsl
+struct FTextureVertex
 {
 	DXFloat3 position;
 	DXFloat3 normal;
 	DXFloat2 texture;
 };
 
-struct FLightBuffer
-{
-	DXFloat4 ambientColor;
-	DXFloat4 diffuseColor;
-	DXFloat3 lightDirection;
-	f32 padding;  // Added extra padding so structure is a multiple of 16 for CreateBuffer function requirements.
-};
-
-// ───────────
+// ─────────────────────────────────
 // UI Shader
+// ─────────────────────────────────
 #define MAX_UI_VERTS (MAX_UI_COMMANDS * 6) // 6 verts per quad (2 tris)
+
+// Simple shader for rendering 2D UI.
+//
+// Supports:
+// - Textured quads
+// - Vertex colors
+// - Alpha blending
+//
+// The vertex shader transforms vertices into clip space using a single
+// constant buffer. The pixel shader samples a texture and multiplies it
+// by the vertex color.
 
 struct FUIShader
 {
+	// Compiled shaders.
 	ID3D11VertexShader* vertexShader;
 	ID3D11PixelShader* pixelShader;
+
+	// Vertex layout.
 	ID3D11InputLayout* layout;
+
+	// VS b0 - UI transform/projection data.
 	ID3D11Buffer* constantBuffer;
+
+	// Texture sampling state (PS s0).
 	ID3D11SamplerState* samplerState;
 };
 
+// Vertex layout.
+// Must exactly match:
+//   - D3D11_INPUT_ELEMENT_DESC
+//   - VertexInput in the UI HLSL shader.
 struct FUIVertex
 {
-	v2 pos;
-	v2 coords;
-	v4 color;
+	v2 pos;		// Screen/local position.
+	v2 coords;	// Texture UVs.
+	v4 color;	// Vertex tint.
 };
 
-// ───────────
+// ─────────────────────────────────
 // Loaded Texturs
+// ─────────────────────────────────
 
 // Image load results from custom format ".fasset".
 // - Check "fado_asset_format.h" for more details.
@@ -227,6 +262,7 @@ struct FTexture
 
 // ─────────────────────────────────
 // Mesh / Model
+// ─────────────────────────────────
 
 // Raw GPU buffers — internal detail, not a top-level asset handle.
 struct FMeshBuffer
@@ -244,14 +280,12 @@ struct FMeshBuffer
 
 #define MAX_DRAW_CALLS 265
 
-// Simple (non-model) draw call: one mesh, one texture, one world matrix.
-// > TODO: Remove the color from here once we introduce materials.
+// Draw call: one mesh, one material, one world matrix.
 struct FDrawCall
 {
-	HMesh hMesh;
-	HTexture hTexture;
 	DXMatrix worldMatrix;
-	DXFloat4 color;
+	HMesh hMesh;
+	FMaterial material;
 };
 
 // Draw calls are pushed into the bucket and flushed every frame.
@@ -271,15 +305,13 @@ struct FRenderWorld
 	FSharedStuff* shared;
 
 	// Shaders — one of each, initialized once.
-	FColorShader colorShader;
-	FUnlitTextureShader unlitTextureShader;
-	FLitTextureShader litTextureShader;
+	FMaterialShader materialShader;
 	FUIShader uiShader;
 
-	// Render buckets — sorted by shader type, no branching at draw time.
-	FRenderBucket colorBucket;
-	FRenderBucket unlitTextureBucket;
-	FRenderBucket litTextureBucket;
+	FDirectionalLight dirLight;
+
+	// One Render buckets.
+	FRenderBucket bucket;
 	// ui bucket is in "shared", because the game uses it too.
 
 #if FADO_DEBUG
@@ -297,6 +329,7 @@ struct FRenderWorld
 
 // ────────────────────────────────────────────────────────────────
 // Public API
+// ────────────────────────────────────────────────────────────────
 
 void	 InitializeFD3D  (FRenderWorld* world, FD3DInitParams* d3dInitParams);
 void	 Render			 (FRenderWorld* world);

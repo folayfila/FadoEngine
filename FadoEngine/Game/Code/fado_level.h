@@ -114,7 +114,7 @@ internal void AssignGameStateEntityFromType(FGameState* gameState, EEntityType t
 
 // Adds an entity to the entity table and gives it a transform.
 // - No dynamic allocation of any sorts, just setting values to an existing array.
-internal HEntity SpawnEntity(FSharedStuff* shared, EEntityType type, HMesh hMesh, HTexture hTex, v4 color, EShaderTypes shaderType)
+internal HEntity SpawnEntity(FSharedStuff* shared, EEntityType type, HMesh hMesh, HTexture hTex = WHITE_TEXTURE, v4 color = V4One(), b8 isLit = true)
 {
     FEntityTable* entityTable = shared->entityTable;
     FTransformTable* transforms = shared->transforms;
@@ -123,10 +123,14 @@ internal HEntity SpawnEntity(FSharedStuff* shared, EEntityType type, HMesh hMesh
     FEntity* e = &entityTable->entities[handle];
     e->type = type;
     e->hMesh = hMesh;
-    e->hTexture = hTex;
+
+    FMaterial mat = {};
+    mat.color = color;
+    mat.texture = hTex;
+    mat.isLit = isLit;
+    e->material = mat;
+
     e->hTransform = transforms->count++;
-    e->color = color;
-    e->shaderType = shaderType;
     transforms->scales[e->hTransform] = V3One();
     transforms->rotations[e->hTransform] = QuatIdentity();
     return handle;
@@ -143,10 +147,8 @@ internal HEntity SpawnEntityFromDesc(FGameState* gameState, FEntityDesc* desc)
     FEntity* e = &entityTable->entities[handle];
     e->type = desc->type;
     e->hMesh = desc->hMesh;
-    e->hTexture = desc->hTexture;
+    e->material = desc->material;
     e->hTransform = transforms->count++;
-    e->color = desc->color;
-    e->shaderType = desc->shaderType;
     transforms->positions[e->hTransform] = desc->pos;
     transforms->scales[e->hTransform] = desc->scale;
     transforms->rotations[e->hTransform] = desc->rot;
@@ -196,32 +198,32 @@ internal void InitLevel_01(FGameState* gameState)
     FTransformTable* transforms = shared->transforms;
     FEntityTable* entityTable = shared->entityTable;
 
-    shared->camera.handle = SpawnEntity(shared, EntityType_Camera, INVALID_HANDLE, INVALID_HANDLE, {}, EShaderTypes::Shader_None);
+    shared->camera.handle = SpawnEntity(shared, EntityType_Camera, INVALID_HANDLE, INVALID_HANDLE);
     shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
 
     // infinite plane
-    gameState->infinitePlane = SpawnEntity(shared, EntityType_Plane, gameState->hPlaneMesh, gameState->hGridTexture, {}, EShaderTypes::LitTexture);
+    gameState->infinitePlane = SpawnEntity(shared, EntityType_Plane, gameState->hPlaneMesh, gameState->hGridTexture);
     transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f };
 
     // sky box
-    gameState->skyBox = SpawnEntity(shared, EntityType_Skybox, gameState->hSkyBoxMesh, gameState->hSkyBoxTexture, {}, EShaderTypes::UnlitTexture);
+    gameState->skyBox = SpawnEntity(shared, EntityType_Skybox, gameState->hSkyBoxMesh, gameState->hSkyBoxTexture, V4One(), false);
     transforms->scales[gameState->skyBox] = { 500.0f, 500.0f, 500.0f };
 
     // Other entities
-    gameState->cube1 = SpawnEntity(shared, EntityType_Cube1, gameState->hCubeMesh, 0, { 0.63f, 1, 0.21f, 1 }, EShaderTypes::Color);
+    gameState->cube1 = SpawnEntity(shared, EntityType_Cube1, gameState->hCubeMesh, 0, { 0.63f, 1, 0.21f, 1 });
     transforms->positions[gameState->cube1] = { -3.5f, 5.0f, 0 };
     transforms->scales[gameState->cube1] = { 2.5f, 0.25f, 1.0f };
 
-    gameState->cube2 = SpawnEntity(shared, EntityType_Cube2, gameState->hCubeMesh, 0, { 1, 0.21f, 0.63f, 1 }, EShaderTypes::Color);
+    gameState->cube2 = SpawnEntity(shared, EntityType_Cube2, gameState->hCubeMesh, 0, { 1, 0.21f, 0.63f, 1 });
     transforms->positions[gameState->cube2] = { 1.5f, 5.0f, 0 };
 
-    gameState->sphere1 = SpawnEntity(shared, EntityType_Sphere1, gameState->hSphereMesh, gameState->hGraniteTexture, {}, EShaderTypes::LitTexture);
+    gameState->sphere1 = SpawnEntity(shared, EntityType_Sphere1, gameState->hSphereMesh, gameState->hGraniteTexture);
     transforms->positions[gameState->sphere1] = { -1.5f, 2.0f, 0 };
 
-    gameState->sphere2 = SpawnEntity(shared, EntityType_Sphere2, gameState->hSphereMesh, gameState->hMosaicTexture, {}, EShaderTypes::LitTexture);
+    gameState->sphere2 = SpawnEntity(shared, EntityType_Sphere2, gameState->hSphereMesh, gameState->hMosaicTexture);
     transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
 
-    gameState->fire = SpawnEntity(shared, EntityType_Fire, gameState->hCubeMesh, 0, { 1, 0, 0, 1 }, EShaderTypes::Color);
+    gameState->fire = SpawnEntity(shared, EntityType_Fire, gameState->hCubeMesh, 0, { 1, 0, 0, 1 });
     HTransform hFireTransform = GetTransformHandle(entityTable, gameState->fire);
     transforms->positions[hFireTransform] = { 5.0f, 2.0f, 0 };
     transforms->scales[hFireTransform] = { 0.25f, 0.25f, 0.25f };
@@ -269,33 +271,33 @@ internal void InitLevel_02(FGameState* gameState)
     FTransformTable* transforms = shared->transforms;
     FEntityTable* entityTable = shared->entityTable;
 
-    shared->camera.handle = SpawnEntity(shared, EntityType_Camera, INVALID_HANDLE, INVALID_HANDLE, {}, EShaderTypes::Shader_None);
+    shared->camera.handle = SpawnEntity(shared, EntityType_Camera, INVALID_HANDLE, INVALID_HANDLE);
     shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
 
     // infinite plane
-    gameState->infinitePlane = SpawnEntity(shared, EntityType_Plane, gameState->hPlaneMesh, gameState->hGridTexture, {}, EShaderTypes::LitTexture);
+    gameState->infinitePlane = SpawnEntity(shared, EntityType_Plane, gameState->hPlaneMesh, gameState->hGridTexture);
     transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f };
 
     // sky box
-    gameState->skyBox = SpawnEntity(shared, EntityType_Skybox, gameState->hSkyBoxMesh, gameState->hSkyBoxTexture, {}, EShaderTypes::UnlitTexture);
+    gameState->skyBox = SpawnEntity(shared, EntityType_Skybox, gameState->hSkyBoxMesh, gameState->hSkyBoxTexture, V4One(), false);
     transforms->scales[gameState->skyBox] = { 500.0f, 500.0f, 500.0f };
 
     // Other entities
-    gameState->cube1 = SpawnEntity(shared, EntityType_Cube1, gameState->hCubeMesh, 0, { 0.38f, 0.81f, 1, 1 }, EShaderTypes::Color);
+    gameState->cube1 = SpawnEntity(shared, EntityType_Cube1, gameState->hCubeMesh, 0, { 0.38f, 0.81f, 1, 1 });
     transforms->positions[gameState->cube1] = { -3.5f, 5.0f, 0 };
     transforms->scales[gameState->cube1] = { 0.5f, 0.5f, 0.5f };
 
-    gameState->cube2 = SpawnEntity(shared, EntityType_Cube2, gameState->hCubeMesh, 0, { 1, 0.57f, 0.38f, 1 }, EShaderTypes::Color);
+    gameState->cube2 = SpawnEntity(shared, EntityType_Cube2, gameState->hCubeMesh, 0, { 1, 0.57f, 0.38f, 1 });
     transforms->positions[gameState->cube2] = { 1.5f, 5.0f, 0 };
     transforms->scales[gameState->cube2] = { 0.5f, 0.5f, 1.0f };
 
-    gameState->sphere1 = SpawnEntity(shared, EntityType_Sphere1, gameState->hSphereMesh, INVALID_HANDLE, { 1, 0.5f, 0.875f, 1 }, EShaderTypes::Color);
+    gameState->sphere1 = SpawnEntity(shared, EntityType_Sphere1, gameState->hSphereMesh, 0, { 1, 0.5f, 0.875f, 1 });
     transforms->positions[gameState->sphere1] = { -1.5f, 2.0f, 0 };
 
-    gameState->sphere2 = SpawnEntity(shared, EntityType_Sphere2, gameState->hSphereMesh, gameState->hGraniteTexture, {}, EShaderTypes::LitTexture);
+    gameState->sphere2 = SpawnEntity(shared, EntityType_Sphere2, gameState->hSphereMesh, gameState->hGraniteTexture);
     transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
 
-    gameState->fire = SpawnEntity(shared, EntityType_Fire, gameState->hCubeMesh, gameState->hMosaicTexture, {}, EShaderTypes::UnlitTexture);
+    gameState->fire = SpawnEntity(shared, EntityType_Fire, gameState->hCubeMesh, gameState->hMosaicTexture);
     HTransform hFireTransform = GetTransformHandle(entityTable, gameState->fire);
     transforms->positions[hFireTransform] = { -5.0f, 2.0f, 0 };
     transforms->scales[hFireTransform] = { 0.25f, 0.25f, 0.25f };
@@ -330,7 +332,10 @@ internal void UnloadLevel(FGameState* gameState)
     FadoZeroStruct(gameState->shared->transforms);
     FadoZeroStruct(gameState->shared->uiCommands);
     FadoZeroStruct(gameState->shared->collisionWorld);
+
+#if FADO_DEBUG
     gameState->shared->selectedEntity = 0;
+#endif // FADO_DEBUG
 
     // Entites
     gameState->infinitePlane = 0;
@@ -385,9 +390,7 @@ inline b8 SaveCurrentLevel(FGameState* gameState)
         entityDesc.rot = GetEntityRotation(gameState->shared, i);
         entityDesc.scale = GetEntityScale(gameState->shared, i);
         entityDesc.hMesh = entityTable->entities[i].hMesh;
-        entityDesc.hTexture = entityTable->entities[i].hTexture;
-        entityDesc.color = entityTable->entities[i].color;
-        entityDesc.shaderType = entityTable->entities[i].shaderType;
+        entityDesc.material = entityTable->entities[i].material;
         entityDesc.reserved = 0;
         fwrite(&entityDesc, sizeof(FEntityDesc), 1, file);
     }

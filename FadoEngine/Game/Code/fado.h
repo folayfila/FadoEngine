@@ -124,11 +124,11 @@ struct FGameState
     HMesh hSphereMesh;
 
     // Texture handles
+    HTexture hWhiteTexture;
     HTexture hGridTexture;
     HTexture hSkyBoxTexture;
     HTexture hMosaicTexture;
     HTexture hGraniteTexture;
-    HTexture hWhiteTexture;
 
     // Sound
     FSoundManager* soundManager;

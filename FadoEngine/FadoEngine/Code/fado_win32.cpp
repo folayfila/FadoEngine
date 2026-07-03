@@ -646,11 +646,13 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 	gameState->hSkyBoxMesh = LoadFModel(world, "Assets\\Models\\skybox.fmodel");
 	//HMesh hMonkey = LoadGLBIntoWorld(world, "models\\monkey.fmodel");
 
+	// > Important: Make sure the first loaded texture is the white texture because it's used by default for colors.
+	// #cheesy_workaround
+	gameState->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fimage");
 	gameState->hGridTexture = LoadFImage(world, "Assets\\Textures\\grid.fimage");
 	gameState->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fimage");
 	gameState->hGraniteTexture = LoadFImage(world, "Assets\\Textures\\granite.fimage");
 	gameState->hSkyBoxTexture = LoadFImage(world, "Assets\\Textures\\skybox_0.fimage");
-	gameState->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fimage");
 
 	//LoadFont(world, "AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, gameState->font);
 	LoadFFont(world, "Assets\\Fonts\\arialbd.ffont", 25.0f, gameState->font);
