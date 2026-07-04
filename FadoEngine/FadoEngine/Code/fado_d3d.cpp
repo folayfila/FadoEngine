@@ -25,6 +25,32 @@ cc8* k_vsEntryFuncName = "VertexShaderEntry";
 cc8* k_psEntryFuncName = "PixelShaderEntry";
 
 // ────────────────────────────────────────────────────────────────────────
+// mat4 to DXMatrix Helpers
+// ────────────────────────────────────────────────────────────────────────
+internal inline mat4 DXMatrixToMat4(DXMatrix m)
+{
+	mat4 result;
+	fmemcpy(result.m, &m, sizeof(mat4));
+	return result;
+}
+
+internal void BuildCameraProjection(FCamera* cam)
+{
+	switch (cam->type)
+	{
+	case Camera_Perspective:
+	{
+		cam->projection = DXMatrixToMat4(DirectX::XMMatrixPerspectiveFovLH(cam->fovY, cam->aspect, cam->nearZ, cam->farZ));
+	} break;
+
+	case Camera_Orthographic:
+	{
+		cam->projection = DXMatrixToMat4(DirectX::XMMatrixOrthographicLH(cam->orthoWidth, cam->orthoHeight, cam->nearZ, cam->farZ));
+	} break;
+	}
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // FD3D
 // ────────────────────────────────────────────────────────────────────────
 internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
@@ -340,13 +366,16 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 	f32 fieldOfView = Pi32 / 4.0f;
 	f32 screenAspect = (f32)d3dInitParams->screenWidth / (f32)d3dInitParams->screenHeight;
 
-	shared->camera.fovY = fieldOfView;
-	shared->camera.aspect = screenAspect;
-	shared->camera.nearZ = d3dInitParams->screenNear;
-	shared->camera.farZ = d3dInitParams->screenDepth;
-
 	// Create the projection matrix for 3D rendering.
-	d3d->projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(fieldOfView, screenAspect, d3dInitParams->screenNear, d3dInitParams->screenDepth);
+	FCamera* cam = &shared->camera;
+	cam->type = Camera_Perspective;
+	cam->fovY = fieldOfView;
+	cam->aspect = screenAspect;
+	cam->orthoWidth = 20.0f;
+	cam->orthoHeight = 11.25f;
+	cam->nearZ = d3dInitParams->screenNear;
+	cam->farZ = d3dInitParams->screenDepth;
+	BuildCameraProjection(cam);
 
 	// Initialize the world matrix to the identity matrix.
 	d3d->worldMatrix = DirectX::XMMatrixIdentity();
@@ -404,10 +433,12 @@ internal void LoadAndCompileShader(ID3D11Device* device, wchar* hlslFileName, ID
 
 internal FMatrixBuffer GetShadersTransposeMatrices(FRenderWorld* world)
 {
+	FCamera* cam = &world->shared->camera;
+
 	FMatrixBuffer mat = {};
 	mat.world = DirectX::XMMatrixTranspose(world->d3d.worldMatrix);
-	mat.view = DirectX::XMMatrixTranspose(world->cameraView);
-	mat.projection = DirectX::XMMatrixTranspose(world->d3d.projectionMatrix);
+	mat.view =  DirectX::XMMatrixTranspose((DXMatrix )cam->view.m);
+	mat.projection = DirectX::XMMatrixTranspose((DXMatrix)cam->projection.m);
 	return mat;
 }
 
@@ -840,7 +871,7 @@ internal void FlushUIBucket(FRenderWorld* world)
 
 		switch (cmd->type)
 		{
-		case EUICommandType::Rect:
+		case UICommand_Rect:
 		{
 			cmdTexture = world->textures[cmd->rect.hTexture].textureView;
 			rect = cmd->rect.rect;
@@ -951,7 +982,9 @@ internal void RenderCamera(FRenderWorld* world)
 
 	DirectX::XMVECTOR lookAtVector = DirectX::XMVectorAdd(positionVector, forwardVector);
 
-	world->cameraView = DirectX::XMMatrixLookAtLH(positionVector, lookAtVector, upVector);
+	DXMatrix camMatrix = DirectX::XMMatrixLookAtLH(positionVector, lookAtVector, upVector);
+	cam->view = DXMatrixToMat4(camMatrix);
+	BuildCameraProjection(cam);
 }
 
 // Returns a DXMatrix by building it from the Entity's transform.
@@ -1365,7 +1398,7 @@ void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 s
 	// Update projection matrix aspect ratio.
 	f32 aspect = (f32)width / (f32)height;
 	f32 fovY = Pi32 / 4.0f; // match whatever FOV you used at init
-	d3d->projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(fovY, aspect, 0.3f, 1000.0f);
+	shared->camera.projection = DXMatrixToMat4(DirectX::XMMatrixPerspectiveFovLH(fovY, aspect, 0.3f, 1000.0f));
 
 	SetUIProjection(world);
 
@@ -1548,7 +1581,9 @@ internal void FlushDebugLineBucket(FRenderWorld* world)
 	d3d->deviceContext->IASetVertexBuffers(0, 1, &bucket->vertexBuffer, &stride, &offset);
 
 	// Draw each line with its own colour via the color constant buffer
+	FCamera* cam = &world->shared->camera;
 	d3d->worldMatrix = DirectX::XMMatrixIdentity();
+	DXMatrix cameraView = (DXMatrix)cam->view.m;
 	for (u32 i = 0; i < bucket->count; ++i)
 	{
 		// Upload color for this line
@@ -1565,8 +1600,8 @@ internal void FlushDebugLineBucket(FRenderWorld* world)
 		d3d->deviceContext->Map(shader->matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &matMapped);
 		FMatrixBuffer* mb = (FMatrixBuffer*)matMapped.pData;
 		mb->world = DirectX::XMMatrixTranspose(d3d->worldMatrix);
-		mb->view = DirectX::XMMatrixTranspose(world->cameraView);
-		mb->projection = DirectX::XMMatrixTranspose(d3d->projectionMatrix);
+		mb->view = DirectX::XMMatrixTranspose(cameraView);
+		mb->projection = DirectX::XMMatrixTranspose((DXMatrix)cam->projection.m);
 		d3d->deviceContext->Unmap(shader->matrixBuffer, 0);
 		d3d->deviceContext->VSSetConstantBuffers(0, 1, &shader->matrixBuffer);
 
@@ -1611,12 +1646,12 @@ void DebugRender(FRenderWorld* world)
 	for (u32 i = 0; i < collisionWorld->colliders.count; ++i)
 	{
 		FCollider* c = &collisionWorld->colliders.colliders[i];
-		v4 color = (c->flags & ECollisionFlags::Trigger)   ? v4{ 0, 1, 0, 1 }    // green
-				 : (c->flags & ECollisionFlags::Static)	   ? v4{ 0, 0, 1, 1 }	 // blue
-				 : (c->flags & ECollisionFlags::Kinematic) ? v4{ 1, 0, 1, 1 }	 // purple
-				 : (c->flags & ECollisionFlags::Dynamic)   ? v4{ 1, 0.5, 0, 1 }  // orange
-				 : (c->flags & ECollisionFlags::Physics)   ? v4{ 1, 0, 0, 1 }	 // red
-														   : v4{ 1, 1, 1, 1 };	 // white
+		v4 color = (c->flags & Collision_Trigger)   ? v4{ 0, 1, 0, 1 }    // green
+				 : (c->flags & Collision_Static)	? v4{ 0, 0, 1, 1 }	 // blue
+				 : (c->flags & Collision_Kinematic) ? v4{ 1, 0, 1, 1 }	 // purple
+				 : (c->flags & Collision_Dynamic)   ? v4{ 1, 0.5, 0, 1 }  // orange
+				 : (c->flags & Collision_Physics)   ? v4{ 1, 0, 0, 1 }	 // red
+													: v4{ 1, 1, 1, 1 };	 // white
 
 		if(c->useOBB)
 		{

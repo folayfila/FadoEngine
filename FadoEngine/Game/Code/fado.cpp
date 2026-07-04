@@ -37,7 +37,7 @@ internal u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* te
 
     if (clicked)
     {
-        SoundPlay2D(gameState->soundManager, gameState->hUIClickSFX, ESoundCategory::UI, 0.25f, false);
+        SoundPlay2D(gameState->soundManager, gameState->hUIClickSFX, ESoundCategory::Sound_UI, 0.25f, false);
     }
 
     return clicked;
@@ -77,6 +77,21 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
     if (UIButton(gameState, input, rect, "Load Level_02", &buttonStyle))
     {
         LoadLevelById(gameState, Level_02);
+    }
+    rect.y += rect.height + buttonsYOffset;
+    if (UIButton(gameState, input, rect, "Switch Camera", &buttonStyle))
+    {
+        FCamera* cam = &gameState->shared->camera;
+
+        if (cam->type == Camera_Perspective)
+        {
+            cam->type = Camera_Orthographic;
+        }
+        else
+        {
+            cam->type = Camera_Perspective;
+        }
+
     }
 }
 
@@ -359,7 +374,7 @@ GAME_UPDATE(GameUpdate)
         FContactInfo* c = &shared->collisionWorld->contacts[i];
         if (c->entityA == gameState->shared->camera.handle || c->entityB == gameState->shared->camera.handle)
         {
-            SoundPlay2D(gameState->soundManager, gameState->hCollideSFX, ESoundCategory::SFX, 0.1f, false);
+            SoundPlay2D(gameState->soundManager, gameState->hCollideSFX, ESoundCategory::Sound_SFX, 0.1f, false);
         }
     }
 

@@ -46,8 +46,8 @@ typedef DirectX::XMMATRIX DXMatrix;
 struct FD3D
 {
 	// Matrices:
-	DXMatrix				 projectionMatrix;			// Perspective projection for 3D rendering.
 	DXMatrix				 worldMatrix;				// Default world transform (identity).
+	// camera and view are in FCamera
 
 	// Device Layer:
 	ID3D11Device*			 device;					// Creates all GPU resources.
@@ -306,7 +306,6 @@ struct FRenderBucket
 struct FRenderWorld
 {
 	FD3D d3d;
-	DXMatrix cameraView;	// Currenlty only one, will probably replace with a custom camera and different types.
 	FSharedStuff* shared;
 
 	// Shaders — one of each, initialized once.

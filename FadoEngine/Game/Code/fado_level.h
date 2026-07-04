@@ -168,28 +168,28 @@ internal void BeginLevel_01(FGameState* gameState)
     FEntityTable* entityTable = shared->entityTable;
 
     // Sound 
-    gameState->hFireSFXInstance = SoundPlay3D(gameState->soundManager, gameState->hFireSFX, ESoundCategory::SFX, 1.0f, true, transforms->positions[GetTransformHandle(entityTable, gameState->fire)], 0.0f, 5.0f);
-    SoundPlay2D(gameState->soundManager, gameState->hMusic, ESoundCategory::Music, 0.5f, true);
+    gameState->hFireSFXInstance = SoundPlay3D(gameState->soundManager, gameState->hFireSFX, ESoundCategory::Sound_SFX, 1.0f, true, transforms->positions[GetTransformHandle(entityTable, gameState->fire)], 0.0f, 5.0f);
+    SoundPlay2D(gameState->soundManager, gameState->hMusic, ESoundCategory::Sound_Music, 0.5f, true);
 
     // Collision
     CollisionInitialize(shared->collisionWorld);
     v3 extents = { 1.0f, 1.0f, 1.0f };
 
     CollisionAddCollider(shared->collisionWorld, shared->camera.handle,
-        entityTable->entities[shared->camera.handle].hTransform, { 1.0f, 1.0f, 1.0f }, ECollisionFlags::Physics);
+        entityTable->entities[shared->camera.handle].hTransform, { 1.0f, 1.0f, 1.0f }, ECollisionFlags::Collision_Physics);
 
     CollisionAddCollider(shared->collisionWorld, gameState->infinitePlane,
-        entityTable->entities[gameState->infinitePlane].hTransform, { 1.0f, 0.01f, 1.0f }, ECollisionFlags::Static);
+        entityTable->entities[gameState->infinitePlane].hTransform, { 1.0f, 0.01f, 1.0f }, ECollisionFlags::Collision_Static);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->cube1, GetTransformHandle(entityTable, gameState->cube1), extents, ECollisionFlags::Kinematic);
+    CollisionAddCollider(shared->collisionWorld, gameState->cube1, GetTransformHandle(entityTable, gameState->cube1), extents, ECollisionFlags::Collision_Kinematic);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->cube2, GetTransformHandle(entityTable, gameState->cube2), extents, ECollisionFlags::Static);
+    CollisionAddCollider(shared->collisionWorld, gameState->cube2, GetTransformHandle(entityTable, gameState->cube2), extents, ECollisionFlags::Collision_Static);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere1, GetTransformHandle(entityTable, gameState->sphere1), extents, ECollisionFlags::Dynamic);
+    CollisionAddCollider(shared->collisionWorld, gameState->sphere1, GetTransformHandle(entityTable, gameState->sphere1), extents, ECollisionFlags::Collision_Dynamic);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere2, GetTransformHandle(entityTable, gameState->sphere2), extents, ECollisionFlags::Physics);
+    CollisionAddCollider(shared->collisionWorld, gameState->sphere2, GetTransformHandle(entityTable, gameState->sphere2), extents, ECollisionFlags::Collision_Physics);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->fire, GetTransformHandle(entityTable, gameState->fire), extents, ECollisionFlags::Physics);
+    CollisionAddCollider(shared->collisionWorld, gameState->fire, GetTransformHandle(entityTable, gameState->fire), extents, ECollisionFlags::Collision_Physics);
 }
 
 internal void InitLevel_01(FGameState* gameState)
@@ -241,28 +241,28 @@ internal void BeginLevel_02(FGameState* gameState)
     FEntityTable* entityTable = shared->entityTable;
 
     // Sound 
-    gameState->hFireSFXInstance = SoundPlay3D(gameState->soundManager, gameState->hFireSFX, ESoundCategory::SFX, 1.0f, true, transforms->positions[GetTransformHandle(entityTable, gameState->fire)], 0.0f, 5.0f);
-    SoundPlay2D(gameState->soundManager, gameState->hMusic, ESoundCategory::Music, 0.5f, true);
+    gameState->hFireSFXInstance = SoundPlay3D(gameState->soundManager, gameState->hFireSFX, ESoundCategory::Sound_SFX, 1.0f, true, transforms->positions[GetTransformHandle(entityTable, gameState->fire)], 0.0f, 5.0f);
+    SoundPlay2D(gameState->soundManager, gameState->hMusic, ESoundCategory::Sound_Music, 0.5f, true);
 
     // Collision
     CollisionInitialize(shared->collisionWorld);
     v3 extents = { 1.0f, 1.0f, 1.0f };
 
     CollisionAddCollider(shared->collisionWorld, shared->camera.handle,
-        entityTable->entities[shared->camera.handle].hTransform, { 1.0f, 1.0f, 1.0f }, ECollisionFlags::Physics);
+        entityTable->entities[shared->camera.handle].hTransform, { 1.0f, 1.0f, 1.0f }, ECollisionFlags::Collision_Physics);
 
     CollisionAddCollider(shared->collisionWorld, gameState->infinitePlane,
-        entityTable->entities[gameState->infinitePlane].hTransform, { 1.0f, 0.01f, 1.0f }, ECollisionFlags::Static);
+        entityTable->entities[gameState->infinitePlane].hTransform, { 1.0f, 0.01f, 1.0f }, ECollisionFlags::Collision_Static);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->cube1, GetTransformHandle(entityTable, gameState->cube1), extents, ECollisionFlags::Kinematic);
+    CollisionAddCollider(shared->collisionWorld, gameState->cube1, GetTransformHandle(entityTable, gameState->cube1), extents, ECollisionFlags::Collision_Kinematic);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->cube2, GetTransformHandle(entityTable, gameState->cube2), extents, ECollisionFlags::Static);
+    CollisionAddCollider(shared->collisionWorld, gameState->cube2, GetTransformHandle(entityTable, gameState->cube2), extents, ECollisionFlags::Collision_Static);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere1, GetTransformHandle(entityTable, gameState->sphere1), extents, ECollisionFlags::Dynamic);
+    CollisionAddCollider(shared->collisionWorld, gameState->sphere1, GetTransformHandle(entityTable, gameState->sphere1), extents, ECollisionFlags::Collision_Dynamic);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere2, GetTransformHandle(entityTable, gameState->sphere2), extents, ECollisionFlags::Physics);
+    CollisionAddCollider(shared->collisionWorld, gameState->sphere2, GetTransformHandle(entityTable, gameState->sphere2), extents, ECollisionFlags::Collision_Physics);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->fire, GetTransformHandle(entityTable, gameState->fire), extents, ECollisionFlags::Physics);
+    CollisionAddCollider(shared->collisionWorld, gameState->fire, GetTransformHandle(entityTable, gameState->fire), extents, ECollisionFlags::Collision_Physics);
 }
 
 internal void InitLevel_02(FGameState* gameState)

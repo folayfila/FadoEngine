@@ -26,16 +26,16 @@ typedef u32 HCollider;
 // ─────────────────────────────────────────────
 enum ECollisionFlags : u32
 {
-	Ignore =	0,				// no detection, no response, effectively disabled
-	Trigger =	(1 << 0),		// overlap event only — no physics response
-	Static =	(1 << 1),		// never moves, never rebuilt; always pushes the other side fully
-	Kinematic = (1 << 2),		// like Static but rebuilt each frame (rotating/moving objects); always pushes the other side fully
-	Dynamic =	(1 << 3),		// normal solid mover (e.g. player); pushed fully by Static/Kinematic, shares push 50/50 with other Dynamic
-	Physics =	(1 << 4),		// lowest-priority mover; pushed fully by Static/Kinematic/Dynamic, shares 50/50 with other Physics
-	Is2D =		(1 << 5),		// ignore Y axis (flatten AABB to XZ plane)
+	Collision_Ignore =	  0,			// no detection, no response, effectively disabled
+	Collision_Trigger =	  (1 << 0),		// overlap event only — no physics response
+	Collision_Static =	  (1 << 1),		// never moves, never rebuilt; always pushes the other side fully
+	Collision_Kinematic = (1 << 2),		// like Static but rebuilt each frame (rotating/moving objects); always pushes the other side fully
+	Collision_Dynamic =	  (1 << 3),		// normal solid mover (e.g. player); pushed fully by Static/Kinematic, shares push 50/50 with other Dynamic
+	Collision_Physics =	  (1 << 4),		// lowest-priority mover; pushed fully by Static/Kinematic/Dynamic, shares 50/50 with other Physics
+	Collision_Is2D =	  (1 << 5),		// ignore Y axis (flatten AABB to XZ plane)
 };
 
-#define COLLISION_SOLID_MASK (ECollisionFlags::Static | ECollisionFlags::Kinematic | ECollisionFlags::Dynamic | ECollisionFlags::Physics)
+#define COLLISION_SOLID_MASK (Collision_Static | Collision_Kinematic | Collision_Dynamic | Collision_Physics)
 
 inline ECollisionFlags operator|(ECollisionFlags a, ECollisionFlags b)
 {
@@ -170,7 +170,7 @@ void CollisionInitialize(FCollisionWorld* collisionWorld);
 // halfExtents — LOCAL half-size in each axis.
 // Pass EColliderFlags::Is2D for top-down / platformer games (Y extent still used for 3-D height checks).
 HCollider CollisionAddCollider(FCollisionWorld* collisionWorld, HEntity hEntity, HTransform hTransform,
-	v3 halfExtents, ECollisionFlags flags = ECollisionFlags::Ignore);
+	v3 halfExtents, ECollisionFlags flags = Collision_Ignore);
 
 // Main per-frame call — runs all three stages:
 //   1. BuildAABBs   (world-space AABB from transform + halfExtents)

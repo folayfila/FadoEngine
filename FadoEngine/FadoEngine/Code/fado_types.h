@@ -363,18 +363,33 @@ struct FFont
  * game, so the following section covers this data which is shared between the egine and game.
 */
 
+enum ECameraType
+{
+	Camera_Perspective,
+	Camera_Orthographic
+};
+
 // FCamera
 // Check the struct for details.
 struct FCamera
 {
 	HEntity handle;	// camera entity handle
+	ECameraType type;
 
-	v3 forward;	
-	v3 up;
-	v3 right;
+	v3 forward, up, right;
 
+	mat4 view;
+	mat4 projection;
+
+	// Perspective attributes
 	f32 fovY;       // vertical FOV in radians
 	f32 aspect;		// aspect ratio
+
+	// Orthographic attributes
+	f32 orthoWidth;
+	f32 orthoHeight;
+
+	// Shared
 	f32 nearZ;		// screen near
 	f32 farZ;		// screen depth
 };

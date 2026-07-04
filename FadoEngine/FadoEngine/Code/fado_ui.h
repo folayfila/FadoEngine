@@ -10,7 +10,7 @@
 // - Rect: Includes images and font textures.
 enum EUICommandType
 {
-	Rect
+	UICommand_Rect
 };
 
 // UICommand to add a rect.
@@ -52,13 +52,6 @@ struct FUIButtonStyle
 	HTexture texture;
 };
 
-enum EUIButtonState
-{
-	Idle,
-	Hovered,
-	Clicked
-};
-
 // Controller UI navigation state.
 struct FUINavState
 {
@@ -75,7 +68,7 @@ inline void UIPushRect(FUICommandBucket* bucket, v4 rect, v4 coords, v4 color, H
 {
 	Assert(bucket->count < MAX_UI_COMMANDS);
 	FUICommand* cmd = &bucket->commands[bucket->count++];
-	cmd->type = EUICommandType::Rect;
+	cmd->type = UICommand_Rect;
 	cmd->rect = { rect, coords, color, hTexture };
 }
 

@@ -27,9 +27,9 @@
 
 enum ESoundCategory
 {
-    Music,
-    SFX,
-    UI,
+    Sound_Music,
+    Sound_SFX,
+    Sound_UI,
     SOUND_CATEGORY_COUNT  // Always last. Not an actual sound.
 };
 

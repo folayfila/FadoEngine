@@ -212,7 +212,7 @@ internal void CollisionBuildAABBsAndOBBs(FCollisionWorld* collisionWorld, FTrans
         quat rot = transforms->rotations[collider->hTransform];
 
         // Side-scroller: flatten Z so everything sits on XY plane
-        if (collider->flags & ECollisionFlags::Is2D)
+        if (collider->flags & ECollisionFlags::Collision_Is2D)
         {
             scale.z = 1.0f;
         }
@@ -331,8 +331,8 @@ internal void CollisionNarrowPhase(FCollisionWorld* collisionWorld)
         }
 
         // Skip if neither side is solid or trigger.
-        if (!(ca->flags & (COLLISION_SOLID_MASK | ECollisionFlags::Trigger)) ||
-            !(cb->flags & (COLLISION_SOLID_MASK | ECollisionFlags::Trigger)))
+        if (!(ca->flags & (COLLISION_SOLID_MASK | ECollisionFlags::Collision_Trigger)) ||
+            !(cb->flags & (COLLISION_SOLID_MASK | ECollisionFlags::Collision_Trigger)))
         {
             continue;
         }
@@ -389,8 +389,8 @@ internal void CollisionNarrowPhase(FCollisionWorld* collisionWorld)
             contact->entityB = cb->hEntity;
             contact->normal = normal;
             contact->penetration = penetration;
-            contact->isTrigger = (ca->flags & ECollisionFlags::Trigger) ||
-                                 (cb->flags & ECollisionFlags::Trigger);
+            contact->isTrigger = (ca->flags & ECollisionFlags::Collision_Trigger) ||
+                                 (cb->flags & ECollisionFlags::Collision_Trigger);
         }
     }
 }
@@ -416,11 +416,11 @@ internal f32 CollisionMass(ECollisionFlags flags)
     // Immovable by default -> 0 share.
     f32 mass = 0.0f;
 
-    if (flags & ECollisionFlags::Dynamic)
+    if (flags & ECollisionFlags::Collision_Dynamic)
     {
         mass = 2.0f;
     }
-    else if (flags & ECollisionFlags::Physics)
+    else if (flags & ECollisionFlags::Collision_Physics)
     {
         mass = 1.0f;
     }
