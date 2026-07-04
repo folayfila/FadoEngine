@@ -3,6 +3,7 @@
 #include "fado_win32.h"
 #include <xinput.h>
 #include "fado_math.h"
+#include "fado_input.h"
 #include "fado_collision.h"
 
 #if FADO_DEBUG
@@ -476,6 +477,11 @@ internal void Win32HandleKeyboardInput(MSG* msg, WPARAM wParam, LPARAM lParam, F
 		Win32ProcessButtonState(&keyboard->leftShoulder, isDown, deltaTime);
 	}
 
+	if (vKCode == 'P')
+	{
+		Win32ProcessButtonState(&keyboard->start, isDown, deltaTime);
+	}
+
 	b8 altIsDown = (lParam & (1 << 29));
 	if (altIsDown && (vKCode == VK_RETURN) && isDown && !wasDown)
 	{
@@ -773,6 +779,13 @@ int WINAPI wWinMain(
 			gameCode.gameUpdate(gameState, input);
 		}
 
+		// Render
+#if FADO_DEBUG
+		DebugRender(win32System.world);
+#else
+		Render(win32System.world);
+#endif // FADO_DEBUG
+
 		// Update sound
 		// check how many buffers XAudio2 still has queued.
 		XAUDIO2_VOICE_STATE state;
@@ -813,13 +826,6 @@ int WINAPI wWinMain(
 			// Submit the 2D mixed sound output.
 			Win32SubmitSound(&win32Sound, &output);
 		}
-
-		// Render
-#if FADO_DEBUG
-		DebugRender(win32System.world);
-#else
-		Render(win32System.world);
-#endif // FADO_DEBUG
 
 		// Update the previous buttons states.
 		for (u32 controllerIndex = 0; controllerIndex < ArrayCount(input->controllers); ++controllerIndex)

@@ -345,7 +345,7 @@ internal void UnloadLevel(FGameState* gameState)
     gameState->sphere1 = 0;
     gameState->sphere2 = 0;
     gameState->fire = 0;
-    gameState->hFireSFXInstance = 0;
+    gameState->hFireSFXInstance = INVALID_HANDLE;
     gameState->currentLevel = Level_None;
 
     SoundStopAll(gameState->soundManager);

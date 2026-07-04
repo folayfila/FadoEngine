@@ -2,13 +2,12 @@
 
 #include "fado.h"
 #include "fado_math.h"
+#include "fado_input.h"
 #include "fado_collision.h"
 #include "fado_level.h"
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 // -- UI --
-
-internal b8 IsInputButtonClick(FGameButtonState* button);   // forward
 
 // Creates a stylized button and pushes it to ui bucket.
 // Returns if the button was clicked.
@@ -23,7 +22,7 @@ internal u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* te
     if (input->controllers[1].isConnected)
     {
         hovered = (myIndex == nav->focusedIndex);
-        clicked = hovered && IsInputButtonClick(&input->controllers[1].actionDown);
+        clicked = hovered && Pressed(&input->controllers[1].actionDown);
     }
     else
     {
@@ -78,6 +77,7 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
     {
         LoadLevelById(gameState, Level_02);
     }
+
     rect.y += rect.height + buttonsYOffset;
     if (UIButton(gameState, input, rect, "Switch Camera", &buttonStyle))
     {
@@ -96,7 +96,6 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
-// -- Input --
 
 // Returns the handle of the closest entity that the ray passed through.
 // The entity must have a collider for it to register.
@@ -120,56 +119,6 @@ internal HEntity PickEntity(FRay ray, FCollisionWorld* collisions)
         }
     }
     return collisions->colliders.colliders[closestIndex].hEntity;
-}
-
-// Return true if a button was just clicked.
-// TODO: Move common input functions to their own file.
-internal b8 IsInputButtonClick(FGameButtonState* button)
-{
-    b8 isClick = (button->isDown && !button->wasDown);
-    return isClick;
-}
-
-// Return true if a button was just clicked.
-internal b8 IsInputButtonHeld(FGameButtonState* button)
-{
-    b8 isHeld = (button->isDown && button->wasDown);
-    return isHeld;
-}
-
-// Checks if a stick is held in a specific directions
-internal b8 IsStickHeld(v2 stickAverage, EStickDirection direction)
-{
-    b8 result = false;
-    f32 threshHold = 0.5f;
-
-    switch (direction)
-    {
-    case EStickDirection::Up:
-    {
-        result = stickAverage.y > threshHold;
-    } break;
-
-    case EStickDirection::Down:
-    {
-        result = stickAverage.y < -threshHold;
-    } break;
-
-    case EStickDirection::Left:
-    {
-        result = stickAverage.x < -threshHold;
-    } break;
-
-    case EStickDirection::Right:
-    {
-        result = stickAverage.x > threshHold;
-    } break;
-
-    default:
-    {} break;
-    }
-
-    return result;
 }
 
 // Creates a ray from the mouse position.
@@ -198,132 +147,26 @@ internal FRay ScreenPointToRay(FSharedStuff* shared, f32 mouseX, f32 mouseY)
     return ray;
 }
 
-internal void HandleGameInput(FGameState* gameState, FGameInput* input)
-{
-    FSharedStuff* shared = gameState->shared;
-
-    for (u32 controllerIndex = 0; controllerIndex < ArrayCount(input->controllers); ++controllerIndex)
-    {
-        FGameControllerInput* controllerInput = &input->controllers[controllerIndex];
-        if (!controllerInput->isConnected)
-        {
-            return;
-        }
-
-        // Movement
-        FCamera* cam = &shared->camera;
-        v3 forward = cam->forward;
-        v3 right = cam->right;
-        v3 up = cam->up;
-
-        f32 moveSpeed = 10.0f * input->deltaTime;
-        v3* movedPos = &shared->transforms->positions[shared->camera.handle];
-        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Up) || IsInputButtonHeld(&controllerInput->dpadUp))
-        {
-            *movedPos += forward * moveSpeed;
-        }
-        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Down) || IsInputButtonHeld(&controllerInput->dpadDown))
-        {
-            *movedPos -= forward * moveSpeed;
-        }
-        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Right) || IsInputButtonHeld(&controllerInput->dpadRight))
-        {
-            *movedPos += right * moveSpeed;
-        }
-        if (IsStickHeld(controllerInput->leftStickAverage, EStickDirection::Left) || IsInputButtonHeld(&controllerInput->dpadLeft))
-        {
-            *movedPos -= right * moveSpeed;
-        }
-        if (controllerInput->rightShoulder.isDown)
-        {
-            *movedPos += up * moveSpeed;
-        }
-        if (controllerInput->leftShoulder.isDown)
-        {
-            *movedPos -= up * moveSpeed;
-        }
-
-        // Rotation
-        f32 sensitivity = 100.0f * input->deltaTime;
-        if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Up))
-        {
-            gameState->cameraPitch -= sensitivity;
-        }
-        if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Down))
-        {
-            gameState->cameraPitch += sensitivity;
-        }
-        if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Right))
-        {
-            gameState->cameraYaw += sensitivity;
-        }
-        if (IsStickHeld(controllerInput->rightStickAverage, EStickDirection::Left))
-        {
-            gameState->cameraYaw -= sensitivity;
-        }
-        gameState->cameraPitch = Clampf32(gameState->cameraPitch, -89.0f, 89.0f);
-        if ((gameState->cameraPitch > 0.0f) || (gameState->cameraYaw > 0.0f))
-        {
-            SetRotation(shared->transforms, shared->camera.handle,
-                { gameState->cameraPitch, gameState->cameraYaw, 0 });
-        }
-       
-        // Mouse Rotation
-        // Mouse deltaY maps to pitch and deltaX maps to yaw.
-        // The sensitivity value is much smaller than the controller one because mouse deltas are in pixels, not a -1 to 1 range.
-        f32 mouseSensitivity = 0.1f;
-        f32 mouseYaw = input->mouse.deltaX * mouseSensitivity;
-        f32 mousePitch = input->mouse.deltaY * mouseSensitivity;
-
-        // Clamp to prevent gimbal lock at the poles. When we pitch up or down past 90 degrees, 
-        // the camera flips because there's no restriction on how far you can pitch.
-        gameState->cameraPitch += Clampf32(mousePitch, -89.0f, 89.0f);
-        gameState->cameraYaw += mouseYaw;
-
-        // We rotate with mouse only if the mouse right-click is down.
-        if ((mouseYaw != 0 || mousePitch != 0) && (input->mouse.isRotating))
-        {
-            // Rebuild quat from the two angles.
-            SetRotation(shared->transforms, shared->camera.handle,
-                { gameState->cameraPitch, gameState->cameraYaw, 0 });
-        }
-
-        // UI input
-        if (IsInputButtonClick(&controllerInput->dpadDown))
-        {
-            UINavigateNext(&gameState->uiNavState, true);
-        }
-        if (IsInputButtonClick(&controllerInput->dpadUp))
-        {
-            UINavigateBack(&gameState->uiNavState, true);
-        }
-
-        if (controllerInput->back.isDown)
-        {
-            gameState->running = false;
-        }
-    }
-}
-
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
 // Main game update function, the only function that exported the engine (.exe).
 extern "C" __declspec(dllexport)
 GAME_UPDATE(GameUpdate)
 {
-    if (!gameState->initialized)
+    if (!gs->initialized)
     {
-        gameState->initialized = true;
+        gs->initialized = true;
+        input->mode = Input_Game;
 
 #if FADO_DEBUG
-        gameState->shared->canSelect = true;
+        gs->shared->canSelect = true;
 #endif // FADO_DEBUG
 
         // Load level 01 by default.
-        LoadLevelById(gameState, Level_01);
+        LoadLevelById(gs, Level_01);
     }
 
-    FSharedStuff* shared = gameState->shared;
+    FSharedStuff* shared = gs->shared;
 
     // Each frame, feed camera into the listener for 3D audio.
     FSoundListener listener = {};
@@ -331,13 +174,13 @@ GAME_UPDATE(GameUpdate)
     listener.position = camPos;
     listener.forward = shared->camera.forward;
     listener.up = shared->camera.up;
-    gameState->soundManager->listener = listener;
+    gs->soundManager->listener = listener;
 
 #if FADO_DEBUG
     // Clicking on entites
-    if (IsInputButtonClick(&input->mouse.buttons[0]) && shared->canSelect)
+    if (Pressed(&input->mouse.buttons[0]) && shared->canSelect)
     {
-        FRay ray = ScreenPointToRay(gameState->shared, (f32)input->mouse.x, (f32)input->mouse.y);
+        FRay ray = ScreenPointToRay(gs->shared, (f32)input->mouse.x, (f32)input->mouse.y);
         i32 picked = PickEntity(ray, shared->collisionWorld);
         if (picked >= 0)
         {
@@ -346,22 +189,25 @@ GAME_UPDATE(GameUpdate)
     }
 #endif // FADO_DEBUG
 
-	HandleGameInput(gameState, input);
-    UpdateUI(gameState, input);
+	HandleInput(gs, input);
+
+    if (gs->paused)
+    {
+        UpdateUI(gs, input);
+    }
 
     // The infinite plane follows the camera to give the illusion of infinite stretch.
-    shared->transforms->positions[gameState->infinitePlane].x = shared->transforms->positions[shared->camera.handle].x;
-    shared->transforms->positions[gameState->infinitePlane].z = shared->transforms->positions[shared->camera.handle].z;
+    shared->transforms->positions[gs->infinitePlane].x = shared->transforms->positions[shared->camera.handle].x;
+    shared->transforms->positions[gs->infinitePlane].z = shared->transforms->positions[shared->camera.handle].z;
 
     // The skybox follows the camera to give the of infinite sky.
-    FEntity* skybox = GetEntity(shared->entityTable, gameState->skyBox);
+    FEntity* skybox = GetEntity(shared->entityTable, gs->skyBox);
     shared->transforms->positions[skybox->hTransform] = shared->transforms->positions[shared->camera.handle];
 
-
-    Rotate(shared->transforms, gameState->cube1, { 50.0f*input->deltaTime, 50.0f * input->deltaTime, 0.0f });
-    Rotate(shared->transforms, gameState->cube2, { -50.0f * input->deltaTime, 0.0f, 0.0f });
-    Rotate(shared->transforms, gameState->sphere1, { 0.0f, 50.0f * input->deltaTime, 0.0f });
-    Rotate(shared->transforms, gameState->sphere2, { 0.0f, -50.0f * input->deltaTime, 0.0f });
+    Rotate(shared->transforms, gs->cube1, { 50.0f*input->deltaTime, 50.0f * input->deltaTime, 0.0f });
+    Rotate(shared->transforms, gs->cube2, { -50.0f * input->deltaTime, 0.0f, 0.0f });
+    Rotate(shared->transforms, gs->sphere1, { 0.0f, 50.0f * input->deltaTime, 0.0f });
+    Rotate(shared->transforms, gs->sphere2, { 0.0f, -50.0f * input->deltaTime, 0.0f });
 
     //  -- Test and update collisions --
     // 1. Calculate and detect.
@@ -372,12 +218,12 @@ GAME_UPDATE(GameUpdate)
     for (u32 i = 0; i < shared->collisionWorld->contactCount; ++i)
     {
         FContactInfo* c = &shared->collisionWorld->contacts[i];
-        if (c->entityA == gameState->shared->camera.handle || c->entityB == gameState->shared->camera.handle)
+        if (c->entityA == gs->shared->camera.handle || c->entityB == gs->shared->camera.handle)
         {
-            SoundPlay2D(gameState->soundManager, gameState->hCollideSFX, ESoundCategory::Sound_SFX, 0.1f, false);
+            SoundPlay2D(gs->soundManager, gs->hCollideSFX, ESoundCategory::Sound_SFX, 0.1f, false);
         }
     }
 
     // Update the fire sfx pos to match the fire entity's.
-    gameState->soundManager->assetBank->instances[gameState->hFireSFXInstance].position = shared->transforms->positions[GetTransformHandle(shared->entityTable, gameState->fire)];
+    Update3DSoundPosition(gs->soundManager->assetBank, gs->hFireSFXInstance, GetEntityPosition(shared, gs->fire));
 }

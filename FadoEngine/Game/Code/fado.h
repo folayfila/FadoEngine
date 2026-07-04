@@ -15,89 +15,10 @@
 */
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
-
-// -- Input -- 
-
-// State of a button
-// - !wasDown && isDown -> was just clicked
-// - wasDown && !isDown -> was just released
-struct FGameButtonState
-{
-	b8 wasDown;
-	b8 isDown;
-	f32 heldLength;	// Time since the button has been pressed and held.
-};
-
-struct FMouseInput
-{
-    FGameButtonState buttons[5];    // Mouse Buttons: 0 left, 1 middle, 2 right
-    i32 x, y, z;                    // Position 
-    i32 deltaX, deltaY;             // Difference in mouse position between the last and current frame.
-    b32 isRotating;                 // Used to track mouse rotation so we prevent snappy rotatiots when delta is huge.
-};
-
-enum EStickDirection
-{
-    StickDirection_None,
-    Up,
-    Down,
-    Left,
-    Right
-};
-
-// Game Controller - used for both keyboard and joysticks
-struct FGameControllerInput
-{
-    v2 leftStickAverage;
-    v2 rightStickAverage;
-    b32 isConnected;
-    b32 isAnalog;
-
-    // L2 & R2 buttons are handled as triggers with push values.
-    f32 leftTrigger;
-    f32 rightTrigger;
-
-    union
-    {
-        FGameButtonState buttons[14];
-        struct
-        {
-            FGameButtonState dpadUp;
-            FGameButtonState dpadDown;
-            FGameButtonState dpadLeft;
-            FGameButtonState dpadRight;
-
-            FGameButtonState actionUp;
-            FGameButtonState actionDown;
-            FGameButtonState actionLeft;
-            FGameButtonState actionRight;
-
-            FGameButtonState leftShoulder;          // L1
-            FGameButtonState rightShoulder;         // R1
-
-            FGameButtonState leftTriggerButton;     // L2
-            FGameButtonState rightTriggerButton;    // R2
-
-            FGameButtonState start;
-            FGameButtonState back;
-
-            //? All buttons must be added above this one.
-            FGameButtonState terminator;
-        };
-    };
-};
-
-struct FGameInput
-{
-    FMouseInput mouse;
-    FGameControllerInput controllers[5];    // 0->Keyboard, 1-4>Controller
-    f32 deltaTime;
-};
-
-// ──────────────────────────────────────────────────────────────────────────────────────────
 struct FGameState
 {
     b32 running;
+    b32 paused;
     b32 initialized;
     
     FSharedStuff* shared;
@@ -144,7 +65,7 @@ struct FGameState
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
-#define GAME_UPDATE(name) void name(FGameState* gameState, FGameInput* input)
+#define GAME_UPDATE(name) void name(FGameState* gs, struct FGameInput* input)
 typedef GAME_UPDATE(FGameUpdate);
 
 #endif FADO_H

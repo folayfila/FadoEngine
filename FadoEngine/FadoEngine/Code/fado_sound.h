@@ -278,6 +278,7 @@ inline void SoundStopCategory(FSoundManager* manager, ESoundCategory category)
 inline void SoundStopAll(FSoundManager* manager)
 {
     FadoZeroArray(manager->assetBank->instances);
+    FadoZeroArray(manager->assetBank->assetInstanceCount);
     manager->listener = {};
     manager->active = false;
 }
@@ -327,6 +328,15 @@ inline void SoundMixInstance(FSoundManager* manager, FSoundInstance* instance, i
         // Advance to the next sample in this sound.
         instance->cursor++;
     }
+}
+
+inline void Update3DSoundPosition(FSoundAssetBank* assetBank, HSound hInstance, v3 pos)
+{
+    if (hInstance == INVALID_HANDLE)
+    {
+        return;
+    }
+    assetBank->instances[hInstance].position = pos;
 }
 
 #endif	// FADO_SOUND_H
