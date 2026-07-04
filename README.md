@@ -8,6 +8,7 @@ The engine is heavily data oriented; we have a bunch of structs, and create func
 ![Description](media/showcase.gif)
 
 ### Latest Features
+- A unified material shader, with color/tint, texture, lit/unlit and transparency.
 - Custom compressed file format for textures, models, fonts and audios.
 - Levels save/load.
 - 2D and 3D custom sound system. (XAusio2 for Windows).
@@ -18,7 +19,6 @@ The engine is heavily data oriented; we have a bunch of structs, and create func
 - Game hot reloading.
 - AABB and OBB collision detection.
 - Entities in an Entity Component System. Transforms, meshes and textures are set in arrays through handles. 
-- Multiple shaders support (currenlty: simple unlit colors, lit/unlit textures).
 - Memory Arena system that allocates memeory only at startup and uses it throughout the session.
 - Fully resizable and full-screen toggle-supported window.
 - Keyboard and multiple controllers input support with XInput.

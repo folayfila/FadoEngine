@@ -210,17 +210,17 @@ internal void InitLevel_01(FGameState* gameState)
     transforms->scales[gameState->skyBox] = { 500.0f, 500.0f, 500.0f };
 
     // Other entities
-    gameState->cube1 = SpawnEntity(shared, EntityType_Cube1, gameState->hCubeMesh, 0, { 0.63f, 1, 0.21f, 1 });
+    gameState->cube1 = SpawnEntity(shared, EntityType_Cube1, gameState->hCubeMesh, 0, { 0.63f, 1, 0.21f, 1.0f });
     transforms->positions[gameState->cube1] = { -3.5f, 5.0f, 0 };
     transforms->scales[gameState->cube1] = { 2.5f, 0.25f, 1.0f };
 
-    gameState->cube2 = SpawnEntity(shared, EntityType_Cube2, gameState->hCubeMesh, 0, { 1, 0.21f, 0.63f, 1 });
+    gameState->cube2 = SpawnEntity(shared, EntityType_Cube2, gameState->hCubeMesh, 0, { 1, 0.21f, 0.63f, 0.75f });
     transforms->positions[gameState->cube2] = { 1.5f, 5.0f, 0 };
 
-    gameState->sphere1 = SpawnEntity(shared, EntityType_Sphere1, gameState->hSphereMesh, gameState->hGraniteTexture);
+    gameState->sphere1 = SpawnEntity(shared, EntityType_Sphere1, gameState->hSphereMesh, gameState->hGraniteTexture, {1,1,1, 0.25f});
     transforms->positions[gameState->sphere1] = { -1.5f, 2.0f, 0 };
 
-    gameState->sphere2 = SpawnEntity(shared, EntityType_Sphere2, gameState->hSphereMesh, gameState->hMosaicTexture);
+    gameState->sphere2 = SpawnEntity(shared, EntityType_Sphere2, gameState->hSphereMesh, gameState->hMosaicTexture, {1,1,1, 1});
     transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
 
     gameState->fire = SpawnEntity(shared, EntityType_Fire, gameState->hCubeMesh, 0, { 1, 0, 0, 1 });

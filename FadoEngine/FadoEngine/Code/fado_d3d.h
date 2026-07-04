@@ -48,7 +48,6 @@ struct FD3D
 	// Matrices:
 	DXMatrix				 projectionMatrix;			// Perspective projection for 3D rendering.
 	DXMatrix				 worldMatrix;				// Default world transform (identity).
-//	DXMatrix					 orthoMatrix;					// Orthographic projection for UI/2D rendering.
 
 	// Device Layer:
 	ID3D11Device*			 device;					// Creates all GPU resources.
@@ -58,18 +57,24 @@ struct FD3D
 	IDXGISwapChain*			 swapChain;					// Owns the back buffer and presents frames to the window.
 	ID3D11RenderTargetView*  renderTargetView;			// View of the back buffer used as the color render target.
 
-	// Depth Testing:
+	// Depth Buffer:
 	ID3D11Texture2D*		 depthStencilBuffer;		// Texture storing depth/stencil data.
-	ID3D11DepthStencilState* depthStencilState;			// Controls depth and stencil testing behavior.
 	ID3D11DepthStencilView*	 depthStencilView;			// View of the depth buffer bound during rendering.
+
+	// Depth/stencil states
+	ID3D11DepthStencilState* depthStencilState;			// Controls depth and stencil testing behavior.
+	ID3D11DepthStencilState* transparentDepthState;		// Depth testing enabled, depth writes disabled for transparent rendering.
+	ID3D11DepthStencilState* uiDepthStencilState;		// Depth-disabled state used when rendering UI.
+
+	// Blend states
+	ID3D11BlendState*		 opaqueBlendState;			// Solid state, no blending.
+	ID3D11BlendState*		 transparentBlendState;		// Alpha blending for transparent materials/UI.
 
 	// Rasterization:
 	ID3D11RasterizerState*	 rasterState;				// Controls culling, fill mode, depth clipping, etc.
 
 	// UI Rendering:
 	ID3D11Buffer*			 uiVertexBuffer;			//Dynamic vertex buffer for UI geometry.
-	ID3D11BlendState*		 uiBlendState;				// Alpha blending state for UI transparency.
-	ID3D11DepthStencilState* uiDepthStencilState;		// Depth-disabled state used when rendering UI.
 
 	// Misc:
 	b32						 vsyncEnabled;				// Present synchronized to monitor refresh.
@@ -310,8 +315,9 @@ struct FRenderWorld
 
 	FDirectionalLight dirLight;
 
-	// One Render buckets.
-	FRenderBucket bucket;
+	// Opaque and Transparent buckets. We draw the opaque bucket first.
+	FRenderBucket opaqueBucket;
+	FRenderBucket transparentBucket;
 	// ui bucket is in "shared", because the game uses it too.
 
 #if FADO_DEBUG

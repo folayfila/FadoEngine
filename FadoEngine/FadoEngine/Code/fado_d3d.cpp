@@ -282,7 +282,16 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 	result = d3d->device->CreateBuffer(&vbDesc, nullptr, &d3d->uiVertexBuffer);
 	Assert(!FAILED(result));
 
+	// Opaque (default rendering)
 	D3D11_BLEND_DESC blendDesc = {};
+	blendDesc.RenderTarget[0].BlendEnable = FALSE;
+	blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+	result = d3d->device->CreateBlendState(&blendDesc, &d3d->opaqueBlendState);
+	Assert(SUCCEEDED(result));
+
+	// Alpha blending
+	blendDesc = {};
 	blendDesc.RenderTarget[0].BlendEnable = TRUE;
 	blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
 	blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
@@ -292,8 +301,15 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 	blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 	blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
-	result = d3d->device->CreateBlendState(&blendDesc, &d3d->uiBlendState);
+	result = d3d->device->CreateBlendState(&blendDesc, &d3d->transparentBlendState);
 	Assert(!FAILED(result));
+
+	D3D11_DEPTH_STENCIL_DESC transDepthDesc = {};
+	transDepthDesc.DepthEnable = true;
+	transDepthDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO; // read only
+	transDepthDesc.DepthFunc = D3D11_COMPARISON_LESS;
+	transDepthDesc.StencilEnable = false;
+	d3d->device->CreateDepthStencilState(&transDepthDesc, &d3d->transparentDepthState);
 
 	D3D11_DEPTH_STENCIL_DESC uiDepthDesc = {};
 	uiDepthDesc.DepthEnable = false;
@@ -334,11 +350,6 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 
 	// Initialize the world matrix to the identity matrix.
 	d3d->worldMatrix = DirectX::XMMatrixIdentity();
-
-	// Not used currently.
-	// TODO: check if we should just delete it.
-	// Create an orthographic projection matrix for 2D rendering.
-	//d3d->orthoMatrix = DirectX::XMMatrixOrthographicLH((f32)d3dInitParams->screenWidth, (f32)d3dInitParams->screenHeight, d3dInitParams->screenNear, d3dInitParams->screenDepth);
 }
 
 // Clear the back and depth buffer.
@@ -501,7 +512,7 @@ internal void SetMaterialShaderParameters(FRenderWorld* world, FDrawCall* call)
 	deviceContext->Map(shader->materialBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 
 	FMaterialBuffer* matBuffer = (FMaterialBuffer*)mapped.pData;
-	matBuffer->color = { mat->color.x, mat->color.y, mat->color.z, 1.0f };
+	matBuffer->color = { mat->color.x, mat->color.y, mat->color.z, mat->color.a };
 	matBuffer->hasTexture = (mat->texture != INVALID_HANDLE) ? 1 : 0;
 	matBuffer->isLit = mat->isLit ? 1 : 0;
 	matBuffer->pad[0] = matBuffer->pad[1] = 0.0f;
@@ -731,8 +742,11 @@ internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 // Draw call helpers
 // ────────────────────────────────────────────────────────────────────────
 // Add a draw call to the passed bucket.
-internal void PushDrawCall(FRenderBucket* bucket, DXMatrix worldMatrix, HMesh hMesh, FMaterial material)
+internal void PushDrawCall(FRenderWorld* world, DXMatrix worldMatrix, HMesh hMesh, FMaterial material)
 {
+	// Push to right bucket based on the material color's alpha channel.
+	FRenderBucket* bucket = (material.color.a < 1.0f) ? &world->transparentBucket : &world->opaqueBucket;
+
 	Assert(bucket->count < MAX_DRAW_CALLS);
 	FDrawCall* call = &bucket->calls[bucket->count++];
 	call->worldMatrix = worldMatrix;
@@ -741,32 +755,47 @@ internal void PushDrawCall(FRenderBucket* bucket, DXMatrix worldMatrix, HMesh hM
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Flush buckets
+//  Buckets
 // ────────────────────────────────────────────────────────────────────────
-internal void FlushBucket(FRenderWorld* world)
+
+// Opaque buckets
+internal void FlushOpaqueBucket(FRenderWorld* world)
 {
 	FD3D* d3d = &world->d3d;
-	FMaterialShader* shader = &world->materialShader;
 
-	d3d->deviceContext->IASetInputLayout(shader->layout);
-	d3d->deviceContext->VSSetShader(shader->vertexShader, NULL, 0);
-	d3d->deviceContext->PSSetShader(shader->pixelShader, NULL, 0);
-	d3d->deviceContext->PSSetSamplers(0, 1, &shader->sampleState);
-
-	for (u32 i = 0; i < world->bucket.count; i++)
+	for (u32 i = 0; i < world->opaqueBucket.count; i++)
 	{
-		FDrawCall* call = &world->bucket.calls[i];
+		FDrawCall* call = &world->opaqueBucket.calls[i];
 		d3d->worldMatrix = call->worldMatrix;
 		SetMaterialShaderParameters(world, call);
 		FMeshBuffer* mesh = &world->meshes[call->hMesh];
 		RenderMesh(mesh, d3d->deviceContext);
 		d3d->deviceContext->DrawIndexed(mesh->indexCount, 0, 0);
 	}
-	world->bucket.count = 0;
+	world->opaqueBucket.count = 0;
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// FlushUIBucket
+// Transparent buckets
+// ────────────────────────────────────────────────────────────────────────
+internal void FlushTransparentBucket(FRenderWorld* world)
+{
+	FD3D* d3d = &world->d3d;
+
+	for (u32 i = 0; i < world->transparentBucket.count; i++)
+	{
+		FDrawCall* call = &world->transparentBucket.calls[i];
+		d3d->worldMatrix = call->worldMatrix;
+		SetMaterialShaderParameters(world, call);
+		FMeshBuffer* mesh = &world->meshes[call->hMesh];
+		RenderMesh(mesh, d3d->deviceContext);
+		d3d->deviceContext->DrawIndexed(mesh->indexCount, 0, 0);
+	}
+	world->transparentBucket.count = 0;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// UI Bucket
 // 
 // Draws all queued UI commands (rects + text-as-rects) for this frame.
 // - UI has no concept of depth: layering is purely by submission order (first pushed = bottom, last pushed = top),
@@ -778,7 +807,9 @@ internal void FlushUIBucket(FRenderWorld* world)
 {
 	FUICommandBucket* bucket = world->shared->uiCommands;
 	if (bucket->count == 0)
-	{ return; }
+	{
+		return;
+	}
 
 	FUIVertex* verts = ArenaPushArray(world->shared->scratchArena, FUIVertex, MAX_UI_VERTS);
 	u32 vertCount = 0;
@@ -793,8 +824,8 @@ internal void FlushUIBucket(FRenderWorld* world)
 	deviceContext->PSSetShader(world->uiShader.pixelShader, nullptr, 0);
 	deviceContext->VSSetConstantBuffers(0, 1, &world->uiShader.constantBuffer);
 
-	f32 blend_factor[4] = { 0, 0, 0, 0 };
-	deviceContext->OMSetBlendState(world->d3d.uiBlendState, blend_factor, 0xFFFFFFFF);
+	f32 blendFactor[4] = { 0, 0, 0, 0 };
+	deviceContext->OMSetBlendState(world->d3d.transparentBlendState, blendFactor, 0xFFFFFFFF);
 	deviceContext->OMSetDepthStencilState(world->d3d.uiDepthStencilState, 0);
 
 	// Draw per texture group
@@ -809,16 +840,16 @@ internal void FlushUIBucket(FRenderWorld* world)
 
 		switch (cmd->type)
 		{
-			case EUICommandType::Rect:
-			{
-				cmdTexture = world->textures[cmd->rect.hTexture].textureView;
-				rect = cmd->rect.rect;
-				coords = cmd->rect.coords;
-				color = cmd->rect.color;
-			} break;
+		case EUICommandType::Rect:
+		{
+			cmdTexture = world->textures[cmd->rect.hTexture].textureView;
+			rect = cmd->rect.rect;
+			coords = cmd->rect.coords;
+			color = cmd->rect.color;
+		} break;
 
-			default:
-			{ continue; }
+		default:
+		{ continue; }
 		}
 
 		// Flush if texture changes.
@@ -849,10 +880,39 @@ internal void FlushUIBucket(FRenderWorld* world)
 	}
 
 	deviceContext->OMSetDepthStencilState(world->d3d.depthStencilState, 1);
-	deviceContext->OMSetBlendState(nullptr, blend_factor, 0xFFFFFFFF);
+	deviceContext->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF);
 
 	bucket->count = 0;
 	ArenaReset(world->shared->scratchArena);
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Flush all buckets
+// ────────────────────────────────────────────────────────────────────────
+internal void FlushBuckets(FRenderWorld* world)
+{
+	FD3D* d3d = &world->d3d;
+	ID3D11DeviceContext* deviceContext = d3d->deviceContext;
+	FMaterialShader* shader = &world->materialShader;
+
+	deviceContext->IASetInputLayout(shader->layout);
+	deviceContext->VSSetShader(shader->vertexShader, NULL, 0);
+	deviceContext->PSSetShader(shader->pixelShader, NULL, 0);
+	deviceContext->PSSetSamplers(0, 1, &shader->sampleState);
+
+	// 1. Opaque 3D
+	f32 blendFactor[4] = { 0, 0, 0, 0 };
+	deviceContext->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF); // blending off
+	deviceContext->OMSetDepthStencilState(d3d->depthStencilState, 1); // depth on
+	FlushOpaqueBucket(world);
+
+	// 2. Transparent 3D — reuse uiBlendState, keep depth READ on, WRITE off
+	deviceContext->OMSetBlendState(d3d->transparentBlendState, blendFactor, 0xFFFFFFFF);
+	deviceContext->OMSetDepthStencilState(d3d->transparentDepthState, 1);
+	FlushTransparentBucket(world);
+
+	// 3. UI
+	FlushUIBucket(world);
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -1224,12 +1284,11 @@ void Render(FRenderWorld* world)
 		}
 
 		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
-		PushDrawCall(&world->bucket, worldMatrix, e->hMesh, e->material);
+		PushDrawCall(world, worldMatrix, e->hMesh, e->material);
 	}
 
 	// Flush all buckets.
-	FlushBucket(world);
-	FlushUIBucket(world);
+	FlushBuckets(world);
 
 	// Present the rendered scene to the screen.
 	EndScene(d3d);
@@ -1542,12 +1601,11 @@ void DebugRender(FRenderWorld* world)
 		}
 
 		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
-		PushDrawCall(&world->bucket, worldMatrix, e->hMesh, e->material);
+		PushDrawCall(world, worldMatrix, e->hMesh, e->material);
 	}
 
 	// Flush all buckets — shader bound once per bucket, zero branching.
-	FlushBucket(world);
-	FlushUIBucket(world);
+	FlushBuckets(world);
 
 	FCollisionWorld* collisionWorld = world->shared->collisionWorld;
 	for (u32 i = 0; i < collisionWorld->colliders.count; ++i)
