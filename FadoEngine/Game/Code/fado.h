@@ -41,8 +41,10 @@ struct FGameState
     HEntity sphere1;
     HEntity sphere2;
     HEntity fire;
+    HEntity folayfila;
 
     // Mesh handles
+    HMesh hQuadMesh;        // Created manually once when we load the assets and used across all sprites.
     HEntity hPlaneMesh;
     HMesh hSkyBoxMesh;
     HMesh hCubeMesh;
@@ -54,6 +56,7 @@ struct FGameState
     HTexture hSkyBoxTexture;
     HTexture hMosaicTexture;
     HTexture hGraniteTexture;
+    HTexture hFolayfilaSprite;
 
     // Sound
     FSoundManager* soundManager;

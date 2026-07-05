@@ -646,6 +646,7 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 // Loads all assets at startup.
 internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 {
+	gameState->hQuadMesh = GetQuad(world);
 	gameState->hPlaneMesh = LoadFModel(world, "Assets\\Models\\plane.fmodel");
 	gameState->hCubeMesh = LoadFModel(world, "Assets\\Models\\cube.fmodel");
 	gameState->hSphereMesh = LoadFModel(world, "Assets\\Models\\sphere.fmodel");
@@ -659,6 +660,7 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 	gameState->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fimage");
 	gameState->hGraniteTexture = LoadFImage(world, "Assets\\Textures\\granite.fimage");
 	gameState->hSkyBoxTexture = LoadFImage(world, "Assets\\Textures\\skybox_0.fimage");
+	gameState->hFolayfilaSprite = LoadFImage(world, "Assets\\Textures\\folayfila_64_0.fimage");
 
 	//LoadFont(world, "AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, gameState->font);
 	LoadFFont(world, "Assets\\Fonts\\arialbd.ffont", 25.0f, gameState->font);

@@ -776,7 +776,11 @@ internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 internal void PushDrawCall(FRenderWorld* world, DXMatrix worldMatrix, HMesh hMesh, FMaterial material)
 {
 	// Push to right bucket based on the material color's alpha channel.
-	FRenderBucket* bucket = (material.color.a < 1.0f) ? &world->transparentBucket : &world->opaqueBucket;
+	FRenderBucket* bucket = &world->opaqueBucket;
+	if (material.color.a < 1.0f || material.isTransparent)
+	{
+		bucket = &world->transparentBucket;
+	}
 
 	Assert(bucket->count < MAX_DRAW_CALLS);
 	FDrawCall* call = &bucket->calls[bucket->count++];
@@ -1261,6 +1265,23 @@ HSound LoadFSound(FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryA
 
 	ArenaReset(scratch);
 	return handle;
+}
+
+HMesh GetQuad(FRenderWorld* world)
+{
+	HMesh quad = world->meshCount++;
+
+	FTextureVertex verts[] =
+	{
+		{ {-0.5f,  0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f } },
+		{ { 0.5f,  0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f } },
+		{ { 0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 1.0f } },
+		{ {-0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 1.0f } },
+	};
+
+	u32 indices[] = { 0, 1, 2, 0, 2, 3 };
+	UploadMesh(&world->meshes[quad], world->d3d.device, verts, 4, sizeof(FTextureVertex), indices, 6);
+	return quad;
 }
 
 // ────────────────────────────────────────────────────────────────────────

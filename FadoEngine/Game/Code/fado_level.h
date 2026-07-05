@@ -135,6 +135,15 @@ internal HEntity SpawnEntity(FSharedStuff* shared, EEntityType type, HMesh hMesh
     return id;
 }
 
+// Helper that wraps regular SpawnEntity. Used to easily spawn sprite entities.
+internal HEntity SpawnSprite(FSharedStuff* shared, HMesh quad, HTexture hTex, v4 rect = {0.0f, 0.0f, 1.0f, 1.0f}, v4 color = V4One())
+{
+    HEntity handle = SpawnEntity(shared, EntityType_Sprite, quad, hTex, color, false);
+    shared->entities[handle].material.isTransparent = true;
+    shared->entities[handle].spriteRect = rect;
+    return handle;
+}
+
 // Adds an entity to the entity table and sets it up from a loaded FEntityDesc.
 // - No dynamic allocation of any sorts, just setting values to an existing array.
 internal HEntity SpawnEntityFromDesc(FGameState* gameState, FEntityDesc* desc)
@@ -187,6 +196,8 @@ internal void BeginLevel_01(FGameState* gameState)
     CollisionAddCollider(shared->collisionWorld, gameState->sphere2, extents, Collision_Physics);
 
     CollisionAddCollider(shared->collisionWorld, gameState->fire, extents, Collision_Physics);
+
+    CollisionAddCollider(shared->collisionWorld, gameState->folayfila, extents, Collision_Physics);
 }
 
 internal void InitLevel_01(FGameState* gameState)
@@ -222,6 +233,9 @@ internal void InitLevel_01(FGameState* gameState)
     gameState->fire = SpawnEntity(shared, EntityType_Fire, gameState->hCubeMesh, 0, { 1, 0, 0, 1 });
     transforms->positions[gameState->fire] = { 5.0f, 2.0f, 0 };
     transforms->scales[gameState->fire] = { 0.25f, 0.25f, 0.25f };
+
+    gameState->folayfila = SpawnSprite(shared, gameState->hQuadMesh, gameState->hFolayfilaSprite);
+    transforms->positions[gameState->folayfila] = { 5.0f, 5.0f, 0 };
 
     BeginLevel_01(gameState);
 }
@@ -327,6 +341,7 @@ internal void UnloadLevel(FGameState* gameState)
     SetGamePaused(gameState, false);
 
     FadoZeroStruct(gameState->shared->entities);
+    gameState->shared->entitiesCount = 0;
     FadoZeroStruct(gameState->shared->transforms);
     FadoZeroStruct(gameState->shared->uiCommands);
     FadoZeroStruct(gameState->shared->collisionWorld);

@@ -220,7 +220,8 @@ enum EEntityType
 	EntityType_Cube2,
 	EntityType_Sphere1,
 	EntityType_Sphere2,
-	EntityType_Fire
+	EntityType_Fire,
+	EntityType_Sprite,
 };
 
 // Material
@@ -232,15 +233,17 @@ struct FMaterial
 {
 	v4 color;			// Used as the main texture or applied as tint to a texture.
 	HTexture texture;   // WHITE_TEXTURE = no texture (color)
-	b32 isLit;			// Whether the material calculates light or not.
+	b8 isLit;			// Whether the material calculates light or not.
+	b8 isTransparent;	// While we use the alpha channel in the color for transparency, this allows us to transparent blend alpha channels in texture for sprites.
 };
 
 // Main entity struct.
 struct FEntity
 {
 	EEntityType type;
-    HMesh hMesh;
-	FMaterial material;
+    HMesh hMesh;				// INVALID_HANDLE for 2D
+	FMaterial material;			// texture, color, alpha
+	v4 spriteRect;				// UV region, {0,0,1,1} for non-atlas
 };
 
 // ──────────────── Transform ──────────────────
