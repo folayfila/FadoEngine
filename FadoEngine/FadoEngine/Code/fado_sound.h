@@ -49,6 +49,7 @@ struct FSoundBuffer
 // 3D audio instances hold a voice slot index that gets used and updated in a 3D voice pool in the platform layer and played by its own.
 struct FSoundInstance
 {
+    HEntity attachedTo;         // The entity this sound is attached to. INVALID_HANDLE for none. Used for postion update in 3D sounds.
     HSound bufferIndex;         // index into SoundAssetBank.assets
     ESoundCategory category;
     u32 cursor;                 // current playback position (sample index) ONLY 2D
@@ -182,6 +183,7 @@ inline void SoundPlay2D(FSoundManager* manager, HSound bufferIndex, ESoundCatego
     }
 
     FSoundInstance* instance = &bank->instances[instanceSlot];
+    instance->attachedTo = INVALID_HANDLE;
     instance->bufferIndex = bufferIndex;
     instance->category = category;
     instance->cursor = 0;
@@ -195,7 +197,7 @@ inline void SoundPlay2D(FSoundManager* manager, HSound bufferIndex, ESoundCatego
 }
 
 // Starts playing a 3D sound by its handle. Assuming the buffer has been already filled.
-inline i32 SoundPlay3D(FSoundManager* manager, HSound bufferIndex, ESoundCategory category, f32 volume, b8 loop,
+inline i32 SoundPlay3D(FSoundManager* manager, HEntity attachTo, HSound bufferIndex, ESoundCategory category, f32 volume, b8 loop,
     v3 position, f32 minDist, f32 maxDist)
 {
     FSoundAssetBank* bank = manager->assetBank;
@@ -211,6 +213,7 @@ inline i32 SoundPlay3D(FSoundManager* manager, HSound bufferIndex, ESoundCategor
     }
 
     FSoundInstance* instance = &bank->instances[instanceSlot];
+    instance->attachedTo = attachTo;
     instance->bufferIndex = bufferIndex;
     instance->category = category;
     instance->cursor = 0;
@@ -330,13 +333,17 @@ inline void SoundMixInstance(FSoundManager* manager, FSoundInstance* instance, i
     }
 }
 
-inline void Update3DSoundPosition(FSoundAssetBank* assetBank, HSound hInstance, v3 pos)
+inline void Update3DSoundsPositions(FSoundAssetBank* assetBank, FSharedStuff* shared)
 {
-    if (hInstance == INVALID_HANDLE)
+    for (u32 i = 0; i < FMAX_SOUND_INSTANCES; ++i)
     {
-        return;
+        FSoundInstance* inst = &assetBank->instances[i];
+        if (!inst->active || !inst->playing || (inst->attachedTo == INVALID_HANDLE))
+        {
+            continue;
+        }
+        inst->position = shared->transforms->positions[inst->attachedTo];
     }
-    assetBank->instances[hInstance].position = pos;
 }
 
 #endif	// FADO_SOUND_H

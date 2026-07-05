@@ -703,8 +703,7 @@ int WINAPI wWinMain(
 	// Game state
 	FGameState* gameState = ArenaPushType(&engineMemory.permanent, FGameState);
 	gameState->shared = ArenaPushType(&engineMemory.permanent, FSharedStuff);
-	gameState->shared->transforms = ArenaPushType(&engineMemory.permanent, FTransformTable);
-	gameState->shared->entityTable = ArenaPushType(&engineMemory.permanent, FEntityTable);
+	gameState->shared->transforms = ArenaPushType(&engineMemory.permanent, FTransforms);
 	gameState->shared->collisionWorld = ArenaPushType(&engineMemory.permanent, FCollisionWorld);
 	gameState->shared->uiCommands = ArenaPushType(&engineMemory.permanent, FUICommandBucket);
 	gameState->shared->permenantArena = &engineMemory.permanent;
@@ -720,6 +719,7 @@ int WINAPI wWinMain(
 	// Input
 	Win32LoadXInput();
 	FGameInput* input = ArenaPushType(&engineMemory.permanent, FGameInput);
+	gameState->input = input;
 
 	// Sound
 	Win32SoundState win32Sound = *ArenaPushType(&engineMemory.permanent, Win32SoundState);

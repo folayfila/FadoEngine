@@ -55,50 +55,54 @@ internal void HandleGameInput(FGameState* gameState, FGameInput* input, FGameCon
     }
 
     // Rotation
-    f32 sensitivity = 100.0f * dt;
-    if (IsStickHeld(controller->rightStickAverage, Stick_Up))
+    // Allow camera rotation only to Perspective cameras.
+    if (cam->type == Camera_Perspective)
     {
-        gameState->cameraPitch -= sensitivity;
-    }
-    if (IsStickHeld(controller->rightStickAverage, Stick_Down))
-    {
-        gameState->cameraPitch += sensitivity;
-    }
-    if (IsStickHeld(controller->rightStickAverage, Stick_Right))
-    {
-        gameState->cameraYaw += sensitivity;
-    }
-    if (IsStickHeld(controller->rightStickAverage, Stick_Left))
-    {
-        gameState->cameraYaw -= sensitivity;
-    }
-    gameState->cameraPitch = Clampf32(gameState->cameraPitch, -89.0f, 89.0f);
-    if ((gameState->cameraPitch != 0.0f) || (gameState->cameraYaw != 0.0f))
-    {
-        SetRotation(shared->transforms, shared->camera.handle,
-            { gameState->cameraPitch, gameState->cameraYaw, 0 });
-    }
-
-    // Mouse Rotation
-    if ((input->mouse.deltaX != 0.0f) || (input->mouse.deltaY != 0.0f))
-    {
-        // Mouse deltaY maps to pitch and deltaX maps to yaw.
-        // The sensitivity value is much smaller than the controller one because mouse deltas are in pixels, not a -1 to 1 range.
-        f32 mouseSensitivity = 0.1f;
-        f32 mouseYaw = input->mouse.deltaX * mouseSensitivity;
-        f32 mousePitch = input->mouse.deltaY * mouseSensitivity;
-
-        // Clamp to prevent gimbal lock at the poles. When we pitch up or down past 90 degrees, 
-        // the camera flips because there's no restriction on how far you can pitch.
-            gameState->cameraPitch += Clampf32(mousePitch, -89.0f, 89.0f);
-        gameState->cameraYaw += mouseYaw;
-
-        // We rotate with mouse only if the mouse right-click is down.
-        if ((mouseYaw != 0 || mousePitch != 0) && (input->mouse.isRotating))
+        f32 sensitivity = 100.0f * dt;
+        if (IsStickHeld(controller->rightStickAverage, Stick_Up))
         {
-            // Rebuild quat from the two angles.
+            gameState->cameraPitch -= sensitivity;
+        }
+        if (IsStickHeld(controller->rightStickAverage, Stick_Down))
+        {
+            gameState->cameraPitch += sensitivity;
+        }
+        if (IsStickHeld(controller->rightStickAverage, Stick_Right))
+        {
+            gameState->cameraYaw += sensitivity;
+        }
+        if (IsStickHeld(controller->rightStickAverage, Stick_Left))
+        {
+            gameState->cameraYaw -= sensitivity;
+        }
+        gameState->cameraPitch = Clampf32(gameState->cameraPitch, -89.0f, 89.0f);
+        if ((gameState->cameraPitch != 0.0f) || (gameState->cameraYaw != 0.0f))
+        {
             SetRotation(shared->transforms, shared->camera.handle,
                 { gameState->cameraPitch, gameState->cameraYaw, 0 });
+        }
+
+        // Mouse Rotation
+        if ((input->mouse.deltaX != 0.0f) || (input->mouse.deltaY != 0.0f))
+        {
+            // Mouse deltaY maps to pitch and deltaX maps to yaw.
+            // The sensitivity value is much smaller than the controller one because mouse deltas are in pixels, not a -1 to 1 range.
+            f32 mouseSensitivity = 0.1f;
+            f32 mouseYaw = input->mouse.deltaX * mouseSensitivity;
+            f32 mousePitch = input->mouse.deltaY * mouseSensitivity;
+
+            // Clamp to prevent gimbal lock at the poles. When we pitch up or down past 90 degrees, 
+            // the camera flips because there's no restriction on how far you can pitch.
+            gameState->cameraPitch += Clampf32(mousePitch, -89.0f, 89.0f);
+            gameState->cameraYaw += mouseYaw;
+
+            // We rotate with mouse only if the mouse right-click is down.
+            if ((mouseYaw != 0 || mousePitch != 0) && (input->mouse.isRotating))
+            {
+                // Rebuild quat from the two angles.
+                SetRotation(shared->transforms, shared->camera.handle,
+                    { gameState->cameraPitch, gameState->cameraYaw, 0 });
+            }
         }
     }
 }
@@ -116,9 +120,7 @@ void HandleInput(FGameState* gameState, FGameInput* input)
         // Pause/Unpasue
         if (Pressed(&controller->start))
         {
-            gameState->paused = !gameState->paused;
-
-            input->mode = gameState->paused ? Input_UI : Input_Game;
+            SetGamePaused(gameState, !gameState->paused);
         }
 
         if (input->mode & Input_Game)

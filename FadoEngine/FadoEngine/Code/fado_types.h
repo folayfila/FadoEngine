@@ -187,33 +187,26 @@ struct mat4
 };
 
 // ─────────────────────────────────────────────
-// ──────────────── Transform ──────────────────
-
-typedef u32 HTransform;
-
-#define FMAX_TRANSFORMS 512
-#define INVALID_HANDLE 0xFFFFFFFF
-#define WHITE_TEXTURE 0
-
-struct FTransformTable
-{
-    v3 positions[FMAX_TRANSFORMS];
-    v3 scales[FMAX_TRANSFORMS];
-    quat rotations[FMAX_TRANSFORMS];
-    u32 count;
-};
-
-// ─────────────────────────────────────────────
 // ──────────────── Entities ──────────────────
 
-typedef u32 HEntity;
-typedef u32 HMesh;
-typedef u32 HTexture;
-typedef u32 HSound;
+// ────────────────
+#define INVALID_HANDLE 0xFFFFFFFF
 
 #define FMAX_ENTITIES 512
+
+// Handles
+typedef u32 HEntity;
+
+typedef u32 HMesh;
 #define FMAX_MESHES 265
+
+typedef u32 HTexture;
 #define FMAX_TEXTURES 265
+#define WHITE_TEXTURE 0
+
+typedef u32 HSound;
+// ────────────────
+
 
 // For now, this is literally all kinds of entities we have.
 // TODO: Update the system once we have a working version of save\load.
@@ -238,36 +231,26 @@ enum EEntityType
 struct FMaterial
 {
 	v4 color;			// Used as the main texture or applied as tint to a texture.
-	HTexture texture;   // INVALID_HANDLE = no texture (color)
+	HTexture texture;   // WHITE_TEXTURE = no texture (color)
 	b32 isLit;			// Whether the material calculates light or not.
 };
-
 
 // Main entity struct.
 struct FEntity
 {
 	EEntityType type;
-    HTransform hTransform;
     HMesh hMesh;
 	FMaterial material;
 };
 
-struct FEntityTable
+// ──────────────── Transform ──────────────────
+// Transfomrs use the same handle as the entity. An entity most likely has a transform anyway.
+struct FTransforms
 {
-    FEntity entities[FMAX_ENTITIES];
-    u32 count;
+	v3 positions[FMAX_ENTITIES];
+	v3 scales[FMAX_ENTITIES];
+	quat rotations[FMAX_ENTITIES];
 };
-
-// Helpers
-ForceInline FEntity* GetEntity(FEntityTable* entityTable, HEntity hEntity)
-{
-	return &entityTable->entities[hEntity];
-}
-
-ForceInline HTransform GetTransformHandle(FEntityTable* entityTable, HEntity hEntity)
-{
-	return entityTable->entities[hEntity].hTransform;
-}
 
 // ─────────────────────────────────────────────
 // ──────────────── Arena ──────────────────────
@@ -405,14 +388,15 @@ struct FViewPort
 };
 
 // Containes data that both the renderer and the game use/access.
-// - Note: Camera does not include camera view matrix.
 struct FSharedStuff
 {
 	FCamera camera;
 	FViewPort viewport;
 
-	FEntityTable* entityTable;
-	FTransformTable* transforms;
+	FEntity entities[FMAX_ENTITIES];
+	FTransforms* transforms;
+	u32 entitiesCount;
+
 	struct FCollisionWorld* collisionWorld;
 	struct FUICommandBucket* uiCommands;
 
@@ -428,17 +412,17 @@ struct FSharedStuff
 
 ForceInline v3 GetEntityPosition(FSharedStuff* shared, HEntity hEntity)
 {
-	return shared->transforms->positions[shared->entityTable->entities[hEntity].hTransform];
+	return shared->transforms->positions[hEntity];
 }
 
 ForceInline quat GetEntityRotation(FSharedStuff* shared, HEntity hEntity)
 {
-	return shared->transforms->rotations[shared->entityTable->entities[hEntity].hTransform];
+	return shared->transforms->rotations[hEntity];
 }
 
 ForceInline v3 GetEntityScale(FSharedStuff* shared, HEntity hEntity)
 {
-	return shared->transforms->scales[shared->entityTable->entities[hEntity].hTransform];
+	return shared->transforms->scales[hEntity];
 }
 
 // ─────────────────────────────────────────────

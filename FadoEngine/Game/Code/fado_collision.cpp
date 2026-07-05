@@ -201,15 +201,15 @@ internal void GridInsert(FUniformGrid* grid, i32 cellX, i32 cellZ, u32 colliderI
 // Always builds an AABB that is used for broad faze,
 // and builds an OBB if the rotation isn't identity and the collision is solid,
 // otherwise use AABB also for the narrow faze.
-internal void CollisionBuildAABBsAndOBBs(FCollisionWorld* collisionWorld, FTransformTable* transforms)
+internal void CollisionBuildAABBsAndOBBs(FCollisionWorld* collisionWorld, FTransforms* transforms)
 {
     for (u32 i = 0; i < collisionWorld->colliders.count; ++i)
     {
         FCollider* collider = &collisionWorld->colliders.colliders[i];
 
-        v3 pos = transforms->positions[collider->hTransform];
-        v3 scale = transforms->scales[collider->hTransform];
-        quat rot = transforms->rotations[collider->hTransform];
+        v3 pos = transforms->positions[collider->entityID];
+        v3 scale = transforms->scales[collider->entityID];
+        quat rot = transforms->rotations[collider->entityID];
 
         // Side-scroller: flatten Z so everything sits on XY plane
         if (collider->flags & ECollisionFlags::Collision_Is2D)
@@ -385,8 +385,8 @@ internal void CollisionNarrowPhase(FCollisionWorld* collisionWorld)
         if (collisionWorld->contactCount < MAX_CONTACTS)
         {
             FContactInfo* contact = &collisionWorld->contacts[collisionWorld->contactCount++];
-            contact->entityA = ca->hEntity;
-            contact->entityB = cb->hEntity;
+            contact->entityA = ca->entityID;
+            contact->entityB = cb->entityID;
             contact->normal = normal;
             contact->penetration = penetration;
             contact->isTrigger = (ca->flags & ECollisionFlags::Collision_Trigger) ||
@@ -428,7 +428,7 @@ internal f32 CollisionMass(ECollisionFlags flags)
     return mass;
 }
 
-void CollisionResolve(FCollisionWorld* collisionWorld, FTransformTable* transforms)
+void CollisionResolve(FCollisionWorld* collisionWorld, FTransforms* transforms)
 {
     for (u32 ci = 0; ci < collisionWorld->contactCount; ++ci)
     {
@@ -442,11 +442,11 @@ void CollisionResolve(FCollisionWorld* collisionWorld, FTransformTable* transfor
         FCollider* cb = nullptr;
         for (u32 i = 0; i < collisionWorld->colliders.count; ++i)
         {
-            if (collisionWorld->colliders.colliders[i].hEntity == contact->entityA)
+            if (collisionWorld->colliders.colliders[i].entityID == contact->entityA)
             {
                 ca = &collisionWorld->colliders.colliders[i];
             }
-            if (collisionWorld->colliders.colliders[i].hEntity == contact->entityB)
+            if (collisionWorld->colliders.colliders[i].entityID == contact->entityB)
             {
                 cb = &collisionWorld->colliders.colliders[i];
             }
@@ -495,15 +495,15 @@ void CollisionResolve(FCollisionWorld* collisionWorld, FTransformTable* transfor
 
         if (shareA > 0.0f)
         {
-            transforms->positions[ca->hTransform].x -= deltaA.x;
-            transforms->positions[ca->hTransform].y -= deltaA.y;
-            transforms->positions[ca->hTransform].z -= deltaA.z;
+            transforms->positions[ca->entityID].x -= deltaA.x;
+            transforms->positions[ca->entityID].y -= deltaA.y;
+            transforms->positions[ca->entityID].z -= deltaA.z;
         }
         if (shareB > 0.0f)
         {
-            transforms->positions[cb->hTransform].x += deltaB.x;
-            transforms->positions[cb->hTransform].y += deltaB.y;
-            transforms->positions[cb->hTransform].z += deltaB.z;
+            transforms->positions[cb->entityID].x += deltaB.x;
+            transforms->positions[cb->entityID].y += deltaB.y;
+            transforms->positions[cb->entityID].z += deltaB.z;
         }
     }
 }
@@ -527,21 +527,20 @@ void CollisionInitialize(FCollisionWorld* collisionWorld)
     }
 }
 
-HCollider CollisionAddCollider(FCollisionWorld* collisionWorld, HEntity hEntity, HTransform hTransform,
+HCollider CollisionAddCollider(FCollisionWorld* collisionWorld, HEntity entityID,
     v3 halfExtents, ECollisionFlags flags)
 {
     Assert(collisionWorld->colliders.count < MAX_COLLIDERS);
     u32 handle = collisionWorld->colliders.count++;
     FCollider* c = &collisionWorld->colliders.colliders[handle];
-    c->hEntity = hEntity;
-    c->hTransform = hTransform;
+    c->entityID = entityID;
     c->halfExtents = halfExtents;
     c->flags = flags;
     c->worldAABB = {};
     return handle;
 }
 
-void CollisionUpdate(FCollisionWorld* collisionWorld, FTransformTable* transforms, FMemoryArena* scracthArena)
+void CollisionUpdate(FCollisionWorld* collisionWorld, FTransforms* transforms, FMemoryArena* scracthArena)
 {
     CollisionBuildAABBsAndOBBs(collisionWorld, transforms);
     CollisionBroadPhase(collisionWorld, scracthArena);

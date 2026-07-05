@@ -82,8 +82,7 @@ struct FRay
 // ─────────────────────────────────────────────
 struct FCollider
 {
-	HEntity hEntity;		// owning entity
-	HTransform hTransform;	// cached from entityTable
+	HEntity entityID;		// owning entity
 	v3 halfExtents;			// LOCAL half-size; set once on spawn (scaled by transform each frame)
 	ECollisionFlags flags;
 	FAABB worldAABB;		// Rebuilt every frame by CollisionBuildAABBs()
@@ -169,7 +168,7 @@ void CollisionInitialize(FCollisionWorld* collisionWorld);
 // Register an entity with the collision system.
 // halfExtents — LOCAL half-size in each axis.
 // Pass EColliderFlags::Is2D for top-down / platformer games (Y extent still used for 3-D height checks).
-HCollider CollisionAddCollider(FCollisionWorld* collisionWorld, HEntity hEntity, HTransform hTransform,
+HCollider CollisionAddCollider(FCollisionWorld* collisionWorld, HEntity entityID,
 	v3 halfExtents, ECollisionFlags flags = Collision_Ignore);
 
 // Main per-frame call — runs all three stages:
@@ -177,11 +176,11 @@ HCollider CollisionAddCollider(FCollisionWorld* collisionWorld, HEntity hEntity,
 //   2. BroadPhase   (populate grid, emit candidate pairs)
 //   3. NarrowPhase  (AABB on non rotating objects, OBB on rotating ones)
 // Results sit in collisionWorld->contacts[0..contactCount].
-void CollisionUpdate(FCollisionWorld* collisionWorld, FTransformTable* transforms, FMemoryArena* scracthArena);
+void CollisionUpdate(FCollisionWorld* collisionWorld, FTransforms* transforms, FMemoryArena* scracthArena);
 
 // Apply MTV (minimum translation vector) to resolve solid colliders.
 // Called after CollisionUpdate, before rendering.
-void CollisionResolve(FCollisionWorld* collisionWorld, FTransformTable* transforms);
+void CollisionResolve(FCollisionWorld* collisionWorld, FTransforms* transforms);
 
 // Checks if contactInfo->entityA and contactInfo->entityB are the same 2 entity handles passed.
 b8 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEntityB);

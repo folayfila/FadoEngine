@@ -116,11 +116,10 @@ internal void AssignGameStateEntityFromType(FGameState* gameState, EEntityType t
 // - No dynamic allocation of any sorts, just setting values to an existing array.
 internal HEntity SpawnEntity(FSharedStuff* shared, EEntityType type, HMesh hMesh, HTexture hTex = WHITE_TEXTURE, v4 color = V4One(), b8 isLit = true)
 {
-    FEntityTable* entityTable = shared->entityTable;
-    FTransformTable* transforms = shared->transforms;
+    FTransforms* transforms = shared->transforms;
 
-    HEntity handle = entityTable->count++;
-    FEntity* e = &entityTable->entities[handle];
+    HEntity id = shared->entitiesCount++;
+    FEntity* e = &shared->entities[id];
     e->type = type;
     e->hMesh = hMesh;
 
@@ -130,29 +129,27 @@ internal HEntity SpawnEntity(FSharedStuff* shared, EEntityType type, HMesh hMesh
     mat.isLit = isLit;
     e->material = mat;
 
-    e->hTransform = transforms->count++;
-    transforms->scales[e->hTransform] = V3One();
-    transforms->rotations[e->hTransform] = QuatIdentity();
-    return handle;
+    transforms->positions[id] = {};
+    transforms->scales[id] = V3One();
+    transforms->rotations[id] = QuatIdentity();
+    return id;
 }
 
 // Adds an entity to the entity table and sets it up from a loaded FEntityDesc.
 // - No dynamic allocation of any sorts, just setting values to an existing array.
 internal HEntity SpawnEntityFromDesc(FGameState* gameState, FEntityDesc* desc)
 {
-    FEntityTable* entityTable = gameState->shared->entityTable;
-    FTransformTable* transforms = gameState->shared->transforms;
+    FTransforms* transforms = gameState->shared->transforms;
 
-    HEntity handle = entityTable->count++;
-    FEntity* e = &entityTable->entities[handle];
+    HEntity id = gameState->shared->entitiesCount++;
+    FEntity* e = &gameState->shared->entities[id];
     e->type = desc->type;
     e->hMesh = desc->hMesh;
     e->material = desc->material;
-    e->hTransform = transforms->count++;
-    transforms->positions[e->hTransform] = desc->pos;
-    transforms->scales[e->hTransform] = desc->scale;
-    transforms->rotations[e->hTransform] = desc->rot;
-    return handle;
+    transforms->positions[id] = desc->pos;
+    transforms->scales[id] = desc->scale;
+    transforms->rotations[id] = desc->rot;
+    return id;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -164,39 +161,38 @@ internal HEntity SpawnEntityFromDesc(FGameState* gameState, FEntityDesc* desc)
 internal void BeginLevel_01(FGameState* gameState)
 {
     FSharedStuff* shared = gameState->shared;
-    FTransformTable* transforms = shared->transforms;
-    FEntityTable* entityTable = shared->entityTable;
+    FTransforms* transforms = shared->transforms;
+
+    shared->camera.type = Camera_Perspective;
 
     // Sound 
-    gameState->hFireSFXInstance = SoundPlay3D(gameState->soundManager, gameState->hFireSFX, ESoundCategory::Sound_SFX, 1.0f, true, transforms->positions[GetTransformHandle(entityTable, gameState->fire)], 0.0f, 5.0f);
+    gameState->hFireSFXInstance = SoundPlay3D(gameState->soundManager, gameState->fire, gameState->hFireSFX,
+        ESoundCategory::Sound_SFX, 1.0f, true, transforms->positions[gameState->fire], 0.0f, 5.0f);
     SoundPlay2D(gameState->soundManager, gameState->hMusic, ESoundCategory::Sound_Music, 0.5f, true);
 
     // Collision
     CollisionInitialize(shared->collisionWorld);
     v3 extents = { 1.0f, 1.0f, 1.0f };
 
-    CollisionAddCollider(shared->collisionWorld, shared->camera.handle,
-        entityTable->entities[shared->camera.handle].hTransform, { 1.0f, 1.0f, 1.0f }, ECollisionFlags::Collision_Physics);
+    CollisionAddCollider(shared->collisionWorld, shared->camera.handle, { 1.0f, 1.0f, 1.0f }, Collision_Physics);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->infinitePlane,
-        entityTable->entities[gameState->infinitePlane].hTransform, { 1.0f, 0.01f, 1.0f }, ECollisionFlags::Collision_Static);
+    CollisionAddCollider(shared->collisionWorld, gameState->infinitePlane, { 1.0f, 0.01f, 1.0f }, Collision_Static);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->cube1, GetTransformHandle(entityTable, gameState->cube1), extents, ECollisionFlags::Collision_Kinematic);
+    CollisionAddCollider(shared->collisionWorld, gameState->cube1, extents, Collision_Kinematic);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->cube2, GetTransformHandle(entityTable, gameState->cube2), extents, ECollisionFlags::Collision_Static);
+    CollisionAddCollider(shared->collisionWorld, gameState->cube2, extents, Collision_Static);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere1, GetTransformHandle(entityTable, gameState->sphere1), extents, ECollisionFlags::Collision_Dynamic);
+    CollisionAddCollider(shared->collisionWorld, gameState->sphere1, extents, Collision_Dynamic);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere2, GetTransformHandle(entityTable, gameState->sphere2), extents, ECollisionFlags::Collision_Physics);
+    CollisionAddCollider(shared->collisionWorld, gameState->sphere2, extents, Collision_Physics);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->fire, GetTransformHandle(entityTable, gameState->fire), extents, ECollisionFlags::Collision_Physics);
+    CollisionAddCollider(shared->collisionWorld, gameState->fire, extents, Collision_Physics);
 }
 
 internal void InitLevel_01(FGameState* gameState)
 {
     FSharedStuff* shared = gameState->shared;
-    FTransformTable* transforms = shared->transforms;
-    FEntityTable* entityTable = shared->entityTable;
+    FTransforms* transforms = shared->transforms;
 
     shared->camera.handle = SpawnEntity(shared, EntityType_Camera, INVALID_HANDLE, INVALID_HANDLE);
     shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
@@ -224,9 +220,8 @@ internal void InitLevel_01(FGameState* gameState)
     transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
 
     gameState->fire = SpawnEntity(shared, EntityType_Fire, gameState->hCubeMesh, 0, { 1, 0, 0, 1 });
-    HTransform hFireTransform = GetTransformHandle(entityTable, gameState->fire);
-    transforms->positions[hFireTransform] = { 5.0f, 2.0f, 0 };
-    transforms->scales[hFireTransform] = { 0.25f, 0.25f, 0.25f };
+    transforms->positions[gameState->fire] = { 5.0f, 2.0f, 0 };
+    transforms->scales[gameState->fire] = { 0.25f, 0.25f, 0.25f };
 
     BeginLevel_01(gameState);
 }
@@ -237,53 +232,55 @@ internal void InitLevel_01(FGameState* gameState)
 internal void BeginLevel_02(FGameState* gameState)
 {
     FSharedStuff* shared = gameState->shared;
-    FTransformTable* transforms = shared->transforms;
-    FEntityTable* entityTable = shared->entityTable;
+    FTransforms* transforms = shared->transforms;
+
+    gameState->shared->camera.type = Camera_Orthographic;
+    shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
 
     // Sound 
-    gameState->hFireSFXInstance = SoundPlay3D(gameState->soundManager, gameState->hFireSFX, ESoundCategory::Sound_SFX, 1.0f, true, transforms->positions[GetTransformHandle(entityTable, gameState->fire)], 0.0f, 5.0f);
+    gameState->hFireSFXInstance = SoundPlay3D(gameState->soundManager, gameState->fire, gameState->hFireSFX,
+        ESoundCategory::Sound_SFX, 1.0f, true, transforms->positions[gameState->fire], 0.0f, 5.0f);
     SoundPlay2D(gameState->soundManager, gameState->hMusic, ESoundCategory::Sound_Music, 0.5f, true);
 
     // Collision
     CollisionInitialize(shared->collisionWorld);
     v3 extents = { 1.0f, 1.0f, 1.0f };
 
-    CollisionAddCollider(shared->collisionWorld, shared->camera.handle,
-        entityTable->entities[shared->camera.handle].hTransform, { 1.0f, 1.0f, 1.0f }, ECollisionFlags::Collision_Physics);
+    CollisionAddCollider(shared->collisionWorld, shared->camera.handle, { 1.0f, 1.0f, 1.0f }, Collision_Physics);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->infinitePlane,
-        entityTable->entities[gameState->infinitePlane].hTransform, { 1.0f, 0.01f, 1.0f }, ECollisionFlags::Collision_Static);
+    CollisionAddCollider(shared->collisionWorld, gameState->infinitePlane, { 1.0f, 0.01f, 1.0f }, Collision_Static);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->cube1, GetTransformHandle(entityTable, gameState->cube1), extents, ECollisionFlags::Collision_Kinematic);
+    CollisionAddCollider(shared->collisionWorld, gameState->cube1, extents, Collision_Kinematic);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->cube2, GetTransformHandle(entityTable, gameState->cube2), extents, ECollisionFlags::Collision_Static);
+    CollisionAddCollider(shared->collisionWorld, gameState->cube2, extents, Collision_Static);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere1, GetTransformHandle(entityTable, gameState->sphere1), extents, ECollisionFlags::Collision_Dynamic);
+    CollisionAddCollider(shared->collisionWorld, gameState->sphere1, extents, Collision_Dynamic);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere2, GetTransformHandle(entityTable, gameState->sphere2), extents, ECollisionFlags::Collision_Physics);
+    CollisionAddCollider(shared->collisionWorld, gameState->sphere2, extents, Collision_Physics);
 
-    CollisionAddCollider(shared->collisionWorld, gameState->fire, GetTransformHandle(entityTable, gameState->fire), extents, ECollisionFlags::Collision_Physics);
+    CollisionAddCollider(shared->collisionWorld, gameState->fire, extents, Collision_Physics);
 }
 
 internal void InitLevel_02(FGameState* gameState)
 {
     FSharedStuff* shared = gameState->shared;
-    FTransformTable* transforms = shared->transforms;
-    FEntityTable* entityTable = shared->entityTable;
+    FTransforms* transforms = shared->transforms;
 
     shared->camera.handle = SpawnEntity(shared, EntityType_Camera, INVALID_HANDLE, INVALID_HANDLE);
-    shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
 
     // infinite plane
     gameState->infinitePlane = SpawnEntity(shared, EntityType_Plane, gameState->hPlaneMesh, gameState->hGridTexture);
+    transforms->positions[gameState->skyBox].x = 100.0f;
     transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f };
 
-    // sky box
-    gameState->skyBox = SpawnEntity(shared, EntityType_Skybox, gameState->hSkyBoxMesh, gameState->hSkyBoxTexture, V4One(), false);
-    transforms->scales[gameState->skyBox] = { 500.0f, 500.0f, 500.0f };
+    // Background - just a big blue plane
+    gameState->skyBox = SpawnEntity(shared, EntityType_Skybox, gameState->hPlaneMesh, WHITE_TEXTURE, { 0, 0.5f, 0.9f, 1 }, false);
+    transforms->scales[gameState->skyBox] = { 1000.0f, 0.1f, 1000.0f };
+    transforms->positions[gameState->skyBox].z = 200.0f;
+    SetRotation(transforms, gameState->skyBox, { -90, 0, 0 });
 
     // Other entities
-    gameState->cube1 = SpawnEntity(shared, EntityType_Cube1, gameState->hCubeMesh, 0, { 0.38f, 0.81f, 1, 1 });
+    gameState->cube1 = SpawnEntity(shared, EntityType_Cube1, gameState->hCubeMesh, gameState->hMosaicTexture, { 0.38f, 0.81f, 1, 0.75f });
     transforms->positions[gameState->cube1] = { -3.5f, 5.0f, 0 };
     transforms->scales[gameState->cube1] = { 0.5f, 0.5f, 0.5f };
 
@@ -291,16 +288,15 @@ internal void InitLevel_02(FGameState* gameState)
     transforms->positions[gameState->cube2] = { 1.5f, 5.0f, 0 };
     transforms->scales[gameState->cube2] = { 0.5f, 0.5f, 1.0f };
 
-    gameState->sphere1 = SpawnEntity(shared, EntityType_Sphere1, gameState->hSphereMesh, 0, { 1, 0.5f, 0.875f, 1 });
+    gameState->sphere1 = SpawnEntity(shared, EntityType_Sphere1, gameState->hSphereMesh, 0, { 1, 0.5f, 0.875f, 1.5f });
     transforms->positions[gameState->sphere1] = { -1.5f, 2.0f, 0 };
 
     gameState->sphere2 = SpawnEntity(shared, EntityType_Sphere2, gameState->hSphereMesh, gameState->hGraniteTexture);
     transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
 
     gameState->fire = SpawnEntity(shared, EntityType_Fire, gameState->hCubeMesh, gameState->hMosaicTexture);
-    HTransform hFireTransform = GetTransformHandle(entityTable, gameState->fire);
-    transforms->positions[hFireTransform] = { -5.0f, 2.0f, 0 };
-    transforms->scales[hFireTransform] = { 0.25f, 0.25f, 0.25f };
+    transforms->positions[gameState->fire] = { -5.0f, 2.0f, 0 };
+    transforms->scales[gameState->fire] = { 0.25f, 0.25f, 0.25f };
 
     BeginLevel_02(gameState);
 }
@@ -328,7 +324,9 @@ internal void BeginLevelById(FGameState* gameState, ELevel level)
 
 internal void UnloadLevel(FGameState* gameState)
 {
-    FadoZeroStruct(gameState->shared->entityTable);
+    SetGamePaused(gameState, false);
+
+    FadoZeroStruct(gameState->shared->entities);
     FadoZeroStruct(gameState->shared->transforms);
     FadoZeroStruct(gameState->shared->uiCommands);
     FadoZeroStruct(gameState->shared->collisionWorld);
@@ -364,6 +362,9 @@ inline b8 SaveCurrentLevel(FGameState* gameState)
         return false;
     }
 
+    FEntity* entities = gameState->shared->entities;
+    u32 entitiesCount = gameState->shared->entitiesCount;
+
     FAssetHeader assetHeader = {};
     assetHeader.magic = FASSET_MAGIC;
     assetHeader.assetType = FASSET_TYPE_LEVEL;
@@ -371,26 +372,24 @@ inline b8 SaveCurrentLevel(FGameState* gameState)
     assetHeader.reserved = 0;
     fwrite(&assetHeader, sizeof(assetHeader), 1, file);
 
-    FEntityTable* entityTable = gameState->shared->entityTable;
-
     FLevelHeader levelHeader = {};
     levelHeader.index = (u32)gameState->currentLevel;
-    levelHeader.entityCount = entityTable->count;
+    levelHeader.entityCount = entitiesCount;
     levelHeader.flags = 0;
     fwrite(&levelHeader, sizeof(FLevelHeader), 1, file);
 
     // TODO: Add EntityFlags of some sorts so we can only save those that need saving
-    FTransformTable* transformTable = gameState->shared->transforms;
+    FTransforms* transformTable = gameState->shared->transforms;
     FEntityDesc entityDesc;
-    for (u32 i = 0; i < entityTable->count; ++i)
+    for (u32 i = 0; i < entitiesCount; ++i)
     {
         entityDesc = {};
-        entityDesc.type = entityTable->entities[i].type;
+        entityDesc.type = entities[i].type;
         entityDesc.pos = GetEntityPosition(gameState->shared, i);
         entityDesc.rot = GetEntityRotation(gameState->shared, i);
         entityDesc.scale = GetEntityScale(gameState->shared, i);
-        entityDesc.hMesh = entityTable->entities[i].hMesh;
-        entityDesc.material = entityTable->entities[i].material;
+        entityDesc.hMesh = entities[i].hMesh;
+        entityDesc.material = entities[i].material;
         entityDesc.reserved = 0;
         fwrite(&entityDesc, sizeof(FEntityDesc), 1, file);
     }

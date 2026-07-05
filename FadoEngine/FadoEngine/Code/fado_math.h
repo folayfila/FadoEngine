@@ -777,14 +777,14 @@ inline v3 QuatToEuler(quat q)
 
 // Set an absolute rotation on a transform slot (replaces current rotation).
 // rot = euler angles in degrees {pitch, yaw, roll}
-inline void SetRotation(FTransformTable* transforms, HTransform handle, v3 eulerDegrees)
+inline void SetRotation(FTransforms* transforms, HEntity handle, v3 eulerDegrees)
 {
 	transforms->rotations[handle] = QuatFromEuler(eulerDegrees);
 }
 
 // Apply a DELTA rotation on top of the current rotation.
 // rot = euler angles in degrees {pitchDelta, yawDelta, rollDelta}
-inline void Rotate(FTransformTable* transforms, HTransform handle, v3 eulerDeltaDegrees)
+inline void Rotate(FTransforms* transforms, HEntity handle, v3 eulerDeltaDegrees)
 {
 	quat delta = QuatFromEuler(eulerDeltaDegrees);
 	quat* current = &transforms->rotations[handle];

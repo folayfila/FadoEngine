@@ -988,19 +988,19 @@ internal void RenderCamera(FRenderWorld* world)
 }
 
 // Returns a DXMatrix by building it from the Entity's transform.
-internal DXMatrix BuildEntityWorldMatrix(HEntity hEntity, FSharedStuff* shared)
+internal DXMatrix BuildEntityWorldMatrix(HEntity entityID, FSharedStuff* shared)
 {
-	FEntity* entity = &shared->entityTable->entities[hEntity];
-	FTransformTable* transforms = shared->transforms;
+	FEntity* entity = &shared->entities[entityID];
+	FTransforms* transforms = shared->transforms;
 
-	v3 scale = transforms->scales[entity->hTransform];
+	v3 scale = transforms->scales[entityID];
 	DXMatrix scaleMatrix = DirectX::XMMatrixScaling(scale.x, scale.y, scale.z);
 
-	quat rot = transforms->rotations[entity->hTransform];
+	quat rot = transforms->rotations[entityID];
 	DirectX::XMVECTOR quatVector = DirectX::XMVectorSet(rot.x, rot.y, rot.z, rot.w);
 	DXMatrix rotMatrix = DirectX::XMMatrixRotationQuaternion(quatVector);
 
-	v3 pos = transforms->positions[entity->hTransform];
+	v3 pos = transforms->positions[entityID];
 	DXMatrix transMatrix = DirectX::XMMatrixTranslation(pos.x, pos.y, pos.z);
 
 	DXMatrix resultMatrix = DirectX::XMMatrixMultiply(scaleMatrix, rotMatrix);
@@ -1307,10 +1307,9 @@ void Render(FRenderWorld* world)
 
 	// Draw all entites
 	// TODO: draw only those that need to be drawn (in view).
-	FEntityTable* entityTable = world->shared->entityTable;
-	for (u32 i = 0; i < world->shared->entityTable->count; ++i)
+	for (u32 i = 0; i < world->shared->entitiesCount; ++i)
 	{
-		FEntity* e = &entityTable->entities[i];
+		FEntity* e = &world->shared->entities[i];
 		if(e->hMesh == INVALID_HANDLE)
 		{
 			continue;
@@ -1496,9 +1495,8 @@ internal void ShowDebugGui(FRenderWorld* world)
 {
 	ImGui::Begin("Inspector");
 
-	FEntity* selected = GetEntity(world->shared->entityTable, world->shared->selectedEntity);
-	HTransform hTransform = selected->hTransform;
-	FTransformTable* transforms = world->shared->transforms;
+	u32 selected =world->shared->selectedEntity;
+	FTransforms* transforms = world->shared->transforms;
 
 	c8 label[64];
 
@@ -1527,21 +1525,21 @@ internal void ShowDebugGui(FRenderWorld* world)
 	}
 
 	// Selected Entity
-	snprintf(label, sizeof(label), "Selected entity Transform_%d", hTransform);
+	snprintf(label, sizeof(label), "Selected entity Transform_%d", selected);
 	if (ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		snprintf(label, sizeof(label), "Position_%d", hTransform);
-		ImGui::DragFloat3(label, &transforms->positions[hTransform].x, 0.1f);
+		snprintf(label, sizeof(label), "Position_%d", selected);
+		ImGui::DragFloat3(label, &transforms->positions[selected].x, 0.1f);
 
-		snprintf(label, sizeof(label), "Rotation_%d", hTransform);
-		v3 rot = QuatToEuler(transforms->rotations[hTransform]);
+		snprintf(label, sizeof(label), "Rotation_%d", selected);
+		v3 rot = QuatToEuler(transforms->rotations[selected]);
 		if (ImGui::DragFloat3(label, &rot.x, 0.1f))
 		{
-			transforms->rotations[hTransform] = QuatFromEuler(rot);
+			transforms->rotations[selected] = QuatFromEuler(rot);
 		}
 
-		snprintf(label, sizeof(label), "Scale_%d", hTransform);
-		ImGui::DragFloat3(label, &transforms->scales[hTransform].x, 0.1f);
+		snprintf(label, sizeof(label), "Scale_%d", selected);
+		ImGui::DragFloat3(label, &transforms->scales[selected].x, 0.1f);
 	}
 	ImGui::End();
 }
@@ -1626,10 +1624,9 @@ void DebugRender(FRenderWorld* world)
 	// Generate the view matrix based on the camera's position.
 	RenderCamera(world);
 
-	FEntityTable* entityTable = world->shared->entityTable;
-	for (u32 i = 0; i < entityTable->count; ++i)
+	for (u32 i = 0; i < world->shared->entitiesCount; ++i)
 	{
-		FEntity* e = &entityTable->entities[i];
+		FEntity* e = &world->shared->entities[i];
 		if (e->hMesh == INVALID_HANDLE)
 		{
 			continue;

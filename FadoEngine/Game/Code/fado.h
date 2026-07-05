@@ -14,6 +14,9 @@
     This wasy, technically we can just drop game files and have a game run out of the box.
 */
 
+// -- Forwards --
+struct FGameInput;
+
 // ──────────────────────────────────────────────────────────────────────────────────────────
 struct FGameState
 {
@@ -22,6 +25,7 @@ struct FGameState
     b32 initialized;
     
     FSharedStuff* shared;
+    FGameInput* input;
 
     f32 cameraYaw;   // degrees, accumulates freely
     f32 cameraPitch; // degrees, clamped to [-89, 89]
@@ -65,7 +69,11 @@ struct FGameState
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
-#define GAME_UPDATE(name) void name(FGameState* gs, struct FGameInput* input)
+
+void SetGamePaused(FGameState* gameState, b8 pause);
+
+// ──────────────────────────────────────────────────────────────────────────────────────────
+#define GAME_UPDATE(name) void name(FGameState* gameState, struct FGameInput* input)
 typedef GAME_UPDATE(FGameUpdate);
 
 #endif FADO_H

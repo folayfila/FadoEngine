@@ -68,12 +68,12 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
         }
     }
     rect.y += rect.height + buttonsYOffset;
-    if (UIButton(gameState, input, rect, "Load Level_01", &buttonStyle))
+    if (UIButton(gameState, input, rect, "Load 3D Level", &buttonStyle))
     {
         LoadLevelById(gameState, Level_01);
     }
     rect.y += rect.height + buttonsYOffset;
-    if (UIButton(gameState, input, rect, "Load Level_02", &buttonStyle))
+    if (UIButton(gameState, input, rect, "Load 2D Level", &buttonStyle))
     {
         LoadLevelById(gameState, Level_02);
     }
@@ -91,6 +91,8 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
         {
             cam->type = Camera_Perspective;
         }
+
+        SetGamePaused(gameState, false);
 
     }
 }
@@ -118,7 +120,7 @@ internal HEntity PickEntity(FRay ray, FCollisionWorld* collisions)
             }
         }
     }
-    return collisions->colliders.colliders[closestIndex].hEntity;
+    return collisions->colliders.colliders[closestIndex].entityID;
 }
 
 // Creates a ray from the mouse position.
@@ -149,24 +151,32 @@ internal FRay ScreenPointToRay(FSharedStuff* shared, f32 mouseX, f32 mouseY)
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
+void SetGamePaused(FGameState* gameState, b8 pause)
+{
+    gameState->paused = pause;
+    gameState->input->mode = pause ? Input_UI : Input_Game;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────────────────
+
 // Main game update function, the only function that exported the engine (.exe).
 extern "C" __declspec(dllexport)
 GAME_UPDATE(GameUpdate)
 {
-    if (!gs->initialized)
+    if (!gameState->initialized)
     {
-        gs->initialized = true;
+        gameState->initialized = true;
         input->mode = Input_Game;
 
 #if FADO_DEBUG
-        gs->shared->canSelect = true;
+        gameState->shared->canSelect = true;
 #endif // FADO_DEBUG
 
         // Load level 01 by default.
-        LoadLevelById(gs, Level_01);
+        LoadLevelById(gameState, Level_01);
     }
 
-    FSharedStuff* shared = gs->shared;
+    FSharedStuff* shared = gameState->shared;
 
     // Each frame, feed camera into the listener for 3D audio.
     FSoundListener listener = {};
@@ -174,13 +184,13 @@ GAME_UPDATE(GameUpdate)
     listener.position = camPos;
     listener.forward = shared->camera.forward;
     listener.up = shared->camera.up;
-    gs->soundManager->listener = listener;
+    gameState->soundManager->listener = listener;
 
 #if FADO_DEBUG
     // Clicking on entites
     if (Pressed(&input->mouse.buttons[0]) && shared->canSelect)
     {
-        FRay ray = ScreenPointToRay(gs->shared, (f32)input->mouse.x, (f32)input->mouse.y);
+        FRay ray = ScreenPointToRay(gameState->shared, (f32)input->mouse.x, (f32)input->mouse.y);
         i32 picked = PickEntity(ray, shared->collisionWorld);
         if (picked >= 0)
         {
@@ -189,25 +199,25 @@ GAME_UPDATE(GameUpdate)
     }
 #endif // FADO_DEBUG
 
-	HandleInput(gs, input);
+	HandleInput(gameState, input);
 
-    if (gs->paused)
+    if (gameState->paused)
     {
-        UpdateUI(gs, input);
+        UpdateUI(gameState, input);
     }
 
     // The infinite plane follows the camera to give the illusion of infinite stretch.
-    shared->transforms->positions[gs->infinitePlane].x = shared->transforms->positions[shared->camera.handle].x;
-    shared->transforms->positions[gs->infinitePlane].z = shared->transforms->positions[shared->camera.handle].z;
+    shared->transforms->positions[gameState->infinitePlane].x = shared->transforms->positions[shared->camera.handle].x;
+    shared->transforms->positions[gameState->infinitePlane].z = shared->transforms->positions[shared->camera.handle].z;
 
     // The skybox follows the camera to give the of infinite sky.
-    FEntity* skybox = GetEntity(shared->entityTable, gs->skyBox);
-    shared->transforms->positions[skybox->hTransform] = shared->transforms->positions[shared->camera.handle];
+    FEntity* skybox = &shared->entities[gameState->skyBox];
+    //shared->transforms->positions[skybox->hTransform].x = shared->transforms->positions[shared->camera.handle].x;
 
-    Rotate(shared->transforms, gs->cube1, { 50.0f*input->deltaTime, 50.0f * input->deltaTime, 0.0f });
-    Rotate(shared->transforms, gs->cube2, { -50.0f * input->deltaTime, 0.0f, 0.0f });
-    Rotate(shared->transforms, gs->sphere1, { 0.0f, 50.0f * input->deltaTime, 0.0f });
-    Rotate(shared->transforms, gs->sphere2, { 0.0f, -50.0f * input->deltaTime, 0.0f });
+    Rotate(shared->transforms, gameState->cube1, { 50.0f*input->deltaTime, 50.0f * input->deltaTime, 0.0f });
+    Rotate(shared->transforms, gameState->cube2, { -50.0f * input->deltaTime, 0.0f, 0.0f });
+    Rotate(shared->transforms, gameState->sphere1, { 0.0f, 50.0f * input->deltaTime, 0.0f });
+    Rotate(shared->transforms, gameState->sphere2, { 0.0f, -50.0f * input->deltaTime, 0.0f });
 
     //  -- Test and update collisions --
     // 1. Calculate and detect.
@@ -218,12 +228,12 @@ GAME_UPDATE(GameUpdate)
     for (u32 i = 0; i < shared->collisionWorld->contactCount; ++i)
     {
         FContactInfo* c = &shared->collisionWorld->contacts[i];
-        if (c->entityA == gs->shared->camera.handle || c->entityB == gs->shared->camera.handle)
+        if (c->entityA == gameState->shared->camera.handle || c->entityB == gameState->shared->camera.handle)
         {
-            SoundPlay2D(gs->soundManager, gs->hCollideSFX, ESoundCategory::Sound_SFX, 0.1f, false);
+            SoundPlay2D(gameState->soundManager, gameState->hCollideSFX, ESoundCategory::Sound_SFX, 0.1f, false);
         }
     }
 
     // Update the fire sfx pos to match the fire entity's.
-    Update3DSoundPosition(gs->soundManager->assetBank, gs->hFireSFXInstance, GetEntityPosition(shared, gs->fire));
+    Update3DSoundsPositions(gameState->soundManager->assetBank, shared);
 }
