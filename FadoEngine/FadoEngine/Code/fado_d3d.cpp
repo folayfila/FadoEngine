@@ -295,6 +295,11 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 	result = d3d->device->CreateRasterizerState(&rasterDesc, &d3d->rasterState);
 	Assert(!FAILED(result));
 
+	// No cull raster.
+	rasterDesc.CullMode = D3D11_CULL_NONE;
+	result = d3d->device->CreateRasterizerState(&rasterDesc, &d3d->noCullRasterState);
+	Assert(!FAILED(result));
+
 	// Now set the rasterizer state.
 	d3d->deviceContext->RSSetState(d3d->rasterState);
 
@@ -547,6 +552,7 @@ internal void SetMaterialShaderParameters(FRenderWorld* world, FDrawCall* call)
 	matBuffer->hasTexture = (mat->texture != INVALID_HANDLE) ? 1 : 0;
 	matBuffer->isLit = mat->isLit ? 1 : 0;
 	matBuffer->pad[0] = matBuffer->pad[1] = 0.0f;
+	matBuffer->spriteRect = call->spriteRect;
 
 	deviceContext->Unmap(shader->materialBuffer, 0);
 	deviceContext->PSSetConstantBuffers(1, 1, &shader->materialBuffer);
@@ -773,7 +779,7 @@ internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 // Draw call helpers
 // ────────────────────────────────────────────────────────────────────────
 // Add a draw call to the passed bucket.
-internal void PushDrawCall(FRenderWorld* world, DXMatrix worldMatrix, HMesh hMesh, FMaterial material)
+internal void PushDrawCall(FRenderWorld* world, DXMatrix worldMatrix, HMesh hMesh, FMaterial material, v4 spriteRect)
 {
 	// Push to right bucket based on the material color's alpha channel.
 	FRenderBucket* bucket = &world->opaqueBucket;
@@ -787,6 +793,7 @@ internal void PushDrawCall(FRenderWorld* world, DXMatrix worldMatrix, HMesh hMes
 	call->worldMatrix = worldMatrix;
 	call->hMesh = hMesh;
 	call->material = material;
+	call->spriteRect = spriteRect;
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -797,6 +804,8 @@ internal void PushDrawCall(FRenderWorld* world, DXMatrix worldMatrix, HMesh hMes
 internal void FlushOpaqueBucket(FRenderWorld* world)
 {
 	FD3D* d3d = &world->d3d;
+	d3d->deviceContext->RSSetState(d3d->rasterState);
+
 
 	for (u32 i = 0; i < world->opaqueBucket.count; i++)
 	{
@@ -816,6 +825,7 @@ internal void FlushOpaqueBucket(FRenderWorld* world)
 internal void FlushTransparentBucket(FRenderWorld* world)
 {
 	FD3D* d3d = &world->d3d;
+	d3d->deviceContext->RSSetState(d3d->noCullRasterState);
 
 	for (u32 i = 0; i < world->transparentBucket.count; i++)
 	{
@@ -994,7 +1004,7 @@ internal void RenderCamera(FRenderWorld* world)
 // Returns a DXMatrix by building it from the Entity's transform.
 internal DXMatrix BuildEntityWorldMatrix(HEntity entityID, FSharedStuff* shared)
 {
-	FEntity* entity = &shared->entities[entityID];
+	FEntity* entity = &shared->entityTable->entities[entityID];
 	FTransforms* transforms = shared->transforms;
 
 	v3 scale = transforms->scales[entityID];
@@ -1267,6 +1277,31 @@ HSound LoadFSound(FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryA
 	return handle;
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Sprite Sheets - They use an already loaded texture (sheet)
+// ────────────────────────────────────────────────────────────────────────
+HSpriteSheet RegisterSpriteSheet(FRenderWorld* world, HTexture hTex, u32 frameWidth, u32 frameHeight)
+{
+	FSpriteSheetTable* spriteSheetTable = world->shared->spriteSheetTable;
+	Assert(spriteSheetTable->count < MAX_SPRITESHEETS);
+	HSpriteSheet handle = spriteSheetTable->count++;
+	FSpriteSheet* sheet = &spriteSheetTable->sheets[handle];
+
+	FTexture* tex = &world->textures[hTex];
+
+	sheet->hTex = hTex;
+	sheet->frameWidth = frameWidth;
+	sheet->frameHeight = frameHeight;
+	sheet->cols = tex->width / frameWidth;
+	sheet->rows = tex->height / frameHeight;
+	sheet->clipsCount = 0;
+
+	return handle;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Build a simple quad mesh.
+// ────────────────────────────────────────────────────────────────────────
 HMesh GetQuad(FRenderWorld* world)
 {
 	HMesh quad = world->meshCount++;
@@ -1328,16 +1363,17 @@ void Render(FRenderWorld* world)
 
 	// Draw all entites
 	// TODO: draw only those that need to be drawn (in view).
-	for (u32 i = 0; i < world->shared->entitiesCount; ++i)
+	FEntityTable* entTable = world->shared->entityTable;
+	for (u32 i = 0; i < entTable->count; ++i)
 	{
-		FEntity* e = &world->shared->entities[i];
-		if(e->hMesh == INVALID_HANDLE)
+		FEntity* entity = &entTable->entities[i];
+		if(entity->hMesh == INVALID_HANDLE)
 		{
 			continue;
 		}
 
 		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
-		PushDrawCall(world, worldMatrix, e->hMesh, e->material);
+		PushDrawCall(world, worldMatrix, entity->hMesh, entity->material, entity->spriteRect);
 	}
 
 	// Flush all buckets.
@@ -1645,16 +1681,17 @@ void DebugRender(FRenderWorld* world)
 	// Generate the view matrix based on the camera's position.
 	RenderCamera(world);
 
-	for (u32 i = 0; i < world->shared->entitiesCount; ++i)
+	FEntityTable* entTable = world->shared->entityTable;
+	for (u32 i = 0; i < entTable->count; ++i)
 	{
-		FEntity* e = &world->shared->entities[i];
-		if (e->hMesh == INVALID_HANDLE)
+		FEntity* entity = &entTable->entities[i];
+		if (entity->hMesh == INVALID_HANDLE)
 		{
 			continue;
 		}
 
 		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
-		PushDrawCall(world, worldMatrix, e->hMesh, e->material);
+		PushDrawCall(world, worldMatrix, entity->hMesh, entity->material, entity->spriteRect);
 	}
 
 	// Flush all buckets — shader bound once per bucket, zero branching.

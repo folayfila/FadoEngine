@@ -5,6 +5,7 @@
 #include "fado_math.h"
 #include "fado_input.h"
 #include "fado_collision.h"
+#include "fado_sprite_anim.h"
 
 #if FADO_DEBUG
 #include "ThirdParty/imgui/imgui.h"
@@ -660,7 +661,10 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 	gameState->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fimage");
 	gameState->hGraniteTexture = LoadFImage(world, "Assets\\Textures\\granite.fimage");
 	gameState->hSkyBoxTexture = LoadFImage(world, "Assets\\Textures\\skybox_0.fimage");
-	gameState->hFolayfilaSprite = LoadFImage(world, "Assets\\Textures\\folayfila_64_0.fimage");
+
+	// Sprites
+	gameState->hFolayfilaTex = LoadFImage(world, "Assets\\Textures\\folayfila_64_sheet.fimage");
+	gameState->hFolayfilaSheet = RegisterSpriteSheet(world, gameState->hFolayfilaTex, 64, 64);
 
 	//LoadFont(world, "AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, gameState->font);
 	LoadFFont(world, "Assets\\Fonts\\arialbd.ffont", 25.0f, gameState->font);
@@ -705,7 +709,9 @@ int WINAPI wWinMain(
 	// Game state
 	FGameState* gameState = ArenaPushType(&engineMemory.permanent, FGameState);
 	gameState->shared = ArenaPushType(&engineMemory.permanent, FSharedStuff);
+	gameState->shared->entityTable = ArenaPushType(&engineMemory.permanent, FEntityTable);
 	gameState->shared->transforms = ArenaPushType(&engineMemory.permanent, FTransforms);
+	gameState->shared->spriteSheetTable = ArenaPushType(&engineMemory.permanent, FSpriteSheetTable);
 	gameState->shared->collisionWorld = ArenaPushType(&engineMemory.permanent, FCollisionWorld);
 	gameState->shared->uiCommands = ArenaPushType(&engineMemory.permanent, FUICommandBucket);
 	gameState->shared->permenantArena = &engineMemory.permanent;

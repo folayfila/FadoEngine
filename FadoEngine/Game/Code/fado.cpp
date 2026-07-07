@@ -211,7 +211,7 @@ GAME_UPDATE(GameUpdate)
     shared->transforms->positions[gameState->infinitePlane].z = shared->transforms->positions[shared->camera.handle].z;
 
     // The skybox follows the camera to give the of infinite sky.
-    FEntity* skybox = &shared->entities[gameState->skyBox];
+    FEntity* skybox = &shared->entityTable->entities[gameState->skyBox];
     //shared->transforms->positions[skybox->hTransform].x = shared->transforms->positions[shared->camera.handle].x;
 
     Rotate(shared->transforms, gameState->cube1, { 50.0f*input->deltaTime, 50.0f * input->deltaTime, 0.0f });
@@ -236,4 +236,6 @@ GAME_UPDATE(GameUpdate)
 
     // Update the fire sfx pos to match the fire entity's.
     Update3DSoundsPositions(gameState->soundManager->assetBank, shared);
+
+    UpdateAnimState(&shared->entityTable->entities[gameState->folayfila], &shared->spriteSheetTable->sheets[gameState->hFolayfilaSheet], input->deltaTime);
 }

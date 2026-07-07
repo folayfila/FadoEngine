@@ -6,6 +6,7 @@
 #include "fado_types.h"
 #include "fado.h"
 #include "fado_asset_format.h"
+#include "fado_sprite_anim.h"
 #include <stdio.h>
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -107,6 +108,11 @@ internal void AssignGameStateEntityFromType(FGameState* gameState, EEntityType t
         gameState->fire = hEntity;
     } break;
 
+    case EntityType_Sprite:
+    {
+        gameState->folayfila = hEntity;
+    } break;
+
     default:
     {} break;
     }
@@ -118,29 +124,32 @@ internal HEntity SpawnEntity(FSharedStuff* shared, EEntityType type, HMesh hMesh
 {
     FTransforms* transforms = shared->transforms;
 
-    HEntity id = shared->entitiesCount++;
-    FEntity* e = &shared->entities[id];
-    e->type = type;
-    e->hMesh = hMesh;
+    HEntity handle = shared->entityTable->count++;
+    FEntity* entity = &shared->entityTable->entities[handle];
+    entity->type = type;
+    entity->hMesh = hMesh;
 
     FMaterial mat = {};
     mat.color = color;
     mat.texture = hTex;
     mat.isLit = isLit;
-    e->material = mat;
+    entity->material = mat;
 
-    transforms->positions[id] = {};
-    transforms->scales[id] = V3One();
-    transforms->rotations[id] = QuatIdentity();
-    return id;
+    // By default full texture.
+    entity->spriteRect = { 0, 0, 1, 1 };
+
+    transforms->positions[handle] = {};
+    transforms->scales[handle] = V3One();
+    transforms->rotations[handle] = QuatIdentity();
+    return handle;
 }
 
 // Helper that wraps regular SpawnEntity. Used to easily spawn sprite entities.
 internal HEntity SpawnSprite(FSharedStuff* shared, HMesh quad, HTexture hTex, v4 rect = {0.0f, 0.0f, 1.0f, 1.0f}, v4 color = V4One())
 {
     HEntity handle = SpawnEntity(shared, EntityType_Sprite, quad, hTex, color, false);
-    shared->entities[handle].material.isTransparent = true;
-    shared->entities[handle].spriteRect = rect;
+    shared->entityTable->entities[handle].material.isTransparent = true;
+    shared->entityTable->entities[handle].spriteRect = rect;
     return handle;
 }
 
@@ -150,15 +159,15 @@ internal HEntity SpawnEntityFromDesc(FGameState* gameState, FEntityDesc* desc)
 {
     FTransforms* transforms = gameState->shared->transforms;
 
-    HEntity id = gameState->shared->entitiesCount++;
-    FEntity* e = &gameState->shared->entities[id];
-    e->type = desc->type;
-    e->hMesh = desc->hMesh;
-    e->material = desc->material;
-    transforms->positions[id] = desc->pos;
-    transforms->scales[id] = desc->scale;
-    transforms->rotations[id] = desc->rot;
-    return id;
+    HEntity handle = gameState->shared->entityTable->count++;
+    FEntity* entity = &gameState->shared->entityTable->entities[handle];
+    entity->type = desc->type;
+    entity->hMesh = desc->hMesh;
+    entity->material = desc->material;
+    transforms->positions[handle] = desc->pos;
+    transforms->scales[handle] = desc->scale;
+    transforms->rotations[handle] = desc->rot;
+    return handle;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -234,8 +243,15 @@ internal void InitLevel_01(FGameState* gameState)
     transforms->positions[gameState->fire] = { 5.0f, 2.0f, 0 };
     transforms->scales[gameState->fire] = { 0.25f, 0.25f, 0.25f };
 
-    gameState->folayfila = SpawnSprite(shared, gameState->hQuadMesh, gameState->hFolayfilaSprite);
+    gameState->folayfila = SpawnSprite(shared, gameState->hQuadMesh, gameState->hFolayfilaTex);
     transforms->positions[gameState->folayfila] = { 5.0f, 5.0f, 0 };
+    AddClip(&shared->spriteSheetTable->sheets[gameState->hFolayfilaSheet], 0, 2, 1.0f, true);
+    AddClip(&shared->spriteSheetTable->sheets[gameState->hFolayfilaSheet], 2, 2, 10.0f, true);
+    FAnimState* anim = &shared->entityTable->entities[gameState->folayfila].animState;
+    anim->hSheet = gameState->hFolayfilaSheet;
+    anim->currentClip = 1;
+    anim->currentFrame = 0;
+    anim->timer = 0.0f;
 
     BeginLevel_01(gameState);
 }
@@ -340,8 +356,7 @@ internal void UnloadLevel(FGameState* gameState)
 {
     SetGamePaused(gameState, false);
 
-    FadoZeroStruct(gameState->shared->entities);
-    gameState->shared->entitiesCount = 0;
+    FadoZeroStruct(gameState->shared->entityTable);
     FadoZeroStruct(gameState->shared->transforms);
     FadoZeroStruct(gameState->shared->uiCommands);
     FadoZeroStruct(gameState->shared->collisionWorld);
@@ -377,8 +392,8 @@ inline b8 SaveCurrentLevel(FGameState* gameState)
         return false;
     }
 
-    FEntity* entities = gameState->shared->entities;
-    u32 entitiesCount = gameState->shared->entitiesCount;
+    FEntity* entities = gameState->shared->entityTable->entities;
+    u32 entitiesCount = gameState->shared->entityTable->count;
 
     FAssetHeader assetHeader = {};
     assetHeader.magic = FASSET_MAGIC;

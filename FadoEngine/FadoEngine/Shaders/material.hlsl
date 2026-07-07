@@ -51,6 +51,7 @@ cbuffer MaterialBuffer : register(b1)
     int hasTexture;
     int isLit;
     float2 _pad;
+    float4 spriteRect;
 };
 
 // Resource registers:
@@ -114,7 +115,8 @@ float4 PixelShaderEntry(PixelInput input) : SV_TARGET
 
     if (hasTexture)
     {
-        baseColor *= ShaderTexture.Sample(SampleType, input.tex);
+        float2 atlasUV = input.tex * spriteRect.zw + spriteRect.xy;
+        baseColor *= ShaderTexture.Sample(SampleType, atlasUV);
     }
 
     if (isLit)

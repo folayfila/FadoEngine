@@ -22,6 +22,7 @@
 #include <d3dcompiler.h>
 #include "fado_types.h"
 #include "fado_ui.h"
+#include "fado_sprite_anim.h"
 
 // ──────────
 // LINKING //
@@ -72,6 +73,7 @@ struct FD3D
 
 	// Rasterization:
 	ID3D11RasterizerState*	 rasterState;				// Controls culling, fill mode, depth clipping, etc.
+	ID3D11RasterizerState*	 noCullRasterState;			// No culling. Used to flip sprites.
 
 	// UI Rendering:
 	ID3D11Buffer*			 uiVertexBuffer;			//Dynamic vertex buffer for UI geometry.
@@ -176,6 +178,7 @@ struct FMaterialBuffer
 	b32 hasTexture;		// Sample texture if true.
 	b32 isLit;			// Apply lighting if true.
 	f32 pad[2];			// Pad to 16-byte alignment.
+	v4  spriteRect;		// sprite atlas coords.
 };
 
 // ────────────
@@ -291,6 +294,7 @@ struct FDrawCall
 	DXMatrix worldMatrix;
 	HMesh hMesh;
 	FMaterial material;
+	v4 spriteRect;  // used for sprites only. altas coords.
 };
 
 // Draw calls are pushed into the bucket and flushed every frame.
@@ -344,6 +348,8 @@ HTexture LoadFImage	(FRenderWorld* world, cc8* fileName);
 HMesh	 LoadFModel	(FRenderWorld* world, cc8* filename);
 HTexture LoadFFont	(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFont);
 HSound   LoadFSound	(struct FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryArena* scratch, cc8* filename);
+
+HSpriteSheet RegisterSpriteSheet (FRenderWorld* world, HTexture hTex, u32 frameWidth, u32 frameHeight);
 
 // generates a simple quad and adds it to world->meshes.
 HMesh GetQuad(FRenderWorld* world);

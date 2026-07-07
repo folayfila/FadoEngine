@@ -145,10 +145,11 @@ struct v4
 {
 	union
 	{
-		struct { f32 x, y, z, w; };
-		struct { f32 r, g, b, a; };
-		struct { f32 x, y, width, height; };
-		struct { f32 u0, v0, u1, v1; };
+		struct { f32 x, y, z, w; };				// normal v4
+		struct { f32 r, g, b, a; };				// rgba color
+		struct { f32 x, y, width, height; };	// rect
+		struct { f32 u, v, width, height; };	// sprite rect
+		struct { f32 u0, v0, u1, v1; };			// uv coords
 		f32 e[4];
 	};
 
@@ -187,9 +188,69 @@ struct mat4
 };
 
 // ─────────────────────────────────────────────
+
+// ──────────────── Arena ──────────────────────
+
+#define PERMANENT_ARENA_SIZE Megabytes(64)
+#define SCRATCH_ARENA_SIZE Megabytes(16)
+
+// Preallocated memory block. Usually allocated on startup and used across the code.
+struct FMemoryArena
+{
+	u32 used;
+	u32 size;
+	u8* base;
+};
+
+// Permanent — lives for the entire session.
+// Scratch — resets every asset load.
+// Note: MUST reset scratch manually after using it with ArenaReset().
+struct FEngineMemory
+{
+	FMemoryArena permanent;
+	FMemoryArena scratch;   // ! MUST reset manually after using with ArenaReset()
+};
+
+// Saves a type with a size (can be different) into the arena.
+// e.g. ArenaPushSize(arena, u8, size).
+#define ArenaPushSize(Arena, type, size) (type *)AreaPushSize_(Arena, size)
+
+// Saves a certain type with its size into the arena.
+// e.g. ArenaPushSize(arena, FTransformTable).
+#define ArenaPushType(Arena, type) (type *)AreaPushSize_(Arena, sizeof(type))
+
+// Saves an array into the arena by passing its cound and type.
+// e.g. ArenaPushArray(arena, maxEntities, FEntity) 
+#define ArenaPushArray(Arena, type, Count) (type *)AreaPushSize_(Arena, (Count)*sizeof(type))
+
+internal void* AreaPushSize_(FMemoryArena* arena, u32 size)
+{
+	Assert((arena->used + size) <= arena->size);
+	void* result = arena->base + arena->used;
+	arena->used += size;
+
+	return result;
+}
+
+// Create an arena using a preallocated memory block.
+// - backing: the allocated memory.
+// - size:	size of the arena.
+internal FMemoryArena ArenaMake(u8* backing, u32 size)
+{
+	FMemoryArena arena = {};
+	arena.base = backing;
+	arena.size = size;
+	return arena;
+}
+
+internal void ArenaReset(FMemoryArena* arena)
+{
+	arena->used = 0;
+}
+// ─────────────────────────────────────────────
+
 // ──────────────── Entities ──────────────────
 
-// ────────────────
 #define INVALID_HANDLE 0xFFFFFFFF
 
 #define FMAX_ENTITIES 512
@@ -205,8 +266,9 @@ typedef u32 HTexture;
 #define WHITE_TEXTURE 0
 
 typedef u32 HSound;
-// ────────────────
 
+typedef u32 HSpriteSheet;
+// ────────────────
 
 // For now, this is literally all kinds of entities we have.
 // TODO: Update the system once we have a working version of save\load.
@@ -237,13 +299,30 @@ struct FMaterial
 	b8 isTransparent;	// While we use the alpha channel in the color for transparency, this allows us to transparent blend alpha channels in texture for sprites.
 };
 
+// Runtime animation state — per entity
+struct FAnimState
+{
+	HSpriteSheet hSheet;
+	u32 currentClip;
+	u32 currentFrame;
+	f32 timer;          // counts up to 1/fps
+};
+
 // Main entity struct.
 struct FEntity
 {
 	EEntityType type;
     HMesh hMesh;				// INVALID_HANDLE for 2D
 	FMaterial material;			// texture, color, alpha
+
 	v4 spriteRect;				// UV region, {0,0,1,1} for non-atlas
+	FAnimState animState;		// only used for sprites.
+};
+
+struct FEntityTable
+{
+	FEntity entities[FMAX_ENTITIES];
+	u32 count;
 };
 
 // ──────────────── Transform ──────────────────
@@ -256,99 +335,8 @@ struct FTransforms
 };
 
 // ─────────────────────────────────────────────
-// ──────────────── Arena ──────────────────────
 
-#define PERMANENT_ARENA_SIZE Megabytes(64)
-#define SCRATCH_ARENA_SIZE Megabytes(16)
-
-// Preallocated memory block. Usually allocated on startup and used across the code.
-struct FMemoryArena
-{
-    u32 used;
-    u32 size;
-    u8* base;
-};
-
-// Permanent — lives for the entire session.
-// Scratch — resets every asset load.
-// Note: MUST reset scratch manually after using it with ArenaReset().
-struct FEngineMemory
-{
-    FMemoryArena permanent;
-    FMemoryArena scratch;   // ! MUST reset manually after using with ArenaReset()
-};
-
-// Saves a type with a size (can be different) into the arena.
-// e.g. ArenaPushSize(arena, u8, size).
-#define ArenaPushSize(Arena, type, size) (type *)AreaPushSize_(Arena, size)
-
-// Saves a certain type with its size into the arena.
-// e.g. ArenaPushSize(arena, FTransformTable).
-#define ArenaPushType(Arena, type) (type *)AreaPushSize_(Arena, sizeof(type))
-
-// Saves an array into the arena by passing its cound and type.
-// e.g. ArenaPushArray(arena, maxEntities, FEntity) 
-#define ArenaPushArray(Arena, type, Count) (type *)AreaPushSize_(Arena, (Count)*sizeof(type))
-
-internal void* AreaPushSize_(FMemoryArena* arena, u32 size)
-{
-    Assert((arena->used + size) <= arena->size);
-    void* result = arena->base + arena->used;
-    arena->used += size;
-
-    return result;
-}
-
-// Create an arena using a preallocated memory block.
-// - backing: the allocated memory.
-// - size:	size of the arena.
-internal FMemoryArena ArenaMake(u8* backing, u32 size)
-{
-    FMemoryArena arena = {};
-    arena.base = backing;
-    arena.size = size;
-    return arena;
-}
-
-internal void ArenaReset(FMemoryArena* arena)
-{
-    arena->used = 0;
-}
-// ─────────────────────────────────────────────
-
-// ─────────────────────────────────────────────
-// Fonts
-
-// Font glyphs are presented as textures on the screen,
-// each glyph is merely a part of the font file captured by the
-// uv coords.
-struct FFontGlyph
-{
-	v4 coords;
-	i32 width, height;
-	v2 offset;
-	f32 xadvance;
-};
-
-#define GLYPHS_COUNT 96
-
-// Font struct:
-// Currently ASCII 32-127 only
-// - size: Font size
-struct FFont
-{
-	HTexture atlas;
-	FFontGlyph glyphs[GLYPHS_COUNT];
-	f32 size;
-};
-
-// ─────────────────────────────────────────────
-// ──────────────── Shared Stuff ───────────────
-/*
- * Given the structure of the engine, some data needs to be accessed in both the renderer and
- * game, so the following section covers this data which is shared between the egine and game.
-*/
-
+// ──────────────── Camera and Viewport ───────────────
 enum ECameraType
 {
 	Camera_Perspective,
@@ -389,6 +377,13 @@ struct FViewPort
 	f32 minDepth;
 	f32 maxDepth;
 };
+// ─────────────────────────────────────────────
+
+// ──────────────── Shared Stuff ───────────────
+/*
+ * Given the structure of the engine, some data needs to be accessed in both the renderer and
+ * game, so the following section covers this data which is shared between the egine and game.
+*/
 
 // Containes data that both the renderer and the game use/access.
 struct FSharedStuff
@@ -396,10 +391,9 @@ struct FSharedStuff
 	FCamera camera;
 	FViewPort viewport;
 
-	FEntity entities[FMAX_ENTITIES];
+	FEntityTable* entityTable;
 	FTransforms* transforms;
-	u32 entitiesCount;
-
+	struct FSpriteSheetTable* spriteSheetTable;
 	struct FCollisionWorld* collisionWorld;
 	struct FUICommandBucket* uiCommands;
 
@@ -412,6 +406,13 @@ struct FSharedStuff
 	b32 canSelect;
 #endif // FADO_DEBUG
 };
+
+// ───── Helpers ─────
+
+ForceInline FEntity* GetEntity(FSharedStuff* shared, HEntity hEntity)
+{
+	return &shared->entityTable->entities[hEntity];
+}
 
 ForceInline v3 GetEntityPosition(FSharedStuff* shared, HEntity hEntity)
 {
@@ -427,6 +428,34 @@ ForceInline v3 GetEntityScale(FSharedStuff* shared, HEntity hEntity)
 {
 	return shared->transforms->scales[hEntity];
 }
+
+// ─────────────────────────────────────────────
+
+// ──────────────── Fonts ───────────────
+// Font glyphs are presented as textures on the screen,
+// each glyph is merely a part of the font file captured by the
+// uv coords.
+struct FFontGlyph
+{
+	v4 coords;
+	i32 width, height;
+	v2 offset;
+	f32 xadvance;
+};
+
+#define GLYPHS_COUNT 96
+
+// Font struct:
+// Currently ASCII 32-127 only
+// - size: Font size
+struct FFont
+{
+	HTexture atlas;
+	FFontGlyph glyphs[GLYPHS_COUNT];
+	f32 size;
+};
+
+// ─────────────────────────────────────────────
 
 // ─────────────────────────────────────────────
 // Other:
