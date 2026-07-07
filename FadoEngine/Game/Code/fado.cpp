@@ -5,6 +5,8 @@
 #include "fado_input.h"
 #include "fado_collision.h"
 #include "fado_level.h"
+#include "Levels/level_3d_showcase.h"
+#include "Levels/level_2d_showcase.h"
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 // -- UI --
@@ -36,7 +38,7 @@ internal u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* te
 
     if (clicked)
     {
-        SoundPlay2D(gameState->soundManager, gameState->hUIClickSFX, ESoundCategory::Sound_UI, 0.25f, false);
+        SoundPlay2D(gameState->soundManager, gameState->assets.hUIClickSFX, ESoundCategory::Sound_UI, 0.25f, false);
     }
 
     return clicked;
@@ -55,7 +57,7 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
         /*hover*/   { 0.82f, 0.796f, 0.584f, 1.0f },
         /*pressed*/ { 0.102f, 0.392f, 0.306f, 1.0f },
         /*text*/    { 0.039f, 0.102f, 0.184f, 1 },
-        gameState->hWhiteTexture
+        gameState->assets.hWhiteTexture
     };
 
     v2 textPos = { 500, 500 };
@@ -70,12 +72,14 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
     rect.y += rect.height + buttonsYOffset;
     if (UIButton(gameState, input, rect, "Load 3D Level", &buttonStyle))
     {
-        LoadLevelById(gameState, Level_01);
+        UnloadLevel(gameState);
+        LoadLevel(gameState, SetupLevel_3DShowcase());
     }
     rect.y += rect.height + buttonsYOffset;
     if (UIButton(gameState, input, rect, "Load 2D Level", &buttonStyle))
     {
-        LoadLevelById(gameState, Level_02);
+        UnloadLevel(gameState);
+        LoadLevel(gameState, SetupLevel_2DShowcase());
     }
 
     rect.y += rect.height + buttonsYOffset;
@@ -166,17 +170,21 @@ GAME_UPDATE(GameUpdate)
     if (!gameState->initialized)
     {
         gameState->initialized = true;
-        input->mode = Input_Game;
 
 #if FADO_DEBUG
         gameState->shared->canSelect = true;
 #endif // FADO_DEBUG
 
-        // Load level 01 by default.
-        LoadLevelById(gameState, Level_01);
+        // Load level_3d_showcase by default.
+        LoadLevel(gameState, SetupLevel_2DShowcase());
     }
 
     FSharedStuff* shared = gameState->shared;
+
+    if (gameState->currentLevel->Update)
+    {
+        gameState->currentLevel->Update(gameState, gameState->input->deltaTime);
+    }
 
     // Each frame, feed camera into the listener for 3D audio.
     FSoundListener listener = {};
@@ -199,43 +207,8 @@ GAME_UPDATE(GameUpdate)
     }
 #endif // FADO_DEBUG
 
-	HandleInput(gameState, input);
-
     if (gameState->paused)
     {
         UpdateUI(gameState, input);
     }
-
-    // The infinite plane follows the camera to give the illusion of infinite stretch.
-    shared->transforms->positions[gameState->infinitePlane].x = shared->transforms->positions[shared->camera.handle].x;
-    shared->transforms->positions[gameState->infinitePlane].z = shared->transforms->positions[shared->camera.handle].z;
-
-    // The skybox follows the camera to give the of infinite sky.
-    FEntity* skybox = &shared->entityTable->entities[gameState->skyBox];
-    //shared->transforms->positions[skybox->hTransform].x = shared->transforms->positions[shared->camera.handle].x;
-
-    Rotate(shared->transforms, gameState->cube1, { 50.0f*input->deltaTime, 50.0f * input->deltaTime, 0.0f });
-    Rotate(shared->transforms, gameState->cube2, { -50.0f * input->deltaTime, 0.0f, 0.0f });
-    Rotate(shared->transforms, gameState->sphere1, { 0.0f, 50.0f * input->deltaTime, 0.0f });
-    Rotate(shared->transforms, gameState->sphere2, { 0.0f, -50.0f * input->deltaTime, 0.0f });
-
-    //  -- Test and update collisions --
-    // 1. Calculate and detect.
-    CollisionUpdate(shared->collisionWorld, shared->transforms, shared->scratchArena);
-    // 2. Resolve (push solid objects apart).
-    CollisionResolve(shared->collisionWorld, shared->transforms);
-    // 3. React (Iterate contacts for game logic).
-    for (u32 i = 0; i < shared->collisionWorld->contactCount; ++i)
-    {
-        FContactInfo* c = &shared->collisionWorld->contacts[i];
-        if (c->entityA == gameState->shared->camera.handle || c->entityB == gameState->shared->camera.handle)
-        {
-            SoundPlay2D(gameState->soundManager, gameState->hCollideSFX, ESoundCategory::Sound_SFX, 0.1f, false);
-        }
-    }
-
-    // Update the fire sfx pos to match the fire entity's.
-    Update3DSoundsPositions(gameState->soundManager->assetBank, shared);
-
-    UpdateAnimState(&shared->entityTable->entities[gameState->folayfila], &shared->spriteSheetTable->sheets[gameState->hFolayfilaSheet], input->deltaTime);
 }

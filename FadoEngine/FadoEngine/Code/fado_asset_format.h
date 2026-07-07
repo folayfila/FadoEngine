@@ -109,7 +109,6 @@ struct FSoundHeader
 // Level payload (assetType == FASSET_TYPE_LEVEL)
 struct FLevelHeader
 {
-    u32 index;              // 0, 1, 2...
     u32 entityCount;
     u32 flags;
 };

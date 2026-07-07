@@ -57,7 +57,7 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 {
 	FD3D* d3d = &world->d3d;
 	FSharedStuff* shared = world->shared;
-	FMemoryArena* scratchArena = world->shared->scratchArena;
+	FMemoryArena* scratchArena = &world->shared->arena->scratch;
 
 	// Store the vsync setting.
 	d3d->vsyncEnabled = d3dInitParams->vsync;
@@ -856,7 +856,7 @@ internal void FlushUIBucket(FRenderWorld* world)
 		return;
 	}
 
-	FUIVertex* verts = ArenaPushArray(world->shared->scratchArena, FUIVertex, MAX_UI_VERTS);
+	FUIVertex* verts = ArenaPushArray(&world->shared->arena->scratch, FUIVertex, MAX_UI_VERTS);
 	u32 vertCount = 0;
 
 	// Set pipeline state once
@@ -928,7 +928,7 @@ internal void FlushUIBucket(FRenderWorld* world)
 	deviceContext->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF);
 
 	bucket->count = 0;
-	ArenaReset(world->shared->scratchArena);
+	ArenaReset(&world->shared->arena->scratch);
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -1038,18 +1038,18 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	FImageHeader header = {};
 	fread(&header, sizeof(header), 1, file);
 
-	u32* mipOffsets = ArenaPushArray(world->shared->scratchArena,  u32, header.mipCount);
-	u32* mipSizes = ArenaPushArray(world->shared->scratchArena, u32, header.mipCount);
+	u32* mipOffsets = ArenaPushArray(&world->shared->arena->scratch,  u32, header.mipCount);
+	u32* mipSizes = ArenaPushArray(&world->shared->arena->scratch, u32, header.mipCount);
 	fread(mipOffsets, sizeof(u32), header.mipCount, file);
 	fread(mipSizes, sizeof(u32), header.mipCount, file);
 
 	// Read compressed data
-	u8* compressedData = ArenaPushArray(world->shared->scratchArena, u8, header.dataSize);
+	u8* compressedData = ArenaPushArray(&world->shared->arena->scratch, u8, header.dataSize);
 	fread(compressedData, header.dataSize, 1, file);
 	fclose(file);
 
 	// Decompress into allMipData
-	u8* allMipData = ArenaPushArray(world->shared->scratchArena, u8, header.uncompressedSize);
+	u8* allMipData = ArenaPushArray(&world->shared->arena->scratch, u8, header.uncompressedSize);
 	LZ4_decompress_safe((const char*)compressedData, (char*)allMipData,
 		(i32)header.dataSize, (i32)header.uncompressedSize);
 
@@ -1069,7 +1069,7 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 	texDesc.MiscFlags = 0;
 
-	D3D11_SUBRESOURCE_DATA* mipData = ArenaPushArray(world->shared->scratchArena, D3D11_SUBRESOURCE_DATA, header.mipCount);
+	D3D11_SUBRESOURCE_DATA* mipData = ArenaPushArray(&world->shared->arena->scratch, D3D11_SUBRESOURCE_DATA, header.mipCount);
 
 	u32 mipWidth = header.width;
 	u32 mipHeight = header.height;
@@ -1106,7 +1106,7 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	world->textures[handle].width = (i32)header.width;
 	world->textures[handle].height = (i32)header.height;
 
-	ArenaReset(world->shared->scratchArena);
+	ArenaReset(&world->shared->arena->scratch);
 	return handle;
 }
 
@@ -1130,20 +1130,20 @@ HMesh LoadFModel(FRenderWorld* world, cc8* fileName)
 	FModelHeader modelHeader = {};
 	fread(&modelHeader, sizeof(modelHeader), 1, file);
 
-	FMeshDesc* descs = ArenaPushArray(world->shared->scratchArena, FMeshDesc, modelHeader.meshCount);
+	FMeshDesc* descs = ArenaPushArray(&world->shared->arena->scratch, FMeshDesc, modelHeader.meshCount);
 	fread(descs, sizeof(FMeshDesc), modelHeader.meshCount, file);
 
 	// Read + decompress vertex blob
-	u8* vbCompressed = ArenaPushSize(world->shared->scratchArena, u8, modelHeader.vertexDataSize);
+	u8* vbCompressed = ArenaPushSize(&world->shared->arena->scratch, u8, modelHeader.vertexDataSize);
 	fread(vbCompressed, 1, modelHeader.vertexDataSize, file);
-	u8* vbData = ArenaPushSize(world->shared->scratchArena, u8, modelHeader.vertexDataUncompressed);
+	u8* vbData = ArenaPushSize(&world->shared->arena->scratch, u8, modelHeader.vertexDataUncompressed);
 	LZ4_decompress_safe((const char*)vbCompressed, (c8*)vbData,
 		(i32)modelHeader.vertexDataSize, (i32)modelHeader.vertexDataUncompressed);
 
 	// Read + decompress index blob
-	u8* ibCompressed = ArenaPushSize(world->shared->scratchArena, u8, modelHeader.indexDataSize);
+	u8* ibCompressed = ArenaPushSize(&world->shared->arena->scratch, u8, modelHeader.indexDataSize);
 	fread(ibCompressed, 1, modelHeader.indexDataSize, file);
-	u8* ibData = ArenaPushSize(world->shared->scratchArena, u8, modelHeader.indexDataUncompressed);
+	u8* ibData = ArenaPushSize(&world->shared->arena->scratch, u8, modelHeader.indexDataUncompressed);
 	LZ4_decompress_safe((const char*)ibCompressed, (char*)ibData,
 		(i32)modelHeader.indexDataSize, (i32)modelHeader.indexDataUncompressed);
 
@@ -1164,7 +1164,7 @@ HMesh LoadFModel(FRenderWorld* world, cc8* fileName)
 			mesh->vertexStride, indices, desc->indexCount);
 	}
 
-	ArenaReset(world->shared->scratchArena);
+	ArenaReset(&world->shared->arena->scratch);
 	return handle;
 }
 
@@ -1189,25 +1189,25 @@ HTexture LoadFFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outF
 	fread(&fontHeader, sizeof(fontHeader), 1, file);
 
 	// Read compressed data
-	u8* compressedData = ArenaPushSize(world->shared->scratchArena, u8, fontHeader.dataSize);
+	u8* compressedData = ArenaPushSize(&world->shared->arena->scratch, u8, fontHeader.dataSize);
 	fread(compressedData, 1, fontHeader.dataSize, file);
 	fclose(file);
 
 	// Decompress into fontBuffer
-	u8* fontBuffer = ArenaPushSize(world->shared->scratchArena, u8, fontHeader.uncompressedSize);
+	u8* fontBuffer = ArenaPushSize(&world->shared->arena->scratch, u8, fontHeader.uncompressedSize);
 	LZ4_decompress_safe((const char*)compressedData, (char*)fontBuffer,
 		(i32)fontHeader.dataSize, (i32)fontHeader.uncompressedSize);
 
 	// Everything below unchanged
 	i32 atlasW = 512, atlasH = 512;
-	u8* atlasPixels = ArenaPushSize(world->shared->scratchArena, u8, (atlasW * atlasH));
+	u8* atlasPixels = ArenaPushSize(&world->shared->arena->scratch, u8, (atlasW * atlasH));
 
 	stbtt_bakedchar bakedChars[96];
 	i32 result = stbtt_BakeFontBitmap(fontBuffer, 0, fontSize,
 		atlasPixels, atlasW, atlasH, 32, 96, bakedChars);
 	Assert(result > 0);
 
-	u32* rgbaPixels = ArenaPushSize(world->shared->scratchArena, u32, (atlasW * atlasH * 4));
+	u32* rgbaPixels = ArenaPushSize(&world->shared->arena->scratch, u32, (atlasW * atlasH * 4));
 	for (i32 i = 0; i < (atlasW * atlasH); ++i)
 	{
 		u8 a = atlasPixels[i];
@@ -1233,14 +1233,15 @@ HTexture LoadFFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outF
 		glyph->xadvance = bc->xadvance;
 	}
 
-	ArenaReset(world->shared->scratchArena);
+	ArenaReset(&world->shared->arena->scratch);
 	return outFont->atlas;
 }
+
 
 // ────────────────────────────────────────────────────────────────────────
 // Sound loader — .fsound
 // ────────────────────────────────────────────────────────────────────────
-HSound LoadFSound(FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryArena* scratch, cc8* filename)
+HSound LoadFSound(FSoundManager* SoundManager, FEngineMemory* arena, cc8* filename)
 {
 	FILE* file;
 	fopen_s(&file, filename, "rb");
@@ -1254,12 +1255,12 @@ HSound LoadFSound(FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryA
 	FSoundHeader sndHeader = {};
 	fread(&sndHeader, sizeof(sndHeader), 1, file);
 
-	u8* compressed = ArenaPushSize(scratch, u8, sndHeader.dataSize);
+	u8* compressed = ArenaPushSize(&arena->scratch, u8, sndHeader.dataSize);
 	fread(compressed, 1, sndHeader.dataSize, file);
 	fclose(file);
 
 	// decompress into permanent arena (sound stays alive)
-	i16* pcm = ArenaPushSize(permanent, i16, sndHeader.uncompressedSize);
+	i16* pcm = ArenaPushSize(&arena->permanent, i16, sndHeader.uncompressedSize);
 	LZ4_decompress_safe((cc8*)compressed,
 		(c8*)pcm,
 		(i32)sndHeader.dataSize,
@@ -1273,7 +1274,7 @@ HSound LoadFSound(FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryA
 	soundBuf->channels = sndHeader.channels;
 	soundBuf->sampleRate = sndHeader.sampleRate;
 
-	ArenaReset(scratch);
+	ArenaReset(&arena->scratch);
 	return handle;
 }
 

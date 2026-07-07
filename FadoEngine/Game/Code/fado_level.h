@@ -6,121 +6,46 @@
 #include "fado_types.h"
 #include "fado.h"
 #include "fado_asset_format.h"
-#include "fado_sprite_anim.h"
 #include <stdio.h>
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
-// Just an extension to fado.cpp
-// Handles all the levels loading + default init values
+// Handles all levels loading and saving.
 
 /*
 * Levels:
-  - To create a new level, you must add a new entry to ELevel and add it in the different level switch statements.
+  - To create a new level, just add a new header in Game/Code/Levels
+  - Create a new level struct that inherits from FLevel.
+  - Add a "Make" function that assigns the function pointers to the level's custom functions.
+  - Check showcase levels as an example.
+
   - Saving a level is simply writing a header and a bunch of FEntityDesc into a file.
-  - Loading the level unloads the current one first by simply resetting FGameState memebers that need reseting.
+  - Loading the level unloads the current one first by simply resetting the level and FGameState memebers that need reseting.
   - Every level must have an init function which sets the intial values of all entities in that level. If a level doesn't have a save
-    file, it resorts to its init function. Currently all saved entities are in the game state.
-    However, both loading and init must call their BeginLevel_ function, which inits things that aren't saved like sounds.
-  - Only Save/Load functions are exposed.
+    file, it resorts to its init function.
+  - Each level has its own entities/handles, but use the general assets handles from the FAssetHandler.
 */
 
-// ──────────────────────────────────────────────────────────────────────────────────────────
-// All levels in the game
-enum ELevel
+struct FLevel
 {
-    Level_None = 0,
-    Level_01 = 1,
-    Level_02 = 2,
-    LEVEL_COUNT
+    // Function pointers to the main 3 per-level functions.
+    void (*Init)(FGameState*);
+    void (*Begin)(FGameState*);
+    void (*Update)(FGameState*, f32 dt);
+
+    cc8* name;
 };
 
-internal void GetLevelPathFromId(c8* outPath, ELevel level)
-{
-    cc8* levelName = "";
-    switch (level)
-    {
-        case Level_01:
-        {
-            levelName = "Level_01";
-        } break;
-
-        case Level_02:
-        {
-            levelName = "Level_02";
-        } break;
-
-        default:
-        {} break;
-    }
-
-    snprintf(outPath, FMAX_PATH, "Assets\\Levels\\%s.flevel", levelName);
-}
-
-
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
-// Manually check the type of the entity and assign it to the gameState's handle.
-internal void AssignGameStateEntityFromType(FGameState* gameState, EEntityType type, HEntity hEntity)
+// outPath = Assets\\Levels\\LevelName
+inline void GetLevelPathFromName(c8* outPath, cc8* levelName)
 {
-    switch (type)
-    {
-    case EntityType_None:
-    {
-    } break;
-
-    case EntityType_Camera:
-    {
-        gameState->shared->camera.handle = hEntity;
-    } break;
-
-    case EntityType_Plane:
-    {
-        gameState->infinitePlane = hEntity;
-    } break;
-
-    case EntityType_Skybox:
-    {
-        gameState->skyBox = hEntity;
-    } break;
-
-    case EntityType_Cube1:
-    {
-        gameState->cube1 = hEntity;
-    } break;
-
-    case EntityType_Cube2:
-    {
-        gameState->cube2 = hEntity;
-    } break;
-
-    case EntityType_Sphere1:
-    {
-        gameState->sphere1 = hEntity;
-    } break;
-
-    case EntityType_Sphere2:
-    {
-        gameState->sphere2 = hEntity;
-    } break;
-
-    case EntityType_Fire:
-    {
-        gameState->fire = hEntity;
-    } break;
-
-    case EntityType_Sprite:
-    {
-        gameState->folayfila = hEntity;
-    } break;
-
-    default:
-    {} break;
-    }
+    snprintf(outPath, FMAX_PATH, "Assets\\Levels\\%s.flevel", levelName);
 }
 
 // Adds an entity to the entity table and gives it a transform.
 // - No dynamic allocation of any sorts, just setting values to an existing array.
-internal HEntity SpawnEntity(FSharedStuff* shared, EEntityType type, HMesh hMesh, HTexture hTex = WHITE_TEXTURE, v4 color = V4One(), b8 isLit = true)
+inline HEntity SpawnEntity(FSharedStuff* shared, EEntityType type, HMesh hMesh, HTexture hTex = WHITE_TEXTURE, v4 color = V4One(), b8 isLit = true)
 {
     FTransforms* transforms = shared->transforms;
 
@@ -145,7 +70,7 @@ internal HEntity SpawnEntity(FSharedStuff* shared, EEntityType type, HMesh hMesh
 }
 
 // Helper that wraps regular SpawnEntity. Used to easily spawn sprite entities.
-internal HEntity SpawnSprite(FSharedStuff* shared, HMesh quad, HTexture hTex, v4 rect = {0.0f, 0.0f, 1.0f, 1.0f}, v4 color = V4One())
+inline HEntity SpawnSprite(FSharedStuff* shared, HMesh quad, HTexture hTex, v4 rect = {0.0f, 0.0f, 1.0f, 1.0f}, v4 color = V4One())
 {
     HEntity handle = SpawnEntity(shared, EntityType_Sprite, quad, hTex, color, false);
     shared->entityTable->entities[handle].material.isTransparent = true;
@@ -155,7 +80,7 @@ internal HEntity SpawnSprite(FSharedStuff* shared, HMesh quad, HTexture hTex, v4
 
 // Adds an entity to the entity table and sets it up from a loaded FEntityDesc.
 // - No dynamic allocation of any sorts, just setting values to an existing array.
-internal HEntity SpawnEntityFromDesc(FGameState* gameState, FEntityDesc* desc)
+inline HEntity SpawnEntityFromDesc(FGameState* gameState, FEntityDesc* desc)
 {
     FTransforms* transforms = gameState->shared->transforms;
 
@@ -171,187 +96,10 @@ internal HEntity SpawnEntityFromDesc(FGameState* gameState, FEntityDesc* desc)
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
-// Levels Default inits
-
-// ────────────────────────────────────────
-// -- Level_01 --
-
-internal void BeginLevel_01(FGameState* gameState)
-{
-    FSharedStuff* shared = gameState->shared;
-    FTransforms* transforms = shared->transforms;
-
-    shared->camera.type = Camera_Perspective;
-
-    // Sound 
-    gameState->hFireSFXInstance = SoundPlay3D(gameState->soundManager, gameState->fire, gameState->hFireSFX,
-        ESoundCategory::Sound_SFX, 1.0f, true, transforms->positions[gameState->fire], 0.0f, 5.0f);
-    SoundPlay2D(gameState->soundManager, gameState->hMusic, ESoundCategory::Sound_Music, 0.5f, true);
-
-    // Collision
-    CollisionInitialize(shared->collisionWorld);
-    v3 extents = { 1.0f, 1.0f, 1.0f };
-
-    CollisionAddCollider(shared->collisionWorld, shared->camera.handle, { 1.0f, 1.0f, 1.0f }, Collision_Physics);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->infinitePlane, { 1.0f, 0.01f, 1.0f }, Collision_Static);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->cube1, extents, Collision_Kinematic);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->cube2, extents, Collision_Static);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere1, extents, Collision_Dynamic);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere2, extents, Collision_Physics);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->fire, extents, Collision_Physics);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->folayfila, extents, Collision_Physics);
-}
-
-internal void InitLevel_01(FGameState* gameState)
-{
-    FSharedStuff* shared = gameState->shared;
-    FTransforms* transforms = shared->transforms;
-
-    shared->camera.handle = SpawnEntity(shared, EntityType_Camera, INVALID_HANDLE, INVALID_HANDLE);
-    shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
-
-    // infinite plane
-    gameState->infinitePlane = SpawnEntity(shared, EntityType_Plane, gameState->hPlaneMesh, gameState->hGridTexture);
-    transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f };
-
-    // sky box
-    gameState->skyBox = SpawnEntity(shared, EntityType_Skybox, gameState->hSkyBoxMesh, gameState->hSkyBoxTexture, V4One(), false);
-    transforms->scales[gameState->skyBox] = { 500.0f, 500.0f, 500.0f };
-
-    // Other entities
-    gameState->cube1 = SpawnEntity(shared, EntityType_Cube1, gameState->hCubeMesh, 0, { 0.63f, 1, 0.21f, 1.0f });
-    transforms->positions[gameState->cube1] = { -3.5f, 5.0f, 0 };
-    transforms->scales[gameState->cube1] = { 2.5f, 0.25f, 1.0f };
-
-    gameState->cube2 = SpawnEntity(shared, EntityType_Cube2, gameState->hCubeMesh, 0, { 1, 0.21f, 0.63f, 0.75f });
-    transforms->positions[gameState->cube2] = { 1.5f, 5.0f, 0 };
-
-    gameState->sphere1 = SpawnEntity(shared, EntityType_Sphere1, gameState->hSphereMesh, gameState->hGraniteTexture, {1,1,1, 0.25f});
-    transforms->positions[gameState->sphere1] = { -1.5f, 2.0f, 0 };
-
-    gameState->sphere2 = SpawnEntity(shared, EntityType_Sphere2, gameState->hSphereMesh, gameState->hMosaicTexture, {1,1,1, 1});
-    transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
-
-    gameState->fire = SpawnEntity(shared, EntityType_Fire, gameState->hCubeMesh, 0, { 1, 0, 0, 1 });
-    transforms->positions[gameState->fire] = { 5.0f, 2.0f, 0 };
-    transforms->scales[gameState->fire] = { 0.25f, 0.25f, 0.25f };
-
-    gameState->folayfila = SpawnSprite(shared, gameState->hQuadMesh, gameState->hFolayfilaTex);
-    transforms->positions[gameState->folayfila] = { 5.0f, 5.0f, 0 };
-    AddClip(&shared->spriteSheetTable->sheets[gameState->hFolayfilaSheet], 0, 2, 1.0f, true);
-    AddClip(&shared->spriteSheetTable->sheets[gameState->hFolayfilaSheet], 2, 2, 10.0f, true);
-    FAnimState* anim = &shared->entityTable->entities[gameState->folayfila].animState;
-    anim->hSheet = gameState->hFolayfilaSheet;
-    anim->currentClip = 1;
-    anim->currentFrame = 0;
-    anim->timer = 0.0f;
-
-    BeginLevel_01(gameState);
-}
-
-// ────────────────────────────────────────
-// -- Level_02 --
-
-internal void BeginLevel_02(FGameState* gameState)
-{
-    FSharedStuff* shared = gameState->shared;
-    FTransforms* transforms = shared->transforms;
-
-    gameState->shared->camera.type = Camera_Orthographic;
-    shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
-
-    // Sound 
-    gameState->hFireSFXInstance = SoundPlay3D(gameState->soundManager, gameState->fire, gameState->hFireSFX,
-        ESoundCategory::Sound_SFX, 1.0f, true, transforms->positions[gameState->fire], 0.0f, 5.0f);
-    SoundPlay2D(gameState->soundManager, gameState->hMusic, ESoundCategory::Sound_Music, 0.5f, true);
-
-    // Collision
-    CollisionInitialize(shared->collisionWorld);
-    v3 extents = { 1.0f, 1.0f, 1.0f };
-
-    CollisionAddCollider(shared->collisionWorld, shared->camera.handle, { 1.0f, 1.0f, 1.0f }, Collision_Physics);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->infinitePlane, { 1.0f, 0.01f, 1.0f }, Collision_Static);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->cube1, extents, Collision_Kinematic);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->cube2, extents, Collision_Static);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere1, extents, Collision_Dynamic);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->sphere2, extents, Collision_Physics);
-
-    CollisionAddCollider(shared->collisionWorld, gameState->fire, extents, Collision_Physics);
-}
-
-internal void InitLevel_02(FGameState* gameState)
-{
-    FSharedStuff* shared = gameState->shared;
-    FTransforms* transforms = shared->transforms;
-
-    shared->camera.handle = SpawnEntity(shared, EntityType_Camera, INVALID_HANDLE, INVALID_HANDLE);
-
-    // infinite plane
-    gameState->infinitePlane = SpawnEntity(shared, EntityType_Plane, gameState->hPlaneMesh, gameState->hGridTexture);
-    transforms->positions[gameState->skyBox].x = 100.0f;
-    transforms->scales[gameState->infinitePlane] = { 1000.0f, 1.0f, 1000.0f };
-
-    // Background - just a big blue plane
-    gameState->skyBox = SpawnEntity(shared, EntityType_Skybox, gameState->hPlaneMesh, WHITE_TEXTURE, { 0, 0.5f, 0.9f, 1 }, false);
-    transforms->scales[gameState->skyBox] = { 1000.0f, 0.1f, 1000.0f };
-    transforms->positions[gameState->skyBox].z = 200.0f;
-    SetRotation(transforms, gameState->skyBox, { -90, 0, 0 });
-
-    // Other entities
-    gameState->cube1 = SpawnEntity(shared, EntityType_Cube1, gameState->hCubeMesh, gameState->hMosaicTexture, { 0.38f, 0.81f, 1, 0.75f });
-    transforms->positions[gameState->cube1] = { -3.5f, 5.0f, 0 };
-    transforms->scales[gameState->cube1] = { 0.5f, 0.5f, 0.5f };
-
-    gameState->cube2 = SpawnEntity(shared, EntityType_Cube2, gameState->hCubeMesh, 0, { 1, 0.57f, 0.38f, 1 });
-    transforms->positions[gameState->cube2] = { 1.5f, 5.0f, 0 };
-    transforms->scales[gameState->cube2] = { 0.5f, 0.5f, 1.0f };
-
-    gameState->sphere1 = SpawnEntity(shared, EntityType_Sphere1, gameState->hSphereMesh, 0, { 1, 0.5f, 0.875f, 1.5f });
-    transforms->positions[gameState->sphere1] = { -1.5f, 2.0f, 0 };
-
-    gameState->sphere2 = SpawnEntity(shared, EntityType_Sphere2, gameState->hSphereMesh, gameState->hGraniteTexture);
-    transforms->positions[gameState->sphere2] = { 1.5f, 2.0f, 0 };
-
-    gameState->fire = SpawnEntity(shared, EntityType_Fire, gameState->hCubeMesh, gameState->hMosaicTexture);
-    transforms->positions[gameState->fire] = { -5.0f, 2.0f, 0 };
-    transforms->scales[gameState->fire] = { 0.25f, 0.25f, 0.25f };
-
-    BeginLevel_02(gameState);
-}
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
-internal void BeginLevelById(FGameState* gameState, ELevel level)
-{
-    switch (level)
-    {
-    case Level_01:
-    {
-        BeginLevel_01(gameState);
-    } break;
-
-    case Level_02:
-    {
-        BeginLevel_02(gameState);
-    } break;
-
-    default:
-    {} break;
-    }
-}
-
+// Unloads the current level
 internal void UnloadLevel(FGameState* gameState)
 {
     SetGamePaused(gameState, false);
@@ -365,25 +113,15 @@ internal void UnloadLevel(FGameState* gameState)
     gameState->shared->selectedEntity = 0;
 #endif // FADO_DEBUG
 
-    // Entites
-    gameState->infinitePlane = 0;
-    gameState->skyBox = 0;
-    gameState->cube1 = 0;
-    gameState->cube2 = 0;
-    gameState->sphere1 = 0;
-    gameState->sphere2 = 0;
-    gameState->fire = 0;
-    gameState->hFireSFXInstance = INVALID_HANDLE;
-    gameState->currentLevel = Level_None;
+    FadoZeroMemory(gameState->currentLevel, LEVEL_ARENA_SIZE);
 
     SoundStopAll(gameState->soundManager);
 }
 
-// ──────────────────────────────────────────────────────────────────────────────────────────
 inline b8 SaveCurrentLevel(FGameState* gameState)
 {
     c8 dst[FMAX_PATH];
-    GetLevelPathFromId(dst, gameState->currentLevel);
+    GetLevelPathFromName(dst, gameState->currentLevel->name);
 
     FILE* file;
     fopen_s(&file, dst, "wb");
@@ -403,7 +141,6 @@ inline b8 SaveCurrentLevel(FGameState* gameState)
     fwrite(&assetHeader, sizeof(assetHeader), 1, file);
 
     FLevelHeader levelHeader = {};
-    levelHeader.index = (u32)gameState->currentLevel;
     levelHeader.entityCount = entitiesCount;
     levelHeader.flags = 0;
     fwrite(&levelHeader, sizeof(FLevelHeader), 1, file);
@@ -428,34 +165,18 @@ inline b8 SaveCurrentLevel(FGameState* gameState)
     return true;
 }
 
-inline b8 LoadLevelById(FGameState* gameState, ELevel level)
+inline b8 LoadLevel(FGameState* gameState, FLevel level)
 {
-    UnloadLevel(gameState);
-
+    *gameState->currentLevel = level;
     c8 src[FMAX_PATH];
-    GetLevelPathFromId(src, level);
+    GetLevelPathFromName(src, level.name);
 
     FILE* file;
     fopen_s(&file, src, "rb");
     if (!file)
     {
-        // Init the level if it hasn't been saved.
-        switch (level)
-        {
-            case Level_01:
-            {
-                InitLevel_01(gameState);
-            } break;
-
-            case Level_02:
-            {
-                InitLevel_02(gameState);
-            } break;
-            
-            default:
-            {} break;
-        }
-        gameState->currentLevel = level;
+        level.Init(gameState);
+        level.Begin(gameState);
         return false;
     }
 
@@ -474,18 +195,16 @@ inline b8 LoadLevelById(FGameState* gameState, ELevel level)
     fread(&levelHeader, sizeof(FLevelHeader), 1, file);
 
     // store which level is active
-    gameState->currentLevel = (ELevel)levelHeader.index;
 
     for (u32 i = 0; i < levelHeader.entityCount; ++i)
     {
         FEntityDesc desc;
         fread(&desc, sizeof(FEntityDesc), 1, file);
         HEntity handle = SpawnEntityFromDesc(gameState, &desc);
-        AssignGameStateEntityFromType(gameState, desc.type, handle);
     }
 
     // Call begin level
-    BeginLevelById(gameState, level);
+    level.Begin(gameState);
 
     fclose(file);
     return true;

@@ -75,6 +75,7 @@ typedef wchar_t wchar;
 #define ForceInline __forceinline
 
 #define FMAX_PATH 128
+#define FMAX_NAME 64
 
 // ─────────────────────────────────────────────
 #include <string.h>
@@ -192,7 +193,8 @@ struct mat4
 // ──────────────── Arena ──────────────────────
 
 #define PERMANENT_ARENA_SIZE Megabytes(64)
-#define SCRATCH_ARENA_SIZE Megabytes(16)
+#define SCRATCH_ARENA_SIZE Megabytes(15)
+#define LEVEL_ARENA_SIZE Megabytes(1)
 
 // Preallocated memory block. Usually allocated on startup and used across the code.
 struct FMemoryArena
@@ -203,12 +205,13 @@ struct FMemoryArena
 };
 
 // Permanent — lives for the entire session.
-// Scratch — resets every asset load.
-// Note: MUST reset scratch manually after using it with ArenaReset().
+// Scratch   — resets every asset load.
+// Level     - levels only. permanaent through out the game. Allocated on startup, reused in levels.
 struct FEngineMemory
 {
 	FMemoryArena permanent;
-	FMemoryArena scratch;   // ! MUST reset manually after using with ArenaReset()
+	FMemoryArena scratch;   // MUST reset manually after using with ArenaReset()
+	FMemoryArena level;
 };
 
 // Saves a type with a size (can be different) into the arena.
@@ -397,8 +400,7 @@ struct FSharedStuff
 	struct FCollisionWorld* collisionWorld;
 	struct FUICommandBucket* uiCommands;
 
-	FMemoryArena* permenantArena;
-	FMemoryArena* scratchArena;
+	FEngineMemory* arena;
 
 #if FADO_DEBUG
 	// Currently only used in debug mode.

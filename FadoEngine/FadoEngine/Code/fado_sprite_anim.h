@@ -52,6 +52,14 @@ inline void AddClip(FSpriteSheet* sheet, u32 startFrame, u32 frameCount, f32 fps
 	clip->loop = loop;
 }
 
+inline void InitAnimState(FAnimState* anim, HSpriteSheet sheet, u32 currentClip)
+{
+	anim->hSheet = sheet;
+	anim->currentClip = currentClip;
+	anim->currentFrame = 0;
+	anim->timer = 0.0f;
+}
+
 inline void SetClip(FAnimState* anim, u32 clip)
 {
 	if (anim->currentClip == clip)

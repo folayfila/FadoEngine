@@ -85,7 +85,8 @@ project "Game"
 
     includedirs
     {
-        "$(SolutionDir)/FadoEngine/Code/"
+        "$(SolutionDir)/FadoEngine/Code/",
+        "$(SolutionDir)/Game/Code/"
     }
 
     disablewarnings { "6297", "28251", "6387", "6386" }

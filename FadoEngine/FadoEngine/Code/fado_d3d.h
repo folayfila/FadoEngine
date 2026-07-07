@@ -347,7 +347,7 @@ void	 Render			 (FRenderWorld* world);
 HTexture LoadFImage	(FRenderWorld* world, cc8* fileName);
 HMesh	 LoadFModel	(FRenderWorld* world, cc8* filename);
 HTexture LoadFFont	(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFont);
-HSound   LoadFSound	(struct FSoundManager* SoundManager, FMemoryArena* permanent, FMemoryArena* scratch, cc8* filename);
+HSound   LoadFSound (struct FSoundManager* SoundManager, FEngineMemory* arena, cc8* filename);
 
 HSpriteSheet RegisterSpriteSheet (FRenderWorld* world, HTexture hTex, u32 frameWidth, u32 frameHeight);
 

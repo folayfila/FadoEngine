@@ -628,7 +628,6 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 	d3dInitParams.screenNear = SCREEN_NEAR;
 
 	// Initialize Dx11.
-	win32System->world->shared->scratchArena = &memory->scratch;
 	InitializeFD3D(win32System->world, &d3dInitParams);
 
 #if FADO_DEBUG
@@ -647,37 +646,39 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 // Loads all assets at startup.
 internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 {
-	gameState->hQuadMesh = GetQuad(world);
-	gameState->hPlaneMesh = LoadFModel(world, "Assets\\Models\\plane.fmodel");
-	gameState->hCubeMesh = LoadFModel(world, "Assets\\Models\\cube.fmodel");
-	gameState->hSphereMesh = LoadFModel(world, "Assets\\Models\\sphere.fmodel");
-	gameState->hSkyBoxMesh = LoadFModel(world, "Assets\\Models\\skybox.fmodel");
+	FAssetsHandles* assets = &gameState->assets;
+
+	assets->hQuadMesh = GetQuad(world);
+	assets->hPlaneMesh = LoadFModel(world, "Assets\\Models\\plane.fmodel");
+	assets->hCubeMesh = LoadFModel(world, "Assets\\Models\\cube.fmodel");
+	assets->hSphereMesh = LoadFModel(world, "Assets\\Models\\sphere.fmodel");
+	assets->hSkyBoxMesh = LoadFModel(world, "Assets\\Models\\skybox.fmodel");
 	//HMesh hMonkey = LoadGLBIntoWorld(world, "models\\monkey.fmodel");
 
 	// > Important: Make sure the first loaded texture is the white texture because it's used by default for colors.
 	// #cheesy_workaround
-	gameState->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fimage");
-	gameState->hGridTexture = LoadFImage(world, "Assets\\Textures\\grid.fimage");
-	gameState->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fimage");
-	gameState->hGraniteTexture = LoadFImage(world, "Assets\\Textures\\granite.fimage");
-	gameState->hSkyBoxTexture = LoadFImage(world, "Assets\\Textures\\skybox_0.fimage");
+	assets->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fimage");
+	assets->hGridTexture = LoadFImage(world, "Assets\\Textures\\grid.fimage");
+	assets->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fimage");
+	assets->hGraniteTexture = LoadFImage(world, "Assets\\Textures\\granite.fimage");
+	assets->hSkyBoxTexture = LoadFImage(world, "Assets\\Textures\\skybox_0.fimage");
 
 	// Sprites
-	gameState->hFolayfilaTex = LoadFImage(world, "Assets\\Textures\\folayfila_64_sheet.fimage");
-	gameState->hFolayfilaSheet = RegisterSpriteSheet(world, gameState->hFolayfilaTex, 64, 64);
+	assets->hFolayfilaTex = LoadFImage(world, "Assets\\Textures\\folayfila_64_sheet.fimage");
+	assets->hFolayfilaSheet = RegisterSpriteSheet(world, assets->hFolayfilaTex, 64, 64);
 
-	//LoadFont(world, "AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, gameState->font);
+	//LoadFont(world, "AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, assets->font);
 	LoadFFont(world, "Assets\\Fonts\\arialbd.ffont", 25.0f, gameState->font);
 
 	// Temporary test, using royalty free sounds:
 	// https://pixabay.com/music/video-games-sinnesl%C3%B6schen-beam-117362/
-	gameState->hMusic = LoadFSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\Music\\sinneschlosen-sinnesloschen-beam-117362.fsound");
+	assets->hMusic = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets\\Audio\\Music\\sinneschlosen-sinnesloschen-beam-117362.fsound");
 	// https://pixabay.com/sound-effects/film-special-effects-impact-sound-effect-8-bit-retro-151796/
-	gameState->hCollideSFX = LoadFSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\lesiakower-impact-sound-effect-8-bit-retro-151796.fsound");
+	assets->hCollideSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets\\Audio\\SFX\\lesiakower-impact-sound-effect-8-bit-retro-151796.fsound");
 	// https://pixabay.com/sound-effects/technology-click-21156/
-	gameState->hUIClickSFX = LoadFSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\666herohero-click-21156.fsound");
+	assets->hUIClickSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets\\Audio\\SFX\\666herohero-click-21156.fsound");
 	// https://pixabay.com/sound-effects/nature-fire-crackling-sounds-427410/
-	gameState->hFireSFX = LoadFSound(gameState->soundManager, gameState->shared->permenantArena, gameState->shared->scratchArena, "Assets\\Audio\\SFX\\dragon-studio-fire-crackling-sounds-427410.fsound");
+	assets->hFireSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets\\Audio\\SFX\\dragon-studio-fire-crackling-sounds-427410.fsound");
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -701,10 +702,11 @@ int WINAPI wWinMain(
 
 	// Create all memory for the game upfront, and use it across the game.
 	FEngineMemory engineMemory = {};
-	u32 totalSize = PERMANENT_ARENA_SIZE + SCRATCH_ARENA_SIZE;	// 80 MB
+	u32 totalSize = PERMANENT_ARENA_SIZE + SCRATCH_ARENA_SIZE + LEVEL_ARENA_SIZE;	// 80 MB
 	void* base = VirtualAlloc(0, totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	engineMemory.permanent = ArenaMake((u8*)base, PERMANENT_ARENA_SIZE);
 	engineMemory.scratch = ArenaMake((u8*)base + PERMANENT_ARENA_SIZE, SCRATCH_ARENA_SIZE);
+	engineMemory.level = ArenaMake((u8*)base + PERMANENT_ARENA_SIZE + SCRATCH_ARENA_SIZE, LEVEL_ARENA_SIZE);
 
 	// Game state
 	FGameState* gameState = ArenaPushType(&engineMemory.permanent, FGameState);
@@ -714,8 +716,8 @@ int WINAPI wWinMain(
 	gameState->shared->spriteSheetTable = ArenaPushType(&engineMemory.permanent, FSpriteSheetTable);
 	gameState->shared->collisionWorld = ArenaPushType(&engineMemory.permanent, FCollisionWorld);
 	gameState->shared->uiCommands = ArenaPushType(&engineMemory.permanent, FUICommandBucket);
-	gameState->shared->permenantArena = &engineMemory.permanent;
-	gameState->shared->scratchArena = &engineMemory.scratch;
+	gameState->shared->arena = &engineMemory;
+	gameState->currentLevel = ArenaPushSize(&engineMemory.level, FLevel, LEVEL_ARENA_SIZE);
 	gameState->font = ArenaPushType(&engineMemory.permanent, FFont);
 
 	// Renderer

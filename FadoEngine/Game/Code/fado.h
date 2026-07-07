@@ -14,36 +14,12 @@
     This wasy, technically we can just drop game files and have a game run out of the box.
 */
 
-// -- Forwards --
-struct FGameInput;
-
 // ──────────────────────────────────────────────────────────────────────────────────────────
-struct FGameState
+
+// Fat list of all the assets we load in the engine
+struct FAssetsHandles
 {
-    b32 running;
-    b32 paused;
-    b32 initialized;
-    
-    FSharedStuff* shared;
-    FGameInput* input;
-
-    f32 cameraYaw;   // degrees, accumulates freely
-    f32 cameraPitch; // degrees, clamped to [-89, 89]
-
-    FFont* font;
-    FUINavState uiNavState;
-
-    // Entites
-    HEntity infinitePlane;
-    HEntity skyBox;
-    HEntity cube1;
-    HEntity cube2;
-    HEntity sphere1;
-    HEntity sphere2;
-    HEntity fire;
-
     // folayfila
-    HEntity folayfila;
     HTexture hFolayfilaTex;
     HSpriteSheet hFolayfilaSheet;
 
@@ -62,16 +38,37 @@ struct FGameState
     HTexture hGraniteTexture;
 
     // Sound
-    FSoundManager* soundManager;
     HSound hMusic;
     HSound hCollideSFX;
     HSound hUIClickSFX;
-
     HSound hFireSFX;
-    HSound hFireSFXInstance;
+};
 
-    // Levels
-    enum ELevel currentLevel;
+// ──────────────────────────────────────────────────────────────────────────────────────────
+// -- Forwards --
+struct FGameInput;
+struct FLevel;
+
+struct FGameState
+{   
+    FAssetsHandles assets;
+
+    FGameInput* input;
+    FSharedStuff* shared;
+
+    FSoundManager* soundManager;
+
+    FLevel* currentLevel;
+
+    FFont* font;
+    FUINavState uiNavState;
+
+    f32 cameraYaw;   // degrees, accumulates freely
+    f32 cameraPitch; // degrees, clamped to [-89, 89]
+
+    b8 running;
+    b8 paused;
+    b8 initialized;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
