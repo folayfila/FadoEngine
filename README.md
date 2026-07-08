@@ -8,9 +8,10 @@ The engine is heavily data oriented; we have a bunch of structs, and create func
 ![Description](media/showcase.gif)
 
 ### Latest Features
+- Improved levels load save and update.
+- 2D sprite animation system.
 - A unified material shader, with color/tint, texture, lit/unlit and transparency.
 - Custom compressed file format for textures, models, fonts and audios.
-- Levels save/load.
 - 2D and 3D custom sound system. (XAusio2 for Windows).
 - Seamless Cubemap Skybox.
 - Real-time entities transform editing with ImGui.
