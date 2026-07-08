@@ -1033,30 +1033,50 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 
 	FAssetHeader assetHeader = {};
 	fread(&assetHeader, sizeof(assetHeader), 1, file);
-	Assert(assetHeader.magic == FASSET_MAGIC && assetHeader.assetType == FASSET_TYPE_IMAGE);
+	Assert((assetHeader.magic == FASSET_MAGIC) && (assetHeader.assetType == FASSET_TYPE_IMAGE));
 
 	FImageHeader header = {};
 	fread(&header, sizeof(header), 1, file);
 
-	u32* mipOffsets = ArenaPushArray(&world->shared->arena->scratch,  u32, header.mipCount);
-	u32* mipSizes = ArenaPushArray(&world->shared->arena->scratch, u32, header.mipCount);
-	fread(mipOffsets, sizeof(u32), header.mipCount, file);
-	fread(mipSizes, sizeof(u32), header.mipCount, file);
+	u32* mipOffsets = nullptr;
+	u32* mipSizes = nullptr;
+
+	if (header.format != FIMAGE_FORMAT_RGBA8)
+	{
+		mipOffsets = ArenaPushArray(&world->shared->arena->scratch, u32, header.mipCount);
+		mipSizes = ArenaPushArray(&world->shared->arena->scratch, u32, header.mipCount);
+
+		fread(mipOffsets, sizeof(u32), header.mipCount, file);
+		fread(mipSizes, sizeof(u32), header.mipCount, file);
+	}
 
 	// Read compressed data
 	u8* compressedData = ArenaPushArray(&world->shared->arena->scratch, u8, header.dataSize);
 	fread(compressedData, header.dataSize, 1, file);
 	fclose(file);
 
-	// Decompress into allMipData
-	u8* allMipData = ArenaPushArray(&world->shared->arena->scratch, u8, header.uncompressedSize);
-	LZ4_decompress_safe((const char*)compressedData, (char*)allMipData,
-		(i32)header.dataSize, (i32)header.uncompressedSize);
+	// Decompress
+	u8* imageData = ArenaPushArray(&world->shared->arena->scratch, u8, header.uncompressedSize);
+	LZ4_decompress_safe((cc8*)compressedData, (c8*)imageData, (i32)header.dataSize, (i32)header.uncompressedSize);
 
-	// Everything below unchanged
-	DXGI_FORMAT dxgiFormat = (header.format == FIMAGE_FORMAT_BC3)
-		? DXGI_FORMAT_BC3_UNORM
-		: DXGI_FORMAT_BC1_UNORM;
+	DXGI_FORMAT dxgiFormat = DXGI_FORMAT_UNKNOWN;
+	switch (header.format)
+	{
+	case FIMAGE_FORMAT_BC1:
+		dxgiFormat = DXGI_FORMAT_BC1_UNORM;
+		break;
+
+	case FIMAGE_FORMAT_BC3:
+		dxgiFormat = DXGI_FORMAT_BC3_UNORM;
+		break;
+
+	case FIMAGE_FORMAT_RGBA8:
+		dxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+		break;
+
+	default:
+		Assert(false);
+	}
 
 	D3D11_TEXTURE2D_DESC texDesc = {};
 	texDesc.Width = header.width;
@@ -1069,44 +1089,57 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 	texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 	texDesc.MiscFlags = 0;
 
-	D3D11_SUBRESOURCE_DATA* mipData = ArenaPushArray(&world->shared->arena->scratch, D3D11_SUBRESOURCE_DATA, header.mipCount);
+	D3D11_SUBRESOURCE_DATA* subresources = ArenaPushArray(&world->shared->arena->scratch, D3D11_SUBRESOURCE_DATA, header.mipCount);
 
-	u32 mipWidth = header.width;
-	u32 mipHeight = header.height;
-	for (u32 mip = 0; mip < header.mipCount; ++mip)
+	if (header.format == FIMAGE_FORMAT_RGBA8)
 	{
-		mipData[mip].pSysMem = allMipData + mipOffsets[mip];
-		mipData[mip].SysMemSlicePitch = 0;
+		subresources[0].pSysMem = imageData;
+		subresources[0].SysMemPitch = header.width * 4;
+		subresources[0].SysMemSlicePitch = 0;
+	}
+	else
+	{
+		u32 mipWidth = header.width;
+		u32 mipHeight = header.height;
 
-		if (header.format == FIMAGE_FORMAT_BC3)
+		for (u32 mip = 0; mip < header.mipCount; ++mip)
 		{
-			mipData[mip].SysMemPitch = ((mipWidth + 3) / 4) * 16;
-		}
-		else if (header.format == FIMAGE_FORMAT_BC1)
-		{
-			mipData[mip].SysMemPitch = ((mipWidth + 3) / 4) * 8;
-		}
+			subresources[mip].pSysMem = imageData + mipOffsets[mip];
+			subresources[mip].SysMemSlicePitch = 0;
 
-		if (mipWidth > 1) { mipWidth >>= 1; }
-		if (mipHeight > 1) { mipHeight >>= 1; }
+			if (header.format == FIMAGE_FORMAT_BC3)
+			{
+				subresources[mip].SysMemPitch = ((mipWidth + 3) / 4) * 16;
+			}
+			else // BC1
+			{
+				subresources[mip].SysMemPitch = ((mipWidth + 3) / 4) * 8;
+			}
+
+			if (mipWidth > 1) mipWidth >>= 1;
+			if (mipHeight > 1) mipHeight >>= 1;
+		}
 	}
 
-	ID3D11Texture2D* tex;
-	HRESULT result = world->d3d.device->CreateTexture2D(&texDesc, mipData, &tex);
+	ID3D11Texture2D* tex = nullptr;
+	HRESULT result = world->d3d.device->CreateTexture2D(&texDesc, subresources, &tex);
 	Assert(!FAILED(result));
 
-	ID3D11ShaderResourceView* srv;
+	ID3D11ShaderResourceView* srv = nullptr;
 	result = world->d3d.device->CreateShaderResourceView(tex, nullptr, &srv);
 	Assert(!FAILED(result));
+
 	tex->Release();
 
 	Assert(world->texturesCount < FMAX_TEXTURES);
+
 	HTexture handle = world->texturesCount++;
 	world->textures[handle].textureView = srv;
 	world->textures[handle].width = (i32)header.width;
 	world->textures[handle].height = (i32)header.height;
 
 	ArenaReset(&world->shared->arena->scratch);
+
 	return handle;
 }
 

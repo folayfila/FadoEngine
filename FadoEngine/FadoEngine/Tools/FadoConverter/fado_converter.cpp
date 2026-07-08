@@ -324,30 +324,58 @@ bool BakeImage(const char* src, const char* dst)
     }
 
     bool hasAlpha = (channels == 4);
+    bool isSpriteSheet = (strstr(src, "_sheet") != nullptr);
 
-    // BC compression first
-    u32 bcCapacity = hasAlpha
-        ? BakeMippedBC3_UpperBound((u32)width, (u32)height)
-        : BakeMippedBC1_UpperBound((u32)width, (u32)height);
-    u8* bcData = (u8*)malloc(bcCapacity);
+    u8* rawData = nullptr;
+    u32 rawSize = 0;
 
     u32 mipOffsets[FASSET_MAX_MIPS] = {};
     u32 mipSizes[FASSET_MAX_MIPS] = {};
-    u32 mipCount = 0;
-    u32 bcSize = 0;
+    u32 mipCount = 1;
 
-    bcSize = hasAlpha
-        ? BakeMippedBC3(pixels, (u32)width, (u32)height, bcData, mipOffsets, mipSizes, &mipCount)
-        : BakeMippedBC1(pixels, (u32)width, (u32)height, bcData, mipOffsets, mipSizes, &mipCount);
+    u32 format = FIMAGE_FORMAT_RGBA8;
+
+    if (isSpriteSheet)
+    {
+        // Store raw RGBA for sprite sheets (no BC compression, no mips)
+        rawSize = (u32)(width * height * 4);
+
+        rawData = (u8*)malloc(rawSize);
+        memcpy(rawData, pixels, rawSize);
+
+        format = FIMAGE_FORMAT_RGBA8;
+    }
+    else
+    {
+        // BC compression + mip generation
+        u32 bcCapacity = hasAlpha
+            ? BakeMippedBC3_UpperBound((u32)width, (u32)height)
+            : BakeMippedBC1_UpperBound((u32)width, (u32)height);
+
+        rawData = (u8*)malloc(bcCapacity);
+
+        rawSize = hasAlpha
+            ? BakeMippedBC3(pixels, (u32)width, (u32)height,
+                rawData, mipOffsets, mipSizes, &mipCount)
+            : BakeMippedBC1(pixels, (u32)width, (u32)height,
+                rawData, mipOffsets, mipSizes, &mipCount);
+
+        format = hasAlpha ? FIMAGE_FORMAT_BC3 : FIMAGE_FORMAT_BC1;
+    }
 
     stbi_image_free(pixels);
 
-    // LZ4 compress the BC data
-    i32 lz4Capacity = LZ4_compressBound((i32)bcSize);
+    // LZ4 compress
+    i32 lz4Capacity = LZ4_compressBound((i32)rawSize);
     u8* lz4Data = (u8*)malloc(lz4Capacity);
-    i32 lz4Size = LZ4_compress_default((const char*)bcData, (char*)lz4Data, (i32)bcSize, lz4Capacity);
 
-    free(bcData);
+    i32 lz4Size = LZ4_compress_default(
+        (const char*)rawData,
+        (char*)lz4Data,
+        (i32)rawSize,
+        lz4Capacity);
+
+    free(rawData);
 
     if (lz4Size <= 0)
     {
@@ -365,28 +393,36 @@ bool BakeImage(const char* src, const char* dst)
     FImageHeader imageHeader = {};
     imageHeader.width = (u32)width;
     imageHeader.height = (u32)height;
-    imageHeader.channels = (u32)channels;
+    imageHeader.channels = 4;
     imageHeader.dataSize = (u32)lz4Size;
-    imageHeader.uncompressedSize = bcSize;
-    imageHeader.format = hasAlpha ? FIMAGE_FORMAT_BC3 : FIMAGE_FORMAT_BC1;
+    imageHeader.uncompressedSize = rawSize;
+    imageHeader.format = format;
     imageHeader.mipCount = mipCount;
     imageHeader.flags = FASSET_FLAG_LZ4;
 
     FILE* out = fopen(dst, "wb");
     fwrite(&header, sizeof(header), 1, out);
     fwrite(&imageHeader, sizeof(imageHeader), 1, out);
-    fwrite(mipOffsets, sizeof(u32), mipCount, out);
-    fwrite(mipSizes, sizeof(u32), mipCount, out);
+
+    if (!isSpriteSheet)
+    {
+        fwrite(mipOffsets, sizeof(u32), mipCount, out);
+        fwrite(mipSizes, sizeof(u32), mipCount, out);
+    }
+
     fwrite(lz4Data, lz4Size, 1, out);
     fclose(out);
 
     free(lz4Data);
 
-    printf("wrote %s (%dx%d, %u mips, %s) %.2fMB -> BC %.2fMB -> LZ4 %.2fMB\n",
-        dst, width, height, mipCount,
-        hasAlpha ? "BC3" : "BC1",
+    printf("wrote %s (%dx%d, %u mips, %s) %.2fMB -> %.2fMB -> %.2fMB\n",
+        dst,
+        width,
+        height,
+        mipCount,
+        isSpriteSheet ? "RGBA8" : (hasAlpha ? "BC3" : "BC1"),
         (width * height * 4) / (1024.0f * 1024.0f),
-        bcSize / (1024.0f * 1024.0f),
+        rawSize / (1024.0f * 1024.0f),
         lz4Size / (1024.0f * 1024.0f));
 
     return true;

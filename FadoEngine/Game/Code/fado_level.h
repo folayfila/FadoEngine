@@ -13,7 +13,7 @@
 
 /*
 * Levels:
-  - To create a new level, just add a new header in Game/Code/Levels
+  - To create a new level, just add a new header.
   - Create a new level struct that inherits from FLevel.
   - Add a "Make" function that assigns the function pointers to the level's custom functions.
   - Check showcase levels as an example.

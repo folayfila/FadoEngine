@@ -163,7 +163,4 @@ struct FGameInput
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
-// Updates the engine's default input behavior.
-void HandleInput(struct FGameState* gameState, FGameInput* input);
-
 #endif // FADO_INPUT_H

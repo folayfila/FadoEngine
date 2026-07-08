@@ -55,8 +55,9 @@ struct FImageHeader
     u32 flags;
 };
 
-#define FIMAGE_FORMAT_BC1  0
-#define FIMAGE_FORMAT_BC3  1
+#define FIMAGE_FORMAT_RGBA8  0
+#define FIMAGE_FORMAT_BC1    1
+#define FIMAGE_FORMAT_BC3    2
 
 // ────────────────────────────────────────────────────────────────────────
 // Model payload (assetType == FASSET_TYPE_MODEL)

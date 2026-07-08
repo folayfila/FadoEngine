@@ -44,7 +44,7 @@ inline f32 OBBProjectedRadius(const FOBB& box, v3 axis)
  * plus all 9 cross products between A's and B's face normals (catches edge-edge separation cases that face axes alone miss).
  * If any axis shows separation, the boxes don't overlap -> return false.
  * Otherwise, tracks the axis with the SMALLEST overlap (the MTV axis),
- * and outputs a normal pointing A -> B plus the penetration depth along it. 
+ * and outputs a normal pointing A -> B plus the penetration depth along it.
  */
 internal b32 OBBOverlap(const FOBB& a, const FOBB& b, v3* outNormal, f32* outPenetration)
 {
@@ -176,6 +176,15 @@ internal i32 GridCellZ(const FUniformGrid* grid, f32 worldZ)
     return cellZ;
 }
 
+// Convert a world-space 2D Y position to a grid column index.
+// Same as GridCellZ. Declared for clarity when using.
+internal i32 GridCellY(const FUniformGrid* grid, f32 worldY)
+{
+    i32 cellY = (i32)((worldY - grid->originY) / GRID_CELL_SIZE);
+    cellY = Clampi32(cellY, 0, (GRID_HEIGHT - 1));
+    return cellY;
+}
+
 internal i32 GridIndex(i32 cellX, i32 cellZ)
 {
     i32 result = (cellZ * GRID_WIDTH) + cellX;
@@ -208,17 +217,11 @@ internal void CollisionBuildAABBsAndOBBs(FCollisionWorld* collisionWorld, FTrans
         FCollider* collider = &collisionWorld->colliders.colliders[i];
 
         v3 pos = transforms->positions[collider->entityID];
-        v3 scale = transforms->scales[collider->entityID];
+        v3 scale = AbsV3(transforms->scales[collider->entityID]);
         quat rot = transforms->rotations[collider->entityID];
 
-        // Side-scroller: flatten Z so everything sits on XY plane
-        if (collider->flags & ECollisionFlags::Collision_Is2D)
-        {
-            scale.z = 1.0f;
-        }
-
         collider->worldAABB = AABBFromTransform(pos, scale, collider->halfExtents);
-        
+
         // Decide if this collider should use OBB in narrow phase.
         collider->useOBB = ((collider->flags & COLLISION_SOLID_MASK) && !IsQuatIdentity(rot));
 
@@ -248,14 +251,31 @@ internal void CollisionBroadPhase(FCollisionWorld* collisionWorld, FMemoryArena*
 
         i32 x0 = GridCellX(&collisionWorld->grid, box.min.x);
         i32 x1 = GridCellX(&collisionWorld->grid, box.max.x);
-        i32 z0 = GridCellZ(&collisionWorld->grid, box.min.z);
-        i32 z1 = GridCellZ(&collisionWorld->grid, box.max.z);
 
-        for (i32 cz = z0; cz <= z1; ++cz)
+        if (collisionWorld->colliders.colliders[i].flags & Collision_Is2D)
         {
-            for (i32 cx = x0; cx <= x1; ++cx)
+            i32 y0 = GridCellY(&collisionWorld->grid, box.min.y);
+            i32 y1 = GridCellY(&collisionWorld->grid, box.max.y);
+
+            for (i32 cy = y0; cy <= y1; ++cy)
             {
-                GridInsert(&collisionWorld->grid, cx, cz, i);
+                for (i32 cx = x0; cx <= x1; ++cx)
+                {
+                    GridInsert(&collisionWorld->grid, cx, cy, i);
+                }
+            }
+        }
+        else
+        {
+            i32 z0 = GridCellZ(&collisionWorld->grid, box.min.z);
+            i32 z1 = GridCellZ(&collisionWorld->grid, box.max.z);
+
+            for (i32 cz = z0; cz <= z1; ++cz)
+            {
+                for (i32 cx = x0; cx <= x1; ++cx)
+                {
+                    GridInsert(&collisionWorld->grid, cx, cz, i);
+                }
             }
         }
     }
@@ -353,6 +373,8 @@ internal void CollisionNarrowPhase(FCollisionWorld* collisionWorld)
 
         else
         {
+            b32 is2D = (ca->flags & Collision_Is2D) && (cb->flags & Collision_Is2D);
+
             // --- Compute overlap on each axis ---
             f32 overlapX_pos = ca->worldAABB.max.x - cb->worldAABB.min.x;
             f32 overlapX_neg = cb->worldAABB.max.x - ca->worldAABB.min.x;
@@ -366,20 +388,36 @@ internal void CollisionNarrowPhase(FCollisionWorld* collisionWorld)
             f32 minOverlapY = (overlapY_pos < overlapY_neg) ? overlapY_pos : overlapY_neg;
             f32 minOverlapZ = (overlapZ_pos < overlapZ_neg) ? overlapZ_pos : overlapZ_neg;
 
-            if ((minOverlapX <= minOverlapY) && (minOverlapX <= minOverlapZ))
+            if (is2D)
             {
-                penetration = minOverlapX;
-                normal.x = (overlapX_pos < overlapX_neg) ? 1.0f : -1.0f;
-            }
-            else if ((minOverlapY <= minOverlapX) && (minOverlapY <= minOverlapZ))
-            {
-                penetration = minOverlapY;
-                normal.y = (overlapY_pos < overlapY_neg) ? 1.0f : -1.0f;
+                if (minOverlapX <= minOverlapY)
+                {
+                    penetration = minOverlapX;
+                    normal.x = (overlapX_pos < overlapX_neg) ? 1.0f : -1.0f;
+                }
+                else
+                {
+                    penetration = minOverlapY;
+                    normal.y = (overlapY_pos < overlapY_neg) ? 1.0f : -1.0f;
+                }
             }
             else
             {
-                penetration = minOverlapZ;
-                normal.z = (overlapZ_pos < overlapZ_neg) ? 1.0f : -1.0f;
+                if ((minOverlapX <= minOverlapY) && (minOverlapX <= minOverlapZ))
+                {
+                    penetration = minOverlapX;
+                    normal.x = (overlapX_pos < overlapX_neg) ? 1.0f : -1.0f;
+                }
+                else if ((minOverlapY <= minOverlapX) && (minOverlapY <= minOverlapZ))
+                {
+                    penetration = minOverlapY;
+                    normal.y = (overlapY_pos < overlapY_neg) ? 1.0f : -1.0f;
+                }
+                else
+                {
+                    penetration = minOverlapZ;
+                    normal.z = (overlapZ_pos < overlapZ_neg) ? 1.0f : -1.0f;
+                }
             }
         }
         if (collisionWorld->contactCount < MAX_CONTACTS)
@@ -390,7 +428,7 @@ internal void CollisionNarrowPhase(FCollisionWorld* collisionWorld)
             contact->normal = normal;
             contact->penetration = penetration;
             contact->isTrigger = (ca->flags & ECollisionFlags::Collision_Trigger) ||
-                                 (cb->flags & ECollisionFlags::Collision_Trigger);
+                (cb->flags & ECollisionFlags::Collision_Trigger);
         }
     }
 }
@@ -551,7 +589,7 @@ b8 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEn
 {
 
     b8 areColliding = ((contactInfo->entityA == hEntityA) && (contactInfo->entityB == hEntityB)) ||
-                          ((contactInfo->entityA == hEntityB) && (contactInfo->entityB == hEntityA));
+        ((contactInfo->entityA == hEntityB) && (contactInfo->entityB == hEntityA));
     return areColliding;
 }
 
@@ -570,8 +608,10 @@ b8 RayIntersectsAABB(FRay ray, FAABB aabb, f32* outDistance)
         if (fabsf(dir) < 1e-8f)
         {
             // Ray parallel to slab — no hit if origin outside slab
-            if (origin < minB || origin > maxB) 
-            { return false; }
+            if (origin < minB || origin > maxB)
+            {
+                return false;
+            }
         }
         else
         {
@@ -588,7 +628,9 @@ b8 RayIntersectsAABB(FRay ray, FAABB aabb, f32* outDistance)
             tMax = Min(tMax, t2);
 
             if (tMin > tMax)
-            { return false; }
+            {
+                return false;
+            }
         }
     }
 

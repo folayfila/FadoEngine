@@ -51,22 +51,21 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
     FUICommandBucket* uiBucket = gameState->shared->uiCommands;
 
     f32 buttonsYOffset = 20.0f;
-    v4 rect = { 350, 450, 200, 65 };
+    v4 rect = { 0, 0, 200, 65 };
     FUIButtonStyle buttonStyle = {
-        /*idle*/    { 0.251f, 0.596f, 0.369f, 1.0f },
-        /*hover*/   { 0.82f, 0.796f, 0.584f, 1.0f },
-        /*pressed*/ { 0.102f, 0.392f, 0.306f, 1.0f },
-        /*text*/    { 0.039f, 0.102f, 0.184f, 1 },
+        /*idle*/    FColor::Cyan(),
+        /*hover*/   FColor::LightRed(),
+        /*pressed*/ FColor::Green(),
+        /*text*/    FColor::DarkBlue(),
         gameState->assets.hWhiteTexture
     };
 
     v2 textPos = { 500, 500 };
-    v4 textColor = { 1, 0.5f, 1, 1 };
     if (UIButton(gameState, input, rect, "Save Level", &buttonStyle))
     {
         if (SaveCurrentLevel(gameState))
         {
-            UIPushText(uiBucket, gameState->font, "Level Saved", textPos, { 0, 1, 0, 1 });
+            UIPushText(uiBucket, gameState->font, "Level Saved", textPos, FColor::HotPink());
         }
     }
     rect.y += rect.height + buttonsYOffset;

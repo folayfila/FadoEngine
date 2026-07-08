@@ -139,7 +139,11 @@ struct FUniformGrid
 	// World-space origin of the grid (bottom-left corner).
 	// Set this to -(GRID_WIDTH * GRID_CELL_SIZE * 0.5) to centre on the world.
 	f32 originX;
-	f32 originZ;   // use originY for 2-D games
+	union
+	{
+		f32 originZ;	// for 3D
+		f32 originY;	// for 2D
+	};
 };
 
 // ─────────────────────────────────────────────

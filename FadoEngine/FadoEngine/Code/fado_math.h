@@ -365,6 +365,12 @@ inline v3 V3One()
 	return v;
 }
 
+inline v3 V3Zero()
+{
+	v3 v = {};
+	return v;
+}
+
 inline f32 V3Dot(v3 a, v3 b)
 {
 	f32 dot = (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
@@ -401,6 +407,12 @@ inline v3 V3Normalize(v3 a)
 	{
 		result = { (a.x / len), (a.y / len), (a.z / len) };
 	}
+	return result;
+}
+
+inline v3 AbsV3(v3 a)
+{
+	v3 result = { Absf32(a.x), Absf32(a.y), Absf32(a.z) };
 	return result;
 }
 
@@ -558,6 +570,9 @@ inline v4 V4One()
 	return v;
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// ──────────────── Colors ───────────────────────────────────────────────
+
 inline v4 GetRandomColor()
 {
 	v4 color = { 0 , 0, 0, 1 };
@@ -567,6 +582,73 @@ inline v4 GetRandomColor()
 	return color;
 }
 
+namespace FColor
+{
+	ForceInline v4 Black() { return { 0.0f, 0.0f, 0.0f, 1.0f }; }
+	ForceInline v4 White() { return { 1.0f, 1.0f, 1.0f, 1.0f }; }
+	ForceInline v4 Gray() { return { 0.5f, 0.5f, 0.5f, 1.0f }; }
+	ForceInline v4 LightGray() { return { 0.75f, 0.75f, 0.75f, 1.0f }; }
+	ForceInline v4 DarkGray() { return { 0.25f, 0.25f, 0.25f, 1.0f }; }
+
+	ForceInline v4 Red() { return { 1.0f, 0.0f, 0.0f, 1.0f }; }
+	ForceInline v4 DarkRed() { return { 0.55f, 0.0f, 0.0f, 1.0f }; }
+	ForceInline v4 LightRed() { return { 1.0f, 0.5f, 0.5f, 1.0f }; }
+
+	ForceInline v4 Green() { return { 0.0f, 1.0f, 0.0f, 1.0f }; }
+	ForceInline v4 DarkGreen() { return { 0.0f, 0.39f, 0.0f, 1.0f }; }
+	ForceInline v4 LightGreen() { return { 0.56f, 0.93f, 0.56f, 1.0f }; }
+
+	ForceInline v4 Blue() { return { 0.0f, 0.0f, 1.0f, 1.0f }; }
+	ForceInline v4 DarkBlue() { return { 0.0f, 0.0f, 0.55f, 1.0f }; }
+	ForceInline v4 LightBlue() { return { 0.68f, 0.85f, 0.90f, 1.0f }; }
+
+	ForceInline v4 Yellow() { return { 1.0f, 1.0f, 0.0f, 1.0f }; }
+	ForceInline v4 Gold() { return { 1.0f, 0.84f, 0.0f, 1.0f }; }
+	ForceInline v4 Orange() { return { 1.0f, 0.65f, 0.0f, 1.0f }; }
+
+	ForceInline v4 Purple() { return { 0.5f, 0.0f, 0.5f, 1.0f }; }
+	ForceInline v4 Violet() { return { 0.93f, 0.51f, 0.93f, 1.0f }; }
+	ForceInline v4 Indigo() { return { 0.29f, 0.0f, 0.51f, 1.0f }; }
+
+	ForceInline v4 Pink() { return { 1.0f, 0.75f, 0.80f, 1.0f }; }
+	ForceInline v4 HotPink() { return { 1.0f, 0.41f, 0.71f, 1.0f }; }
+
+	ForceInline v4 Cyan() { return { 0.0f, 1.0f, 1.0f, 1.0f }; }
+	ForceInline v4 Teal() { return { 0.0f, 0.5f, 0.5f, 1.0f }; }
+	ForceInline v4 Turquoise() { return { 0.25f, 0.88f, 0.82f, 1.0f }; }
+
+	ForceInline v4 Magenta() { return { 1.0f, 0.0f, 1.0f, 1.0f }; }
+
+	ForceInline v4 Brown() { return { 0.65f, 0.16f, 0.16f, 1.0f }; }
+	ForceInline v4 SaddleBrown() { return { 0.55f, 0.27f, 0.07f, 1.0f }; }
+	ForceInline v4 Tan() { return { 0.82f, 0.71f, 0.55f, 1.0f }; }
+	ForceInline v4 Beige() { return { 0.96f, 0.96f, 0.86f, 1.0f }; }
+
+	ForceInline v4 Olive() { return { 0.5f, 0.5f, 0.0f, 1.0f }; }
+	ForceInline v4 Lime() { return { 0.75f, 1.0f, 0.0f, 1.0f }; }
+	ForceInline v4 Mint() { return { 0.60f, 1.0f, 0.60f, 1.0f }; }
+
+	ForceInline v4 Navy() { return { 0.0f, 0.0f, 0.5f, 1.0f }; }
+	ForceInline v4 SkyBlue() { return { 0.53f, 0.81f, 0.92f, 1.0f }; }
+	ForceInline v4 RoyalBlue() { return { 0.25f, 0.41f, 0.88f, 1.0f }; }
+
+	ForceInline v4 Maroon() { return { 0.5f, 0.0f, 0.0f, 1.0f }; }
+	ForceInline v4 Crimson() { return { 0.86f, 0.08f, 0.24f, 1.0f }; }
+
+	ForceInline v4 Coral() { return { 1.0f, 0.50f, 0.31f, 1.0f }; }
+	ForceInline v4 Salmon() { return { 0.98f, 0.50f, 0.45f, 1.0f }; }
+
+	ForceInline v4 Lavender() { return { 0.90f, 0.90f, 0.98f, 1.0f }; }
+	ForceInline v4 Plum() { return { 0.87f, 0.63f, 0.87f, 1.0f }; }
+
+	ForceInline v4 Khaki() { return { 0.94f, 0.90f, 0.55f, 1.0f }; }
+	ForceInline v4 Ivory() { return { 1.0f, 1.0f, 0.94f, 1.0f }; }
+
+	ForceInline v4 Silver() { return { 0.75f, 0.75f, 0.75f, 1.0f }; }
+	ForceInline v4 Charcoal() { return { 0.21f, 0.27f, 0.31f, 1.0f }; }
+
+	ForceInline v4 Transparent() { return { 0.0f, 0.0f, 0.0f, 0.0f }; }
+}
 
 // ────────────────────────────────────────────────────────────────────────
 // ──────────────── Matrix ───────────────────────────────────────────────
