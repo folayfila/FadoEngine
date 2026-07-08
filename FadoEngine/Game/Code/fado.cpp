@@ -72,13 +72,11 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
     rect.y += rect.height + buttonsYOffset;
     if (UIButton(gameState, input, rect, "Load 3D Level", &buttonStyle))
     {
-        UnloadLevel(gameState);
         LoadLevel(gameState, SetupLevel_3DShowcase());
     }
     rect.y += rect.height + buttonsYOffset;
     if (UIButton(gameState, input, rect, "Load 2D Level", &buttonStyle))
     {
-        UnloadLevel(gameState);
         LoadLevel(gameState, SetupLevel_2DShowcase());
     }
 
@@ -179,23 +177,19 @@ GAME_UPDATE(GameUpdate)
         LoadLevel(gameState, SetupLevel_2DShowcase());
     }
 
-    FSharedStuff* shared = gameState->shared;
-
     if (gameState->currentLevel->Update)
     {
         gameState->currentLevel->Update(gameState, gameState->input->deltaTime);
     }
 
-    // Each frame, feed camera into the listener for 3D audio.
-    FSoundListener listener = {};
-    v3 camPos = shared->transforms->positions[shared->camera.handle];
-    listener.position = camPos;
-    listener.forward = shared->camera.forward;
-    listener.up = shared->camera.up;
-    gameState->soundManager->listener = listener;
+    if (gameState->paused)
+    {
+        UpdateUI(gameState, input);
+    }
 
 #if FADO_DEBUG
     // Clicking on entites
+    FSharedStuff* shared = gameState->shared;
     if (Pressed(&input->mouse.buttons[0]) && shared->canSelect)
     {
         FRay ray = ScreenPointToRay(gameState->shared, (f32)input->mouse.x, (f32)input->mouse.y);
@@ -206,9 +200,4 @@ GAME_UPDATE(GameUpdate)
         }
     }
 #endif // FADO_DEBUG
-
-    if (gameState->paused)
-    {
-        UpdateUI(gameState, input);
-    }
 }

@@ -116,13 +116,10 @@ struct FLevelHeader
 // What actually gets saved/loaded per entity
 struct FEntityDesc
 {
-    EEntityType  type;
-    v3           pos;
-    quat         rot;
-    v3           scale;
-    HMesh        hMesh;
-    FMaterial    material;
-    u32          reserved;
+    FEntity entity;
+    v3      pos;
+    quat    rot;
+    v3      scale;
 };
 
 // ────────────────────────────────────────────────────────────────────────

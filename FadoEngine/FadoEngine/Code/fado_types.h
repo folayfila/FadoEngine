@@ -273,22 +273,6 @@ typedef u32 HSound;
 typedef u32 HSpriteSheet;
 // ────────────────
 
-// For now, this is literally all kinds of entities we have.
-// TODO: Update the system once we have a working version of save\load.
-enum EEntityType
-{
-	EntityType_None,
-	EntityType_Camera,
-	EntityType_Plane,
-	EntityType_Skybox,
-	EntityType_Cube1,
-	EntityType_Cube2,
-	EntityType_Sphere1,
-	EntityType_Sphere2,
-	EntityType_Fire,
-	EntityType_Sprite,
-};
-
 // Material
 // Used to draw entities.
 // A material can be based on a loaded texture, or can be an rgb color.
@@ -314,7 +298,6 @@ struct FAnimState
 // Main entity struct.
 struct FEntity
 {
-	EEntityType type;
     HMesh hMesh;				// INVALID_HANDLE for 2D
 	FMaterial material;			// texture, color, alpha
 

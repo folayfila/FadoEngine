@@ -40,39 +40,36 @@ internal void Level_2DShowcase_Init(FGameState* gameState)
     FTransforms* transforms = shared->transforms;
     FLevel_2DShowcase* level = (FLevel_2DShowcase*)gameState->currentLevel;
 
-    shared->camera.handle = SpawnEntity(shared, EntityType_Camera, INVALID_HANDLE, INVALID_HANDLE);
+    shared->camera.handle = SpawnEntity(shared, INVALID_HANDLE, INVALID_HANDLE);
+    shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
 
     // Background - just a big blue plane
-    level->background = SpawnEntity(shared, EntityType_Skybox, assets->hPlaneMesh, WHITE_TEXTURE, { 0, 0.5f, 0.9f, 1 }, false);
+    level->background = SpawnEntity(shared, assets->hPlaneMesh, WHITE_TEXTURE, { 0, 0.5f, 0.9f, 1 }, false);
     transforms->scales[level->background] = { 1000.0f, 0.1f, 1000.0f };
     transforms->positions[level->background].z = 200.0f;
     SetRotation(transforms, level->background, { -90, 0, 0 });
 
     // Other entities
-    level->cube1 = SpawnEntity(shared, EntityType_Cube1, assets->hCubeMesh, assets->hMosaicTexture, { 0.38f, 0.81f, 1, 0.75f });
+    level->cube1 = SpawnEntity(shared, assets->hCubeMesh, assets->hMosaicTexture, { 0.38f, 0.81f, 1, 0.75f });
     transforms->positions[level->cube1] = { -3.5f, 5.0f, 0 };
     transforms->scales[level->cube1] = { 0.5f, 0.5f, 0.5f };
 
-    level->cube2 = SpawnEntity(shared, EntityType_Cube2, assets->hCubeMesh, 0, { 1, 0.57f, 0.38f, 1 });
+    level->cube2 = SpawnEntity(shared, assets->hCubeMesh, 0, { 1, 0.57f, 0.38f, 1 });
     transforms->positions[level->cube2] = { 1.5f, 5.0f, 0 };
     transforms->scales[level->cube2] = { 0.5f, 0.5f, 1.0f };
 
-    level->sphere1 = SpawnEntity(shared, EntityType_Sphere1, assets->hSphereMesh, 0, { 1, 0.5f, 0.875f, 1.5f });
+    level->sphere1 = SpawnEntity(shared, assets->hSphereMesh, 0, { 1, 0.5f, 0.875f, 1.5f });
     transforms->positions[level->sphere1] = { -1.5f, 2.0f, 0 };
 
-    level->sphere2 = SpawnEntity(shared, EntityType_Sphere2, assets->hSphereMesh, assets->hGraniteTexture);
+    level->sphere2 = SpawnEntity(shared, assets->hSphereMesh, assets->hGraniteTexture);
     transforms->positions[level->sphere2] = { 1.5f, 2.0f, 0 };
 
-    level->fire = SpawnEntity(shared, EntityType_Fire, assets->hCubeMesh, assets->hMosaicTexture);
+    level->fire = SpawnEntity(shared, assets->hCubeMesh, assets->hMosaicTexture);
     transforms->positions[level->fire] = { -5.0f, 2.0f, 0 };
     transforms->scales[level->fire] = { 0.25f, 0.25f, 0.25f };
 
     level->folayfila = SpawnSprite(shared, assets->hQuadMesh, assets->hFolayfilaTex);
     transforms->positions[level->folayfila] = { 5.0f, 5.0f, 0 };
-    AddClip(&shared->spriteSheetTable->sheets[assets->hFolayfilaSheet], 0, 2, 1.0f, true);
-    AddClip(&shared->spriteSheetTable->sheets[assets->hFolayfilaSheet], 2, 2, 10.0f, true);
-    FAnimState* anim = &shared->entityTable->entities[level->folayfila].animState;
-    InitAnimState(anim, assets->hFolayfilaSheet, Folayfila_Idle);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -84,10 +81,13 @@ internal void Level_2DShowcase_Begin(FGameState* gameState)
     FTransforms* transforms = shared->transforms;
     FLevel_2DShowcase* level = (FLevel_2DShowcase*)gameState->currentLevel;
 
-    gameState->input->mode = Input_UI;
-
+    gameState->input->mode = Input_Game;
     gameState->shared->camera.type = Camera_Orthographic;
-    shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
+
+    AddClip(&shared->spriteSheetTable->sheets[assets->hFolayfilaSheet], 0, 2, 1.0f, true);
+    AddClip(&shared->spriteSheetTable->sheets[assets->hFolayfilaSheet], 2, 2, 10.0f, true);
+    FAnimState* anim = &shared->entityTable->entities[level->folayfila].animState;
+    InitAnimState(anim, assets->hFolayfilaSheet, Folayfila_Run);
 
     // Sound 
     level->hFireSFXInstance = SoundPlay3D(gameState->soundManager, level->fire, assets->hFireSFX,
@@ -122,12 +122,10 @@ internal void Level_2DShowcase_Update(FGameState* gameState, f32 dt)
     FLevel_2DShowcase* level = (FLevel_2DShowcase*)gameState->currentLevel;
 
     // Each frame, feed camera into the listener for 3D audio.
-    FSoundListener listener = {};
-    v3 camPos = transforms->positions[shared->camera.handle];
-    listener.position = camPos;
-    listener.forward = shared->camera.forward;
-    listener.up = shared->camera.up;
-    gameState->soundManager->listener = listener;
+    quat folayfilaRot = transforms->rotations[level->folayfila];
+    gameState->soundManager->listener.position = transforms->positions[level->folayfila];
+    gameState->soundManager->listener.forward = QuatForward(folayfilaRot);
+    gameState->soundManager->listener.up = QuatUp(folayfilaRot);
 
     HandleInput(gameState, input);
 
