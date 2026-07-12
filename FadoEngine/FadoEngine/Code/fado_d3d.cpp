@@ -550,7 +550,7 @@ internal void SetMaterialShaderParameters(FRenderWorld* world, FDrawCall* call)
 	FMaterialBuffer* matBuffer = (FMaterialBuffer*)mapped.pData;
 	matBuffer->color = { mat->color.x, mat->color.y, mat->color.z, mat->color.a };
 	matBuffer->hasTexture = (mat->texture != INVALID_HANDLE) ? 1 : 0;
-	matBuffer->isLit = mat->isLit ? 1 : 0;
+	matBuffer->isLit = mat->flags & Material_Lit;
 	matBuffer->pad[0] = matBuffer->pad[1] = 0.0f;
 	matBuffer->spriteRect = call->spriteRect;
 
@@ -783,7 +783,7 @@ internal void PushDrawCall(FRenderWorld* world, DXMatrix worldMatrix, HMesh hMes
 {
 	// Push to right bucket based on the material color's alpha channel.
 	FRenderBucket* bucket = &world->opaqueBucket;
-	if (material.color.a < 1.0f || material.isTransparent)
+	if (material.color.a < 1.0f || (material.flags & Material_Transparent))
 	{
 		bucket = &world->transparentBucket;
 	}

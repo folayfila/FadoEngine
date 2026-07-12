@@ -53,7 +53,8 @@ inline void GetLevelPathFromName(c8* outPath, cc8* levelName)
 
 // Adds an entity to the entity table and gives it a transform.
 // - No dynamic allocation of any sorts, just setting values to an existing array.
-inline HEntity SpawnEntity(FSharedStuff* shared, HMesh hMesh, HTexture hTex = WHITE_TEXTURE, v4 color = V4One(), b8 isLit = true)
+inline HEntity SpawnEntity(FSharedStuff* shared, HMesh hMesh, HTexture hTex = WHITE_TEXTURE, 
+    v4 color = V4One(), u8 materialFlags = Material_None, v4 rect = { 0, 0, 1, 1 })
 {
     FTransforms* transforms = shared->transforms;
 
@@ -64,24 +65,15 @@ inline HEntity SpawnEntity(FSharedStuff* shared, HMesh hMesh, HTexture hTex = WH
     FMaterial mat = {};
     mat.color = color;
     mat.texture = hTex;
-    mat.isLit = isLit;
+    mat.flags = materialFlags;
     entity->material = mat;
 
     // By default full texture.
-    entity->spriteRect = { 0, 0, 1, 1 };
+    entity->spriteRect = rect;
 
     transforms->positions[handle] = {};
     transforms->scales[handle] = V3One();
     transforms->rotations[handle] = QuatIdentity();
-    return handle;
-}
-
-// Helper that wraps regular SpawnEntity. Used to easily spawn sprite entities.
-inline HEntity SpawnSprite(FSharedStuff* shared, HMesh quad, HTexture hTex, v4 rect = {0.0f, 0.0f, 1.0f, 1.0f}, v4 color = V4One())
-{
-    HEntity handle = SpawnEntity(shared, quad, hTex, color, false);
-    shared->entityTable->entities[handle].material.isTransparent = true;
-    shared->entityTable->entities[handle].spriteRect = rect;
     return handle;
 }
 

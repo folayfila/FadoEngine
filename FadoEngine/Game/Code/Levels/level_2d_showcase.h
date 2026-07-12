@@ -42,16 +42,16 @@ internal void Level_2DShowcase_Init(FGameState* gameState)
     shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
 
     // Background - just a big blue plane
-    level->background = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::LightBlue(), false);
+    level->background = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::LightBlue());
     transforms->positions[level->background] = { 0, 0, 1.0f };
     transforms->scales[level->background] = { 1000.0f, 1000.0f, 0.0f };
 
     // folayfila
-    level->folayfila = SpawnSprite(shared, assets->hQuadMesh, assets->hFolayfilaTex);
+    level->folayfila = SpawnEntity(shared, assets->hQuadMesh, assets->hFolayfilaTex, V4One(), Material_Transparent);
     transforms->positions[level->folayfila] = V3Zero();
 
     // quads
-    level->quads[0] = SpawnEntity(shared, assets->hQuadMesh, assets->hMosaicTexture, { 0.38f, 0.81f, 1, 0.75f });
+    level->quads[0] = SpawnEntity(shared, assets->hQuadMesh, assets->hMosaicTexture, { 0.38f, 0.81f, 1, 0.75f }, Material_Transparent);
     transforms->positions[level->quads[0]] = { -3.5f, 5.0f, 0 };
     transforms->scales[level->quads[0]] = { 1, 1, 0 };
 
@@ -62,28 +62,28 @@ internal void Level_2DShowcase_Init(FGameState* gameState)
     level->quads[2] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, { 1, 0.5f, 0.875f, 1.5f });
     transforms->positions[level->quads[2]] = { -1.5f, 2.0f, 0 };
 
-    level->quads[3] = SpawnEntity(shared, assets->hQuadMesh, assets->hGraniteTexture);
+    level->quads[3] = SpawnEntity(shared, assets->hQuadMesh, assets->hGraniteTexture, V4One());
     transforms->positions[level->quads[3]] = { 1.5f, 2.0f, 0 };
 
     // borders
-    level->borders[0] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::Brown(), false);
+    level->borders[0] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::Brown());
     transforms->positions[level->borders[0]] = { -10, 0, 0 }; // left border
     transforms->scales[level->borders[0]] = { 1, 20, 0 };
 
-    level->borders[1] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::Brown(), false);
+    level->borders[1] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::Brown());
     transforms->positions[level->borders[1]] = { 10, 0, 0 }; // right
     transforms->scales[level->borders[1]] = { 1, 20, 0 };
 
-    level->borders[2] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::Brown(), false);
+    level->borders[2] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::Brown());
     transforms->positions[level->borders[2]] = { 0, 10, 0 }; // top
     transforms->scales[level->borders[2]] = { 21, 1, 0 };
 
-    level->borders[3] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::Brown(), false);
+    level->borders[3] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::Brown());
     transforms->positions[level->borders[3]] = { 0, -10, 0 }; // bottom
     transforms->scales[level->borders[3]] = { 21, 1, 0 };
 
     // fire
-    level->fire = SpawnEntity(shared, assets->hQuadMesh, assets->hMosaicTexture);
+    level->fire = SpawnEntity(shared, assets->hQuadMesh, assets->hMosaicTexture, V4One());
     transforms->positions[level->fire] = { 0, 2.0f, 0 };
     transforms->scales[level->fire] = { 0.5f, 0.5f, 0 };
 }

@@ -272,8 +272,16 @@ typedef u32 HSound;
 
 typedef u32 HSpriteSheet;
 // ────────────────
-
 // Material
+
+enum EMaterialFlags : u8
+{
+	Material_None		 = 0,
+	Material_Lit		 = 1 << 0,	// Whether the material calculates light or not.
+	Material_Transparent = 1 << 1,	// While we use the alpha channel in the color for transparency, this allows us to transparent blend alpha channels in texture for sprites.
+	Material_CastShadow  = 1 << 2,	// Whether the material casts a shadow blob.
+};
+
 // Used to draw entities.
 // A material can be based on a loaded texture, or can be an rgb color.
 // If the texture is valid, the color is applied as tint to it.
@@ -282,8 +290,7 @@ struct FMaterial
 {
 	v4 color;			// Used as the main texture or applied as tint to a texture.
 	HTexture texture;   // WHITE_TEXTURE = no texture (color)
-	b8 isLit;			// Whether the material calculates light or not.
-	b8 isTransparent;	// While we use the alpha channel in the color for transparency, this allows us to transparent blend alpha channels in texture for sprites.
+	u8 flags;			// Material flags
 };
 
 // Runtime animation state — per entity
