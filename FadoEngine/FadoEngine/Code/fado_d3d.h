@@ -286,6 +286,22 @@ struct FMeshBuffer
 /// Renderer
 // ──────────────────────────────────
 
+// Frustum Culling.
+// Extract 6 planes from our view-projection matrix, then test each entity's bounding volume (sphere) against those planes.
+// Used to draw only entities in our view.
+struct FFrustumPlane
+{
+	v3 normal;
+	f32 d;
+};
+
+struct FFrustum
+{
+	// left, right, top, bottom, near, far
+	FFrustumPlane planes[6];
+};
+
+
 #define MAX_DRAW_CALLS 265
 
 // Draw call: one mesh, one material, one world matrix.

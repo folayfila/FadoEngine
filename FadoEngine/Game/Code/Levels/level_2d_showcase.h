@@ -15,10 +15,10 @@
 struct FLevel_2DShowcase : FLevel
 {
     HEntity background;
+    HEntity folayfila;
     HEntity borders[4];
     HEntity quads[4];
     HEntity fire;
-    HEntity folayfila;
 
     HSound hFireSFXInstance;
 };
@@ -50,21 +50,6 @@ internal void Level_2DShowcase_Init(FGameState* gameState)
     level->folayfila = SpawnEntity(shared, assets->hQuadMesh, assets->hFolayfilaTex, V4One(), Material_Transparent);
     transforms->positions[level->folayfila] = V3Zero();
 
-    // quads
-    level->quads[0] = SpawnEntity(shared, assets->hQuadMesh, assets->hMosaicTexture, { 0.38f, 0.81f, 1, 0.75f });
-    transforms->positions[level->quads[0]] = { -3.5f, 5.0f, 0 };
-    transforms->scales[level->quads[0]] = { 1, 1, 0 };
-
-    level->quads[1] = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, { 1, 0.57f, 0.38f, 1 });
-    transforms->positions[level->quads[1]] = { 1.5f, 5.0f, 0 };
-    transforms->scales[level->quads[1]] = { 0.5f, 0.5f, 0 };
-
-    level->quads[2] = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, { 1, 0.5f, 0.875f, 1.5f });
-    transforms->positions[level->quads[2]] = { -1.5f, 2.0f, 0 };
-
-    level->quads[3] = SpawnEntity(shared, assets->hQuadMesh, assets->hGraniteTexture, V4One());
-    transforms->positions[level->quads[3]] = { 1.5f, 2.0f, 0 };
-
     // borders
     level->borders[0] = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, FColor::Brown());
     transforms->positions[level->borders[0]] = { -10, 0, 0 }; // left border
@@ -81,6 +66,21 @@ internal void Level_2DShowcase_Init(FGameState* gameState)
     level->borders[3] = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, FColor::Brown());
     transforms->positions[level->borders[3]] = { 0, -10, 0 }; // bottom
     transforms->scales[level->borders[3]] = { 21, 1, 0 };
+
+    // quads
+    level->quads[0] = SpawnEntity(shared, assets->hQuadMesh, assets->hMosaicTexture, { 0.38f, 0.81f, 1, 0.75f });
+    transforms->positions[level->quads[0]] = { -3.5f, 5.0f, 0 };
+    transforms->scales[level->quads[0]] = { 1, 1, 0 };
+
+    level->quads[1] = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, { 1, 0.57f, 0.38f, 1 });
+    transforms->positions[level->quads[1]] = { 1.5f, 5.0f, 0 };
+    transforms->scales[level->quads[1]] = { 0.5f, 0.5f, 0 };
+
+    level->quads[2] = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, { 1, 0.5f, 0.875f, 1.5f });
+    transforms->positions[level->quads[2]] = { -1.5f, 2.0f, 0 };
+
+    level->quads[3] = SpawnEntity(shared, assets->hQuadMesh, assets->hGraniteTexture, V4One());
+    transforms->positions[level->quads[3]] = { 1.5f, 2.0f, 0 };
 
     // fire
     level->fire = SpawnEntity(shared, assets->hQuadMesh, assets->hMosaicTexture, V4One());

@@ -1062,6 +1062,56 @@ internal DXMatrix BuildEntityWorldMatrix(HEntity entityID, FSharedStuff* shared)
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// Frustum culling
+// ────────────────────────────────────────────────────────────────────────
+// Extract 6 planes from our view-projection matrix, then test each entity's bounding volume (sphere) against those planes.
+// Used to draw only entities in our view.
+internal void ExtractFrustumPlanes(FFrustum* frustum, DXMatrix viewProj)
+{
+	DirectX::XMFLOAT4X4 m;
+	DirectX::XMStoreFloat4x4(&m, viewProj);
+
+	// Left
+	frustum->planes[0] = { {m._14 + m._11, m._24 + m._21, m._34 + m._31}, m._44 + m._41 };
+	// Right
+	frustum->planes[1] = { {m._14 - m._11, m._24 - m._21, m._34 - m._31}, m._44 - m._41 };
+	// Bottom
+	frustum->planes[2] = { {m._14 + m._12, m._24 + m._22, m._34 + m._32}, m._44 + m._42 };
+	// Top
+	frustum->planes[3] = { {m._14 - m._12, m._24 - m._22, m._34 - m._32}, m._44 - m._42 };
+	// Near
+	frustum->planes[4] = { {m._13, m._23, m._33}, m._43 };
+	// Far
+	frustum->planes[5] = { {m._14 - m._13, m._24 - m._23, m._34 - m._33}, m._44 - m._43 };
+
+	// Normalize each plane
+	for (i32 i = 0; i < 6; ++i)
+	{
+		f32 len = sqrtf(frustum->planes[i].normal.x * frustum->planes[i].normal.x +
+						frustum->planes[i].normal.y * frustum->planes[i].normal.y +
+						frustum->planes[i].normal.z * frustum->planes[i].normal.z);
+		frustum->planes[i].normal.x /= len;
+		frustum->planes[i].normal.y /= len;
+		frustum->planes[i].normal.z /= len;
+		frustum->planes[i].d /= len;
+	}
+}
+
+internal b8 SphereInFrustum(FFrustum* frustum, v3 center, f32 radius)
+{
+	for (i32 i = 0; i < 6; ++i)
+	{
+		FFrustumPlane p = frustum->planes[i];
+		f32 dist = (p.normal.x * center.x) + (p.normal.y * center.y) + (p.normal.z * center.z) + p.d;
+		if (dist < -radius)
+		{
+			return false; // fully outside this plane
+		}
+	}
+	return true;
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // Texture loader — .fasset image
 // ────────────────────────────────────────────────────────────────────────
 HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
@@ -1455,16 +1505,27 @@ void Render(FRenderWorld* world)
 	// Generate the view matrix based on the camera's position.
 	RenderCamera(world);
 
-	// Draw all entites
-	// TODO: draw only those that need to be drawn (in view).
+	// Draw all entites in view.
+	FFrustum frustum;
+	DXMatrix viewProj = (DXMatrix)(world->shared->camera.view * world->shared->camera.projection).m;
+	ExtractFrustumPlanes(&frustum, viewProj);
+
 	FEntityTable* entTable = world->shared->entityTable;
-	f32 blobRadius = 2.5f;
+	f32 entityRadius = 2.5f;
 	for (u32 i = 0; i < entTable->count; ++i)
 	{
 		FEntity* entity = &entTable->entities[i];
 		if (entity->hMesh == INVALID_HANDLE)
 		{
 			continue;
+		}
+
+		v3 pos = world->shared->transforms->positions[i];
+		entityRadius = 2.5f * GetEntityScaleAverage(world->shared, i); // reuse your existing scale helper
+
+		if (!SphereInFrustum(&frustum, pos, entityRadius))
+		{
+			continue; // skip entirely — no draw call, no shadow blob
 		}
 
 		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
@@ -1478,8 +1539,7 @@ void Render(FRenderWorld* world)
 			}
 			else
 			{
-				blobRadius = (2.5f * GetEntityScaleAverage(world->shared, i));
-				PushBlobShadow(world, world->shared->transforms->positions[i], blobRadius);
+				PushBlobShadow(world, world->shared->transforms->positions[i], entityRadius);
 			}
 		}
 	}
@@ -1789,14 +1849,27 @@ void DebugRender(FRenderWorld* world)
 	// Generate the view matrix based on the camera's position.
 	RenderCamera(world);
 
+	// Draw all entites in view.
+	FFrustum frustum;
+	DXMatrix viewProj = (DXMatrix)(world->shared->camera.view * world->shared->camera.projection).m;
+	ExtractFrustumPlanes(&frustum, viewProj);
+
 	FEntityTable* entTable = world->shared->entityTable;
-	f32 blobRadius = 2.5f;
+	f32 entityRadius = 2.5f;
 	for (u32 i = 0; i < entTable->count; ++i)
 	{
 		FEntity* entity = &entTable->entities[i];
 		if (entity->hMesh == INVALID_HANDLE)
 		{
 			continue;
+		}
+
+		v3 pos = world->shared->transforms->positions[i];
+		entityRadius = 2.5f * GetEntityScaleAverage(world->shared, i); // reuse your existing scale helper
+
+		if (!SphereInFrustum(&frustum, pos, entityRadius))
+		{
+			continue; // skip entirely — no draw call, no shadow blob
 		}
 
 		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
@@ -1810,8 +1883,7 @@ void DebugRender(FRenderWorld* world)
 			}
 			else
 			{
-				blobRadius = (2.5f * GetEntityScaleAverage(world->shared, i));
-				PushBlobShadow(world, world->shared->transforms->positions[i], blobRadius);
+				PushBlobShadow(world, world->shared->transforms->positions[i], entityRadius);
 			}
 		}
 	}
