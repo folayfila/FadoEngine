@@ -351,8 +351,11 @@ HSound   LoadFSound (struct FSoundManager* SoundManager, FEngineMemory* arena, c
 
 HSpriteSheet RegisterSpriteSheet (FRenderWorld* world, HTexture hTex, u32 frameWidth, u32 frameHeight);
 
-// generates a simple quad and adds it to world->meshes.
+// Generates a simple quad and adds it to world->meshes.
 HMesh GetQuad(FRenderWorld* world);
+
+// Generates a simple blob on the XZ plane and adds it to world->meshes.
+HMesh GetGroundQuad(FRenderWorld* world);
 
 // Resize the swap chain buffers, recreate the render target view (depth/stencil buffer and view), update the viewport and projection matrix aspect ratio.
 void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 screenDepth);

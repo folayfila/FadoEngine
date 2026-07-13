@@ -53,7 +53,7 @@ inline void GetLevelPathFromName(c8* outPath, cc8* levelName)
 
 // Adds an entity to the entity table and gives it a transform.
 // - No dynamic allocation of any sorts, just setting values to an existing array.
-inline HEntity SpawnEntity(FSharedStuff* shared, HMesh hMesh, HTexture hTex = WHITE_TEXTURE, 
+inline HEntity SpawnEntity(FSharedStuff* shared, HMesh hMesh, HTexture hTex = INVALID_HANDLE, 
     v4 color = V4One(), u8 materialFlags = Material_None, v4 rect = { 0, 0, 1, 1 })
 {
     FTransforms* transforms = shared->transforms;

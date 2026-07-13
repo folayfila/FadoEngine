@@ -3,6 +3,7 @@
 #include "fado_win32.h"
 #include <xinput.h>
 #include "fado_math.h"
+#include "fado_assets.h"
 #include "fado_input.h"
 #include "fado_collision.h"
 #include "fado_sprite_anim.h"
@@ -375,8 +376,6 @@ internal void Win32HandleControllerInput(HWND Window, FGameInput* input)
 	Win32ProcessButtonState(&input->mouse.buttons[4], (GetKeyState(VK_XBUTTON2) & (1 << 15)), dt);
 
 	// No-clip camera can rotate only if the right-click mouse button is pressed.
-	// TODO: Create button state functions, e.g. Held, Clicked, Pressed.
-	// TODO: Add different camera types and handle their movement and input based on their type.
 	input->mouse.isRotating = (input->mouse.buttons[2].heldLength > 0.0f);
 
 	u32 maxControllerCount = XUSER_MAX_COUNT;
@@ -646,18 +645,18 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 // Loads all assets at startup.
 internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 {
-	FAssetsHandles* assets = &gameState->assets;
+	FAssetsHandles* assets = gameState->shared->assets;
 
 	assets->hQuadMesh = GetQuad(world);
+	assets->hGroundQuad = GetGroundQuad(world);
 	assets->hPlaneMesh = LoadFModel(world, "Assets\\Models\\plane.fmodel");
 	assets->hCubeMesh = LoadFModel(world, "Assets\\Models\\cube.fmodel");
 	assets->hSphereMesh = LoadFModel(world, "Assets\\Models\\sphere.fmodel");
 	assets->hSkyBoxMesh = LoadFModel(world, "Assets\\Models\\skybox.fmodel");
 	//HMesh hMonkey = LoadGLBIntoWorld(world, "models\\monkey.fmodel");
 
-	// > Important: Make sure the first loaded texture is the white texture because it's used by default for colors.
-	// #cheesy_workaround
 	assets->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fimage");
+	assets->hShadowTexture = LoadFImage(world, "Assets\\Textures\\shadow_blob.fimage");
 	assets->hGridTexture = LoadFImage(world, "Assets\\Textures\\grid.fimage");
 	assets->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fimage");
 	assets->hGraniteTexture = LoadFImage(world, "Assets\\Textures\\granite.fimage");
@@ -713,6 +712,7 @@ int WINAPI wWinMain(
 	gameState->shared = ArenaPushType(&engineMemory.permanent, FSharedStuff);
 	gameState->shared->entityTable = ArenaPushType(&engineMemory.permanent, FEntityTable);
 	gameState->shared->transforms = ArenaPushType(&engineMemory.permanent, FTransforms);
+	gameState->shared->assets = ArenaPushType(&engineMemory.permanent, FAssetsHandles);
 	gameState->shared->spriteSheetTable = ArenaPushType(&engineMemory.permanent, FSpriteSheetTable);
 	gameState->shared->collisionWorld = ArenaPushType(&engineMemory.permanent, FCollisionWorld);
 	gameState->shared->uiCommands = ArenaPushType(&engineMemory.permanent, FUICommandBucket);

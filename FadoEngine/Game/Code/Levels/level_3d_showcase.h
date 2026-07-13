@@ -30,7 +30,7 @@ internal void Level_3DShowcase_Init(FGameState* gameState)
 {
     FSharedStuff* shared = gameState->shared;
     FTransforms* transforms = shared->transforms;
-    FAssetsHandles* assets = &gameState->assets;
+    FAssetsHandles* assets = gameState->shared->assets;
     FLevel_3DShowcase* level = (FLevel_3DShowcase*)gameState->currentLevel;
 
     shared->camera.handle = SpawnEntity(shared, INVALID_HANDLE, INVALID_HANDLE);
@@ -52,10 +52,10 @@ internal void Level_3DShowcase_Init(FGameState* gameState)
     level->cube2 = SpawnEntity(shared, assets->hCubeMesh, 0, { 1, 0.21f, 0.63f, 0.75f }, Material_Lit);
     transforms->positions[level->cube2] = { 1.5f, 5.0f, 0 };
 
-    level->sphere1 = SpawnEntity(shared, assets->hSphereMesh, assets->hGraniteTexture, { 1,1,1, 0.25f }, Material_Lit);
+    level->sphere1 = SpawnEntity(shared, assets->hSphereMesh, assets->hGraniteTexture, { 1,1,1, 0.25f }, Material_Lit | Material_CastShadow);
     transforms->positions[level->sphere1] = { -1.5f, 2.0f, 0 };
 
-    level->sphere2 = SpawnEntity(shared, assets->hSphereMesh, assets->hMosaicTexture, { 1,1,1, 1 }, Material_Lit);
+    level->sphere2 = SpawnEntity(shared, assets->hSphereMesh, assets->hMosaicTexture, { 1,1,1, 1 }, Material_Lit | Material_CastShadow);
     transforms->positions[level->sphere2] = { 1.5f, 2.0f, 0 };
 
     level->fire = SpawnEntity(shared, assets->hCubeMesh, 0, { 1, 0, 0, 1 }, Material_Lit);
@@ -69,7 +69,7 @@ internal void Level_3DShowcase_Begin(FGameState* gameState)
 {
     FSharedStuff* shared = gameState->shared;
     FTransforms* transforms = shared->transforms;
-    FAssetsHandles* assets = &gameState->assets;
+    FAssetsHandles* assets = gameState->shared->assets;
     FLevel_3DShowcase* level = (FLevel_3DShowcase*)gameState->currentLevel;
 
     gameState->input->mode = Input_Game;
@@ -240,7 +240,7 @@ internal void Level_3DShowcase_Update(FGameState* gameState, f32 dt)
     FSharedStuff* shared = gameState->shared;
     FGameInput* input = gameState->input;
     FTransforms* transforms = shared->transforms;
-    FAssetsHandles* assets = &gameState->assets;
+    FAssetsHandles* assets = gameState->shared->assets;
     FLevel_3DShowcase* level = (FLevel_3DShowcase*)gameState->currentLevel;
 
     // Each frame, feed camera into the listener for 3D audio.

@@ -266,7 +266,6 @@ typedef u32 HMesh;
 
 typedef u32 HTexture;
 #define FMAX_TEXTURES 265
-#define WHITE_TEXTURE 0
 
 typedef u32 HSound;
 
@@ -386,6 +385,7 @@ struct FSharedStuff
 
 	FEntityTable* entityTable;
 	FTransforms* transforms;
+	struct FAssetsHandles* assets;
 	struct FSpriteSheetTable* spriteSheetTable;
 	struct FCollisionWorld* collisionWorld;
 	struct FUICommandBucket* uiCommands;
@@ -419,6 +419,13 @@ ForceInline quat GetEntityRotation(FSharedStuff* shared, HEntity hEntity)
 ForceInline v3 GetEntityScale(FSharedStuff* shared, HEntity hEntity)
 {
 	return shared->transforms->scales[hEntity];
+}
+
+ForceInline f32 GetEntityScaleAverage(FSharedStuff* shared, HEntity hEntity)
+{
+	v3 scale = shared->transforms->scales[hEntity];
+	f32 avg = (scale.x + scale.y + scale.z) / 3.0f;
+	return avg;
 }
 
 // ─────────────────────────────────────────────

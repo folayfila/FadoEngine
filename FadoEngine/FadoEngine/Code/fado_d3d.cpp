@@ -3,6 +3,7 @@
 #include "fado_d3d.h"
 #include "fado_asset_format.h"
 #include "fado_sound.h"
+#include "fado_assets.h"
 #include "fado_math.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
@@ -558,7 +559,8 @@ internal void SetMaterialShaderParameters(FRenderWorld* world, FDrawCall* call)
 	deviceContext->PSSetConstantBuffers(1, 1, &shader->materialBuffer);
 
 	// Texture — bind white texture if none
-	HTexture hTex = mat->texture == INVALID_HANDLE ? WHITE_TEXTURE : mat->texture;
+	HTexture whiteTex = world->shared->assets->hWhiteTexture;
+	HTexture hTex = mat->texture == INVALID_HANDLE ? whiteTex : mat->texture;
 	deviceContext->PSSetShaderResources(0, 1, &world->textures[hTex].textureView);
 }
 
@@ -794,6 +796,43 @@ internal void PushDrawCall(FRenderWorld* world, DXMatrix worldMatrix, HMesh hMes
 	call->hMesh = hMesh;
 	call->material = material;
 	call->spriteRect = spriteRect;
+}
+
+internal void PushBlobShadow2D(FRenderWorld* world, v3 entityPos, v2 size = V2One())
+{
+	// Same quad, same billboard orientation as your sprites — just offset and squashed.
+	DXMatrix scale = DirectX::XMMatrixScaling(size.x, size.y * 0.4f, 1.0f); // flattened ellipse
+	DXMatrix translate = DirectX::XMMatrixTranslation(entityPos.x, entityPos.y - size.y * 0.5f, entityPos.z + 0.01f);
+	DXMatrix worldMatrix = scale * translate;
+
+	FAssetsHandles* assets = world->shared->assets;
+
+	FMaterial mat = {};
+	mat.color = { 0.0f, 0.0f, 0.0f, 0.4f };
+	mat.texture = assets->hShadowTexture;
+	mat.flags = Material_Transparent;
+
+	PushDrawCall(world, worldMatrix, assets->hQuadMesh, mat, v4{0,0,1,1});
+}
+
+internal void PushBlobShadow(FRenderWorld* world, v3 entityPos, f32 radius = 2.0f, f32 groundY = 0.0f)
+{
+	f32 heightFactor = Max(0.25f, (1.0f - (entityPos.y * 0.01f)));
+	radius *= heightFactor;
+
+	// Flatten to ground level, slightly above the floor to avoid z-fighting.
+	DXMatrix scale = DirectX::XMMatrixScaling(radius, 1.0f, radius);
+	DXMatrix translate = DirectX::XMMatrixTranslation(entityPos.x, groundY + 0.01f, entityPos.z);
+	DXMatrix worldMatrix = scale * translate;
+
+	FAssetsHandles* assets = world->shared->assets;
+
+	FMaterial mat = {};
+	mat.color = { 0.0f, 0.0f, 0.0f, 0.5f };   // black, semi-transparent
+	mat.texture = assets->hShadowTexture;
+	mat.flags = Material_Transparent;
+
+	PushDrawCall(world, worldMatrix, assets->hGroundQuad, mat, v4{0,0,1,1} /* full texture, no atlas */);
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -1354,6 +1393,27 @@ HMesh GetQuad(FRenderWorld* world)
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// Build a simple blob mesh.
+// Flat quad in the XZ plane, facing up (+Y). Used for ground decals like blob shadows.
+// ────────────────────────────────────────────────────────────────────────
+HMesh GetGroundQuad(FRenderWorld* world)
+{
+	HMesh quad = world->meshCount++;
+
+	FTextureVertex verts[] =
+	{
+		{ {-0.5f, 0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
+		{ { 0.5f, 0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
+		{ { 0.5f, 0.0f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } },
+		{ {-0.5f, 0.0f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } },
+	};
+
+	u32 indices[] = { 0, 1, 2, 0, 2, 3 };
+	UploadMesh(&world->meshes[quad], world->d3d.device, verts, 4, sizeof(FTextureVertex), indices, 6);
+	return quad;
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // Global Functions
 // ────────────────────────────────────────────────────────────────────────
 void InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams)
@@ -1398,16 +1458,30 @@ void Render(FRenderWorld* world)
 	// Draw all entites
 	// TODO: draw only those that need to be drawn (in view).
 	FEntityTable* entTable = world->shared->entityTable;
+	f32 blobRadius = 2.5f;
 	for (u32 i = 0; i < entTable->count; ++i)
 	{
 		FEntity* entity = &entTable->entities[i];
-		if(entity->hMesh == INVALID_HANDLE)
+		if (entity->hMesh == INVALID_HANDLE)
 		{
 			continue;
 		}
 
 		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
 		PushDrawCall(world, worldMatrix, entity->hMesh, entity->material, entity->spriteRect);
+
+		if (entity->material.flags & Material_CastShadow)
+		{
+			if (entity->material.flags & Material_Transparent)
+			{
+				PushBlobShadow2D(world, world->shared->transforms->positions[i]);
+			}
+			else
+			{
+				blobRadius = (2.5f * GetEntityScaleAverage(world->shared, i));
+				PushBlobShadow(world, world->shared->transforms->positions[i], blobRadius);
+			}
+		}
 	}
 
 	// Flush all buckets.
@@ -1716,6 +1790,7 @@ void DebugRender(FRenderWorld* world)
 	RenderCamera(world);
 
 	FEntityTable* entTable = world->shared->entityTable;
+	f32 blobRadius = 2.5f;
 	for (u32 i = 0; i < entTable->count; ++i)
 	{
 		FEntity* entity = &entTable->entities[i];
@@ -1726,6 +1801,19 @@ void DebugRender(FRenderWorld* world)
 
 		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
 		PushDrawCall(world, worldMatrix, entity->hMesh, entity->material, entity->spriteRect);
+
+		if (entity->material.flags & Material_CastShadow)
+		{
+			if (entity->material.flags & Material_Transparent)
+			{
+				PushBlobShadow2D(world, world->shared->transforms->positions[i]);
+			}
+			else
+			{
+				blobRadius = (2.5f * GetEntityScaleAverage(world->shared, i));
+				PushBlobShadow(world, world->shared->transforms->positions[i], blobRadius);
+			}
+		}
 	}
 
 	// Flush all buckets — shader bound once per bucket, zero branching.
@@ -1735,12 +1823,12 @@ void DebugRender(FRenderWorld* world)
 	for (u32 i = 0; i < collisionWorld->colliders.count; ++i)
 	{
 		FCollider* c = &collisionWorld->colliders.colliders[i];
-		v4 color = (c->flags & Collision_Trigger)   ? v4{ 0, 1, 0, 1 }    // green
-				 : (c->flags & Collision_Static)	? v4{ 0, 0, 1, 1 }	 // blue
-				 : (c->flags & Collision_Kinematic) ? v4{ 1, 0, 1, 1 }	 // purple
-				 : (c->flags & Collision_Dynamic)   ? v4{ 1, 0.5, 0, 1 }  // orange
-				 : (c->flags & Collision_Physics)   ? v4{ 1, 0, 0, 1 }	 // red
-													: v4{ 1, 1, 1, 1 };	 // white
+		v4 color = (c->flags & Collision_Trigger)   ? FColor::Green()   // green
+				 : (c->flags & Collision_Static)	? FColor::Blue()	// blue
+				 : (c->flags & Collision_Kinematic) ? FColor::Purple()	// purple
+				 : (c->flags & Collision_Dynamic)   ? FColor::Orange()  // orange
+				 : (c->flags & Collision_Physics)   ? FColor::Red()		// red
+													: FColor::White();	// white
 
 		if(c->useOBB)
 		{

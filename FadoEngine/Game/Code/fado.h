@@ -15,44 +15,12 @@
 */
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
-
-// Fat list of all the assets we load in the engine
-struct FAssetsHandles
-{
-    // folayfila
-    HTexture hFolayfilaTex;
-    HSpriteSheet hFolayfilaSheet;
-
-    // Mesh handles
-    HMesh hQuadMesh;        // Created manually once when we load the assets and used across all sprites.
-    HEntity hPlaneMesh;
-    HMesh hSkyBoxMesh;
-    HMesh hCubeMesh;
-    HMesh hSphereMesh;
-
-    // Texture handles
-    HTexture hWhiteTexture;
-    HTexture hGridTexture;
-    HTexture hSkyBoxTexture;
-    HTexture hMosaicTexture;
-    HTexture hGraniteTexture;
-
-    // Sound
-    HSound hMusic;
-    HSound hCollideSFX;
-    HSound hUIClickSFX;
-    HSound hFireSFX;
-};
-
-// ──────────────────────────────────────────────────────────────────────────────────────────
 // -- Forwards --
 struct FGameInput;
 struct FLevel;
 
 struct FGameState
 {   
-    FAssetsHandles assets;
-
     FGameInput* input;
     FSharedStuff* shared;
 

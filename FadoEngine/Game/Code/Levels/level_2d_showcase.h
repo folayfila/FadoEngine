@@ -33,7 +33,7 @@ enum EFolayfilaAnimState
 // -- Init --
 internal void Level_2DShowcase_Init(FGameState* gameState)
 {
-    FAssetsHandles* assets = &gameState->assets;
+    FAssetsHandles* assets = gameState->shared->assets;
     FSharedStuff* shared = gameState->shared;
     FTransforms* transforms = shared->transforms;
     FLevel_2DShowcase* level = (FLevel_2DShowcase*)gameState->currentLevel;
@@ -42,7 +42,7 @@ internal void Level_2DShowcase_Init(FGameState* gameState)
     shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
 
     // Background - just a big blue plane
-    level->background = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::LightBlue());
+    level->background = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, FColor::LightBlue());
     transforms->positions[level->background] = { 0, 0, 1.0f };
     transforms->scales[level->background] = { 1000.0f, 1000.0f, 0.0f };
 
@@ -51,34 +51,34 @@ internal void Level_2DShowcase_Init(FGameState* gameState)
     transforms->positions[level->folayfila] = V3Zero();
 
     // quads
-    level->quads[0] = SpawnEntity(shared, assets->hQuadMesh, assets->hMosaicTexture, { 0.38f, 0.81f, 1, 0.75f }, Material_Transparent);
+    level->quads[0] = SpawnEntity(shared, assets->hQuadMesh, assets->hMosaicTexture, { 0.38f, 0.81f, 1, 0.75f });
     transforms->positions[level->quads[0]] = { -3.5f, 5.0f, 0 };
     transforms->scales[level->quads[0]] = { 1, 1, 0 };
 
-    level->quads[1] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, { 1, 0.57f, 0.38f, 1 });
+    level->quads[1] = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, { 1, 0.57f, 0.38f, 1 });
     transforms->positions[level->quads[1]] = { 1.5f, 5.0f, 0 };
     transforms->scales[level->quads[1]] = { 0.5f, 0.5f, 0 };
 
-    level->quads[2] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, { 1, 0.5f, 0.875f, 1.5f });
+    level->quads[2] = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, { 1, 0.5f, 0.875f, 1.5f });
     transforms->positions[level->quads[2]] = { -1.5f, 2.0f, 0 };
 
     level->quads[3] = SpawnEntity(shared, assets->hQuadMesh, assets->hGraniteTexture, V4One());
     transforms->positions[level->quads[3]] = { 1.5f, 2.0f, 0 };
 
     // borders
-    level->borders[0] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::Brown());
+    level->borders[0] = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, FColor::Brown());
     transforms->positions[level->borders[0]] = { -10, 0, 0 }; // left border
     transforms->scales[level->borders[0]] = { 1, 20, 0 };
 
-    level->borders[1] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::Brown());
+    level->borders[1] = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, FColor::Brown());
     transforms->positions[level->borders[1]] = { 10, 0, 0 }; // right
     transforms->scales[level->borders[1]] = { 1, 20, 0 };
 
-    level->borders[2] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::Brown());
+    level->borders[2] = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, FColor::Brown());
     transforms->positions[level->borders[2]] = { 0, 10, 0 }; // top
     transforms->scales[level->borders[2]] = { 21, 1, 0 };
 
-    level->borders[3] = SpawnEntity(shared, assets->hQuadMesh, WHITE_TEXTURE, FColor::Brown());
+    level->borders[3] = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, FColor::Brown());
     transforms->positions[level->borders[3]] = { 0, -10, 0 }; // bottom
     transforms->scales[level->borders[3]] = { 21, 1, 0 };
 
@@ -92,7 +92,7 @@ internal void Level_2DShowcase_Init(FGameState* gameState)
 // -- Begin --
 internal void Level_2DShowcase_Begin(FGameState* gameState)
 {
-    FAssetsHandles* assets = &gameState->assets;
+    FAssetsHandles* assets = gameState->shared->assets;
     FSharedStuff* shared = gameState->shared;
     FTransforms* transforms = shared->transforms;
     FLevel_2DShowcase* level = (FLevel_2DShowcase*)gameState->currentLevel;
@@ -181,11 +181,6 @@ internal void LeveL_2DShowcase_HandleGameInput(FGameState* gameState, FGameInput
         // Flip sprite direction to the left.
         shared->transforms->scales[level->folayfila].x = -1.0f;
     }
-
-    // Camera follows the player
-    v3* camPos = &shared->transforms->positions[shared->camera.handle];
-    camPos->x = folayfilaPos->x;
-    camPos->y = folayfilaPos->y;
 }
 
 internal void LeveL_2DShowcase_HandleInput(FGameState* gameState, FGameInput* input)
@@ -240,7 +235,7 @@ internal void LeveL_2DShowcase_HandleInput(FGameState* gameState, FGameInput* in
 
 internal void Level_2DShowcase_Update(FGameState* gameState, f32 dt)
 {
-    FAssetsHandles* assets = &gameState->assets;
+    FAssetsHandles* assets = gameState->shared->assets;
     FSharedStuff* shared = gameState->shared;
     FTransforms* transforms = shared->transforms;
     FGameInput* input = gameState->input;
@@ -272,6 +267,12 @@ internal void Level_2DShowcase_Update(FGameState* gameState, f32 dt)
             SoundPlay2D(gameState->soundManager, assets->hCollideSFX, ESoundCategory::Sound_SFX, 0.05f, false);
         }
     }
+
+    // Camera follows the player after all position and collision update
+    v3 playerPos = gameState->shared->transforms->positions[level->folayfila];
+    v3* camPos = &gameState->shared->transforms->positions[gameState->shared->camera.handle];
+    camPos->x = playerPos.x;
+    camPos->y = playerPos.y;
 
     // Update the fire sfx pos to match the fire entity's.
     Update3DSoundsPositions(gameState->soundManager->assetBank, shared);

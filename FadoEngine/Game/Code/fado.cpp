@@ -2,6 +2,7 @@
 
 #include "fado.h"
 #include "fado_math.h"
+#include "fado_assets.h"
 #include "fado_input.h"
 #include "fado_collision.h"
 #include "fado_level.h"
@@ -38,7 +39,7 @@ internal u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* te
 
     if (clicked)
     {
-        SoundPlay2D(gameState->soundManager, gameState->assets.hUIClickSFX, ESoundCategory::Sound_UI, 0.25f, false);
+        SoundPlay2D(gameState->soundManager, gameState->shared->assets->hUIClickSFX, ESoundCategory::Sound_UI, 0.25f, false);
     }
 
     return clicked;
@@ -57,7 +58,7 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
         /*hover*/   FColor::LightRed(),
         /*pressed*/ FColor::Green(),
         /*text*/    FColor::DarkBlue(),
-        gameState->assets.hWhiteTexture
+        gameState->shared->assets->hWhiteTexture
     };
 
     v2 textPos = { 500, 500 };
@@ -173,7 +174,7 @@ GAME_UPDATE(GameUpdate)
 #endif // FADO_DEBUG
 
         // Load level_3d_showcase by default.
-        LoadLevel(gameState, SetupLevel_2DShowcase());
+        LoadLevel(gameState, SetupLevel_3DShowcase());
     }
 
     if (gameState->currentLevel->Update)
