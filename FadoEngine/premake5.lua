@@ -1,16 +1,15 @@
 -- FadoEngine premake5.lua
--- Place this file next to your .sln, in FadoEngine/
 
 workspace "FadoEngine"
     architecture "x64"
     configurations { "Debug", "Release" }
-    startproject "FadoEngine"
-    debugdir "%{wks.location}/FadoEngine/"
+    startproject "Engine"
+    debugdir "%{wks.location}/Engine/"
 
 -- ──────────────────────────────────────────────────────────────────────
 -- Engine (Application .exe)
 -- ──────────────────────────────────────────────────────────────────────
-project "FadoEngine"
+project "Engine"
     kind "WindowedApp"
     language "C++"
     cppdialect "C++17"
@@ -20,37 +19,37 @@ project "FadoEngine"
 
     files
     {
-        "FadoEngine/Code/**.h",
-        "FadoEngine/Code/**.cpp",
-        "FadoEngine/Tools/FadoConverter/**.cpp",
-        "FadoEngine/Tools/FadoConverter/**.h",
-        "FadoEngine/Shaders/**.hlsl",
-        "FadoEngine/FadoEngine.rc",
-        "FadoEngine/FadoEngine.ico",
-        "FadoEngine/ThirdParty/**.h",
-        "FadoEngine/ThirdParty/**.cpp",
-        "FadoEngine/ThirdParty/**.c",
+        "Engine/Code/**.h",
+        "Engine/Code/**.cpp",
+        "Engine/Tools/FadoConverter/**.cpp",
+        "Engine/Tools/FadoConverter/**.h",
+        "Engine/Shaders/**.hlsl",
+        "Engine/FadoEngine.rc",
+        "Engine/FadoEngine.ico",
+        "Engine/ThirdParty/**.h",
+        "Engine/ThirdParty/**.cpp",
+        "Engine/ThirdParty/**.c",
     }
 
     includedirs
     {
-        "$(SolutionDir)/FadoEngine/",
-        "$(SolutionDir)/FadoEngine/ThirdParty/imgui/",
+        "$(SolutionDir)/Engine/",
+        "$(SolutionDir)/Engine/ThirdParty/imgui/",
         "$(SolutionDir)/Game/Code/",
     }
 
     postbuildcommands
     {
-        "{COPYDIR} %{wks.location}/FadoEngine/Assets %{cfg.targetdir}/Assets",
-        "{COPYDIR} %{wks.location}/FadoEngine/Shaders %{cfg.targetdir}/Shaders"
+        "{COPYDIR} %{wks.location}/Engine/Assets %{cfg.targetdir}/Assets",
+        "{COPYDIR} %{wks.location}/Engine/Shaders %{cfg.targetdir}/Shaders"
     }
 
     disablewarnings { "6297", "28251", "6387", "6386" }
 
-    filter "files:FadoEngine/Tools/FadoConverter/fado_converter.cpp"
+    filter "files:Engine/Tools/FadoConverter/fado_converter.cpp"
         excludefrombuild "On"
 
-    filter "files:FadoEngine/Shaders/**.hlsl"
+    filter "files:Engine/Shaders/**.hlsl"
         buildaction "None"
 
     filter "configurations:Debug"
@@ -85,7 +84,7 @@ project "Game"
 
     includedirs
     {
-        "$(SolutionDir)/FadoEngine/Code/",
+        "$(SolutionDir)/Engine/Code/",
         "$(SolutionDir)/Game/Code/"
     }
 

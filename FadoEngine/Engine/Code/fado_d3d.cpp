@@ -1865,7 +1865,7 @@ void DebugRender(FRenderWorld* world)
 		}
 
 		v3 pos = world->shared->transforms->positions[i];
-		entityRadius = 2.5f * GetEntityScaleAverage(world->shared, i); // reuse your existing scale helper
+		entityRadius = 2.5f * GetEntityScaleAverage(world->shared, i);
 
 		if (!SphereInFrustum(&frustum, pos, entityRadius))
 		{
