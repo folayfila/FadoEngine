@@ -7,6 +7,7 @@
 #include "fado_level.h"
 #include "fado_input.h"
 #include "fado_collision.h"
+#include "fado_particles.h"
 
 // ────────────────────────────────────────
 // -- Level_3DShowcase --
@@ -19,8 +20,9 @@ struct FLevel_3DShowcase : FLevel
     HEntity cube2;
     HEntity sphere1;
     HEntity sphere2;
-    HEntity fire;
 
+    HEntity fire;
+    HParticle hFireParticle;
     HSound hFireSFXInstance;
 };
 
@@ -85,18 +87,15 @@ internal void Level_3DShowcase_Begin(FGameState* gameState)
     v3 extents = { 1.0f, 1.0f, 1.0f };
 
     CollisionAddCollider(shared->collisionWorld, shared->camera.handle, { 1.0f, 1.0f, 1.0f }, Collision_Physics);
-
     CollisionAddCollider(shared->collisionWorld, level->infinitePlane, { 1.0f, 0.01f, 1.0f }, Collision_Static);
-
     CollisionAddCollider(shared->collisionWorld, level->cube1, extents, Collision_Kinematic);
-
     CollisionAddCollider(shared->collisionWorld, level->cube2, extents, Collision_Static);
-
     CollisionAddCollider(shared->collisionWorld, level->sphere1, extents, Collision_Dynamic);
-
     CollisionAddCollider(shared->collisionWorld, level->sphere2, extents, Collision_Physics);
-
     CollisionAddCollider(shared->collisionWorld, level->fire, extents, Collision_Physics);
+
+    // Particles
+    level->hFireParticle = MakeFireParticle(shared);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -171,7 +170,7 @@ internal void LeveL_3DShowcase_HandleGameInput(FGameState* gameState, FGameInput
     {
         gameState->cameraYaw -= sensitivity;
     }
-    gameState->cameraPitch = Clampf32(gameState->cameraPitch, -89.0f, 89.0f);
+    gameState->cameraPitch = ClampF32(gameState->cameraPitch, -89.0f, 89.0f);
     if ((gameState->cameraPitch != 0.0f) || (gameState->cameraYaw != 0.0f))
     {
         SetRotation(shared->transforms, shared->camera.handle,
@@ -189,7 +188,7 @@ internal void LeveL_3DShowcase_HandleGameInput(FGameState* gameState, FGameInput
 
         // Clamp to prevent gimbal lock at the poles. When we pitch up or down past 90 degrees, 
         // the camera flips because there's no restriction on how far you can pitch.
-        gameState->cameraPitch += Clampf32(mousePitch, -89.0f, 89.0f);
+        gameState->cameraPitch += ClampF32(mousePitch, -89.0f, 89.0f);
         gameState->cameraYaw += mouseYaw;
 
         // We rotate with mouse only if the mouse right-click is down.
@@ -283,6 +282,14 @@ internal void Level_3DShowcase_Update(FGameState* gameState, f32 dt)
 
     // Update the fire sfx pos to match the fire entity's.
     Update3DSoundsPositions(gameState->soundManager->assetBank, shared);
+
+    // Fire particle should follow fire entity.
+    shared->particles->emitters[level->hFireParticle].position.start = ConstRange(transforms->positions[level->fire]);
+
+    for (u32 i = 0; i < shared->particles->count; ++i)
+    {
+        UpdateParticleEmitter(&shared->particles->emitters[i], dt);
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────

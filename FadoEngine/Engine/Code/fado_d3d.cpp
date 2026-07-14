@@ -5,6 +5,7 @@
 #include "fado_sound.h"
 #include "fado_assets.h"
 #include "fado_math.h"
+#include "fado_particles.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "ThirdParty/stb/stb_truetype.h"
@@ -565,6 +566,115 @@ internal void SetMaterialShaderParameters(FRenderWorld* world, FDrawCall* call)
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// FParticleShader
+// ────────────────────────────────────────────────────────────────────────
+internal void InitializeParticleShader(FParticleShader* shader, ID3D11Device* device)
+{
+	wchar hlslFileName[FMAX_PATH] = { L"Shaders\\particle.hlsl" };
+	ID3D10Blob* vsBuffer = nullptr;
+	ID3D10Blob* psBuffer = nullptr;
+	LoadAndCompileShader(device, hlslFileName, vsBuffer, psBuffer,
+		shader->vertexShader, shader->pixelShader);
+
+	// Two input slots: slot 0 = per-vertex (quad), slot 1 = per-instance (particle data).
+	D3D11_INPUT_ELEMENT_DESC layout[] =
+	{
+		{ "POSITION",     0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,							  D3D11_INPUT_PER_VERTEX_DATA,   0 },
+		{ "TEXCOORD",     0, DXGI_FORMAT_R32G32_FLOAT,       0, 24 /*Pos:12 + Normal:12 = 24*/,  D3D11_INPUT_PER_VERTEX_DATA,   0},
+		{ "INST_POS",     0, DXGI_FORMAT_R32G32B32_FLOAT,    1, 0,							  D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "INST_SIZE",    0, DXGI_FORMAT_R32_FLOAT,          1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "INST_COLOR",   0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+	};
+	device->CreateInputLayout(layout, 5, vsBuffer->GetBufferPointer(), vsBuffer->GetBufferSize(), &shader->layout);
+	vsBuffer->Release();
+	psBuffer->Release();
+
+	// VS b0 — just view/projection, world is implicit (billboard built in shader).
+	D3D11_BUFFER_DESC cbDesc = {};
+	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
+	cbDesc.ByteWidth = sizeof(DXMatrix) * 2; // view + projection
+	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	device->CreateBuffer(&cbDesc, NULL, &shader->matrixBuffer);
+
+	// Dynamic instance buffer, re-uploaded every frame.
+	D3D11_BUFFER_DESC instDesc = {};
+	instDesc.Usage = D3D11_USAGE_DYNAMIC;
+	instDesc.ByteWidth = sizeof(FParticleInstance) * FMAX_PARTICLE_INSTANCES;
+	instDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	instDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	device->CreateBuffer(&instDesc, NULL, &shader->instanceBuffer);
+
+	// Reuse a standard linear sampler.
+	D3D11_SAMPLER_DESC sampDesc = {};
+	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sampDesc.AddressU = sampDesc.AddressV = sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	device->CreateSamplerState(&sampDesc, &shader->sampleState);
+}
+
+// Particle draw function. Called once per emitter per frame
+internal void DrawParticleEmitter(FRenderWorld* world, FParticleEmitter* emitter)
+{
+	if (emitter->aliveCount == 0)
+	{
+		return;
+	}
+
+	FD3D* d3d = &world->d3d;
+	FParticleShader* shader = &world->particleShader;
+	ID3D11DeviceContext* ctx = d3d->deviceContext;
+
+	// Build and upload instance data.
+	FParticleInstance instances[FMAX_PARTICLE_INSTANCES];
+	u32 instanceCount = BuildParticleInstances(emitter, instances);
+	if (instanceCount == 0)
+	{
+		return;
+	}
+
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	ctx->Map(shader->instanceBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+	memcpy(mapped.pData, instances, sizeof(FParticleInstance) * instanceCount);
+	ctx->Unmap(shader->instanceBuffer, 0);
+
+	// Upload view/projection (same every emitter, could hoist outside the loop).
+	ctx->Map(shader->matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+	DXMatrix* vp = (DXMatrix*)mapped.pData;
+	vp[0] = DirectX::XMMatrixTranspose((DXMatrix)world->shared->camera.view.m);
+	vp[1] = DirectX::XMMatrixTranspose((DXMatrix)world->shared->camera.projection.m);
+	ctx->Unmap(shader->matrixBuffer, 0);
+	ctx->VSSetConstantBuffers(0, 1, &shader->matrixBuffer);
+
+	// Bind quad mesh (slot 0) + instance buffer (slot 1).
+	FMeshBuffer* quadMesh = &world->meshes[world->shared->assets->hQuadMesh];
+	ID3D11Buffer* buffers[2] = { quadMesh->vertexBuffer, shader->instanceBuffer };
+	u32 strides[2] = { quadMesh->vertexStride, sizeof(FParticleInstance) };
+	u32 offsets[2] = { 0, 0 };
+	ctx->IASetVertexBuffers(0, 2, buffers, strides, offsets);
+	ctx->IASetIndexBuffer(quadMesh->indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+	ctx->IASetInputLayout(shader->layout);
+	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	ctx->VSSetShader(shader->vertexShader, NULL, 0);
+	ctx->PSSetShader(shader->pixelShader, NULL, 0);
+
+	ID3D11ShaderResourceView* srv = world->textures[emitter->texture].textureView;
+	ctx->PSSetShaderResources(0, 1, &srv);
+	ctx->PSSetSamplers(0, 1, &shader->sampleState);
+
+	ctx->OMSetBlendState(d3d->transparentBlendState, NULL, 0xffffffff);
+	ctx->OMSetDepthStencilState(d3d->transparentDepthState, 0); // depth test, no depth write
+
+	ctx->RSSetState(d3d->noCullRasterState);
+	ctx->DrawIndexedInstanced(quadMesh->indexCount, instanceCount, 0, 0, 0);
+	ctx->RSSetState(d3d->rasterState);
+
+	// Restore state for whatever draws next.
+	ctx->OMSetBlendState(d3d->opaqueBlendState, NULL, 0xffffffff);
+	ctx->OMSetDepthStencilState(d3d->depthStencilState, 0);
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // FUIShader
 // ────────────────────────────────────────────────────────────────────────
 internal void InitializeUIShader(FUIShader* uiShader, ID3D11Device* device, HWND window)
@@ -809,7 +919,7 @@ internal void PushBlobShadow2D(FRenderWorld* world, v3 entityPos, v2 size = V2On
 
 	FMaterial mat = {};
 	mat.color = { 0.0f, 0.0f, 0.0f, 0.4f };
-	mat.texture = assets->hShadowTexture;
+	mat.texture = assets->hBlobTexture;
 	mat.flags = Material_Transparent;
 
 	PushDrawCall(world, worldMatrix, assets->hQuadMesh, mat, v4{0,0,1,1});
@@ -829,7 +939,7 @@ internal void PushBlobShadow(FRenderWorld* world, v3 entityPos, f32 radius = 2.0
 
 	FMaterial mat = {};
 	mat.color = { 0.0f, 0.0f, 0.0f, 0.5f };   // black, semi-transparent
-	mat.texture = assets->hShadowTexture;
+	mat.texture = assets->hBlobTexture;
 	mat.flags = Material_Transparent;
 
 	PushDrawCall(world, worldMatrix, assets->hGroundQuad, mat, v4{0,0,1,1} /* full texture, no atlas */);
@@ -995,7 +1105,13 @@ internal void FlushBuckets(FRenderWorld* world)
 	deviceContext->OMSetDepthStencilState(d3d->transparentDepthState, 1);
 	FlushTransparentBucket(world);
 
-	// 3. UI
+	// 3. Particles
+	for (u32 i = 0; i < world->shared->particles->count; ++i)
+	{
+		DrawParticleEmitter(world, &world->shared->particles->emitters[i]);
+	}
+
+	// 4. UI
 	FlushUIBucket(world);
 }
 
@@ -1472,6 +1588,7 @@ void InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams)
 
 	// Init shaders
 	InitializeMaterialShader(&world->materialShader, world->d3d.device);
+	InitializeParticleShader(&world->particleShader, world->d3d.device);
 	InitializeUIShader(&world->uiShader, world->d3d.device, d3dInitParams->window);
 
 	SetUIProjection(world);

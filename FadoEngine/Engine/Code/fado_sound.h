@@ -325,8 +325,8 @@ inline void SoundMixInstance(FSoundManager* manager, FSoundInstance* instance, i
         i32 right = output->samples[outIdx + 1] + (i32)(buffer->samples[srcIdx + 1] * volume);
 
         // Clamp to i16 range to avoid overflow.
-        output->samples[outIdx] = Clampi16(left, I16_MIN_VALUE, I16_MAX_VALUE);
-        output->samples[outIdx + 1] = Clampi16(right, I16_MIN_VALUE, I16_MAX_VALUE);
+        output->samples[outIdx] = ClampI16(left, I16_MIN_VALUE, I16_MAX_VALUE);
+        output->samples[outIdx + 1] = ClampI16(right, I16_MIN_VALUE, I16_MAX_VALUE);
 
         // Advance to the next sample in this sound.
         instance->cursor++;

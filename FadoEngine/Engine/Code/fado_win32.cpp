@@ -7,6 +7,7 @@
 #include "fado_input.h"
 #include "fado_collision.h"
 #include "fado_sprite_anim.h"
+#include "fado_particles.h"
 
 #if FADO_DEBUG
 #include "ThirdParty/imgui/imgui.h"
@@ -656,7 +657,7 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 	//HMesh hMonkey = LoadGLBIntoWorld(world, "models\\monkey.fmodel");
 
 	assets->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fimage");
-	assets->hShadowTexture = LoadFImage(world, "Assets\\Textures\\shadow_blob.fimage");
+	assets->hBlobTexture = LoadFImage(world, "Assets\\Textures\\blob.fimage");
 	assets->hGridTexture = LoadFImage(world, "Assets\\Textures\\grid.fimage");
 	assets->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fimage");
 	assets->hGraniteTexture = LoadFImage(world, "Assets\\Textures\\granite.fimage");
@@ -716,6 +717,7 @@ int WINAPI wWinMain(
 	gameState->shared->spriteSheetTable = ArenaPushType(&engineMemory.permanent, FSpriteSheetTable);
 	gameState->shared->collisionWorld = ArenaPushType(&engineMemory.permanent, FCollisionWorld);
 	gameState->shared->uiCommands = ArenaPushType(&engineMemory.permanent, FUICommandBucket);
+	gameState->shared->particles = ArenaPushType(&engineMemory.permanent, FParticleEmitterPool);
 	gameState->shared->arena = &engineMemory;
 	gameState->currentLevel = ArenaPushSize(&engineMemory.level, FLevel, LEVEL_ARENA_SIZE);
 	gameState->font = ArenaPushType(&engineMemory.permanent, FFont);

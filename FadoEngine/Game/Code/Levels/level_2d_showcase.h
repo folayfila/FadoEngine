@@ -18,8 +18,9 @@ struct FLevel_2DShowcase : FLevel
     HEntity folayfila;
     HEntity borders[4];
     HEntity quads[4];
-    HEntity fire;
 
+    HEntity fire;
+    HParticle hFireParticle;
     HSound hFireSFXInstance;
 };
 
@@ -132,6 +133,11 @@ internal void Level_2DShowcase_Begin(FGameState* gameState)
 
     // fire
     CollisionAddCollider(shared->collisionWorld, level->fire, extents, Collision_Kinematic | Collision_Is2D);
+
+    // Particles
+    level->hFireParticle = MakeFireParticle(shared);
+    FParticleEmitter* fire = &shared->particles->emitters[level->hFireParticle];
+    fire->color.start = ConstRange(FColor::Blue());
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -278,6 +284,14 @@ internal void Level_2DShowcase_Update(FGameState* gameState, f32 dt)
     Update3DSoundsPositions(gameState->soundManager->assetBank, shared);
 
     UpdateAnimState(&shared->entityTable->entities[level->folayfila], &shared->spriteSheetTable->sheets[assets->hFolayfilaSheet], dt);
+
+    // Fire particle should follow fire entity.
+    shared->particles->emitters[level->hFireParticle].position.start = ConstRange(transforms->positions[level->fire]);
+
+    for (u32 i = 0; i < shared->particles->count; ++i)
+    {
+        UpdateParticleEmitter(&shared->particles->emitters[i], dt);
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────

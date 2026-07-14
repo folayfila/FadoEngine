@@ -22,7 +22,7 @@ struct FAssetsHandles
 
     // Texture handles
     HTexture hWhiteTexture;
-    HTexture hShadowTexture;
+    HTexture hBlobTexture;
     HTexture hGridTexture;
     HTexture hSkyBoxTexture;
     HTexture hMosaicTexture;

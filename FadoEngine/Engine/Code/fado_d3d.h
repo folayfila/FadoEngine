@@ -203,6 +203,21 @@ struct FTextureVertex
 	DXFloat2 texture;
 };
 
+// ──────────────────────────────────
+/// Particle Shader
+// ──────────────────────────────────
+struct FParticleShader
+{
+	ID3D11VertexShader* vertexShader;
+	ID3D11PixelShader* pixelShader;
+	ID3D11InputLayout* layout;
+
+	ID3D11Buffer* matrixBuffer;    // VS b0 — view/projection only, no per-entity world
+	ID3D11Buffer* instanceBuffer;  // dynamic, re-filled every frame
+
+	ID3D11SamplerState* sampleState;
+};
+
 // ─────────────────────────────────
 // UI Shader
 // ─────────────────────────────────
@@ -218,7 +233,6 @@ struct FTextureVertex
 // The vertex shader transforms vertices into clip space using a single
 // constant buffer. The pixel shader samples a texture and multiplies it
 // by the vertex color.
-
 struct FUIShader
 {
 	// Compiled shaders.
@@ -283,10 +297,9 @@ struct FMeshBuffer
 };
 
 // ──────────────────────────────────
-/// Renderer
+// Frustum Culling
 // ──────────────────────────────────
 
-// Frustum Culling.
 // Extract 6 planes from our view-projection matrix, then test each entity's bounding volume (sphere) against those planes.
 // Used to draw only entities in our view.
 struct FFrustumPlane
@@ -301,7 +314,9 @@ struct FFrustum
 	FFrustumPlane planes[6];
 };
 
-
+// ──────────────────────────────────
+/// Renderer
+// ──────────────────────────────────
 #define MAX_DRAW_CALLS 265
 
 // Draw call: one mesh, one material, one world matrix.
@@ -330,6 +345,7 @@ struct FRenderWorld
 
 	// Shaders — one of each, initialized once.
 	FMaterialShader materialShader;
+	FParticleShader particleShader;
 	FUIShader uiShader;
 
 	FDirectionalLight dirLight;

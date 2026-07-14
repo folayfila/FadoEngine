@@ -13,6 +13,7 @@ project "Engine"
     kind "WindowedApp"
     language "C++"
     cppdialect "C++17"
+    targetname "FadoEngine"
 
     targetdir "%{wks.location}%{cfg.platform}/%{cfg.buildcfg}/"
     objdir    "%{prj.name}/%{cfg.platform}/%{cfg.buildcfg}/"

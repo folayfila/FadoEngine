@@ -32,9 +32,9 @@ internal FAABB AABBFromTransform(v3 position, v3 scale, v3 halfExtents)
 // Project an OBB's half-extents onto axis (returns the OBB's "radius" along axis).
 inline f32 OBBProjectedRadius(const FOBB& box, v3 axis)
 {
-    f32 r = (Absf32(V3Dot(axis, box.axes[0])) * box.halfExtents.x) +
-            (Absf32(V3Dot(axis, box.axes[1])) * box.halfExtents.y) +
-            (Absf32(V3Dot(axis, box.axes[2])) * box.halfExtents.z);
+    f32 r = (AbsF32(V3Dot(axis, box.axes[0])) * box.halfExtents.x) +
+            (AbsF32(V3Dot(axis, box.axes[1])) * box.halfExtents.y) +
+            (AbsF32(V3Dot(axis, box.axes[2])) * box.halfExtents.z);
     return r;
 }
 
@@ -95,7 +95,7 @@ internal b32 OBBOverlap(const FOBB& a, const FOBB& b, v3* outNormal, f32* outPen
         // and measure the distance between centers along the same axis.
         f32 ra = OBBProjectedRadius(a, axis);
         f32 rb = OBBProjectedRadius(b, axis);
-        f32 dist = Absf32(V3Dot(centerDelta, axis));
+        f32 dist = AbsF32(V3Dot(centerDelta, axis));
 
         // If the combined radii are smaller than the center distance, there's
         // a gap on this axis -> the boxes don't overlap at all.
@@ -163,7 +163,7 @@ internal FOBB OBBFromAABB(const FAABB& aabb)
 internal i32 GridCellX(const FUniformGrid* grid, f32 worldX)
 {
     i32 cellX = (i32)((worldX - grid->originX) / GRID_CELL_SIZE);
-    cellX = Clampi32(cellX, 0, (GRID_WIDTH - 1));
+    cellX = ClampI32(cellX, 0, (GRID_WIDTH - 1));
     return cellX;
 }
 
@@ -172,7 +172,7 @@ internal i32 GridCellX(const FUniformGrid* grid, f32 worldX)
 internal i32 GridCellZ(const FUniformGrid* grid, f32 worldZ)
 {
     i32 cellZ = (i32)((worldZ - grid->originZ) / GRID_CELL_SIZE);
-    cellZ = Clampi32(cellZ, 0, (GRID_HEIGHT - 1));
+    cellZ = ClampI32(cellZ, 0, (GRID_HEIGHT - 1));
     return cellZ;
 }
 
@@ -181,7 +181,7 @@ internal i32 GridCellZ(const FUniformGrid* grid, f32 worldZ)
 internal i32 GridCellY(const FUniformGrid* grid, f32 worldY)
 {
     i32 cellY = (i32)((worldY - grid->originY) / GRID_CELL_SIZE);
-    cellY = Clampi32(cellY, 0, (GRID_HEIGHT - 1));
+    cellY = ClampI32(cellY, 0, (GRID_HEIGHT - 1));
     return cellY;
 }
 

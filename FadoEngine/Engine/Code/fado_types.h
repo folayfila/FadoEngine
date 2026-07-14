@@ -8,7 +8,7 @@
 //  FADO_DEBUG
 //   0 - Build for public release.
 //   1 - Build for developer only.
-#define FADO_DEBUG 1
+#define FADO_DEBUG 0
 
 #if FADO_DEBUG
 #define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
@@ -257,19 +257,17 @@ internal void ArenaReset(FMemoryArena* arena)
 #define INVALID_HANDLE 0xFFFFFFFF
 
 #define FMAX_ENTITIES 512
+#define FMAX_MESHES 265
+#define FMAX_TEXTURES 265
 
 // Handles
 typedef u32 HEntity;
-
 typedef u32 HMesh;
-#define FMAX_MESHES 265
-
 typedef u32 HTexture;
-#define FMAX_TEXTURES 265
-
 typedef u32 HSound;
-
+typedef u32 HParticle;
 typedef u32 HSpriteSheet;
+
 // ────────────────
 // Material
 
@@ -389,6 +387,7 @@ struct FSharedStuff
 	struct FSpriteSheetTable* spriteSheetTable;
 	struct FCollisionWorld* collisionWorld;
 	struct FUICommandBucket* uiCommands;
+	struct FParticleEmitterPool* particles;
 
 	FEngineMemory* arena;
 

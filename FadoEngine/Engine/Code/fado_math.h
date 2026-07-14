@@ -23,7 +23,7 @@
 // ────────────────────────────────────────────────────────────────────────
 // ──────────────── General ───────────────────────────────────────────────
 
-inline f32 Clampf32(f32 value, f32 min, f32 max)
+inline f32 ClampF32(f32 value, f32 min, f32 max)
 {
 	if (value < min)
 	{
@@ -39,7 +39,12 @@ inline f32 Clampf32(f32 value, f32 min, f32 max)
 	}
 }
 
-inline i32 Clampi32(i32 value, i32 min, i32 max)
+inline f32 SaturateF32(f32 value)
+{
+	return ClampF32(value, 0.0f, 1.0f);
+}
+
+inline i32 ClampI32(i32 value, i32 min, i32 max)
 {
 	if (value < min)
 	{
@@ -55,7 +60,7 @@ inline i32 Clampi32(i32 value, i32 min, i32 max)
 	}
 }
 
-inline i16 Clampi16(i16 value, i16 min, i16 max)
+inline i16 ClampI16(i16 value, i16 min, i16 max)
 {
 	if (value < min)
 	{
@@ -71,7 +76,7 @@ inline i16 Clampi16(i16 value, i16 min, i16 max)
 	}
 }
 
-inline f32 Absf32(f32 value)
+inline f32 AbsF32(f32 value)
 {
 	f32 result = (value < 0.0f) ? -value : value;
 	return result;
@@ -80,9 +85,16 @@ inline f32 Absf32(f32 value)
 
 // > TODO: Replace with our own rand()
 #include <stdlib.h>
-inline f32 Randomf32InRange(f32 min, f32 max)
+inline f32 RandomF32InRange(f32 min, f32 max)
 {
 	f32 result = min + ((max - min) * ((f32)rand() / (f32)RAND_MAX));
+	return result;
+}
+
+inline f32 LerpF32(f32 a, f32 b, f32 t)
+{
+	f32 result;
+	result = a + (b - a) * t;
 	return result;
 }
 
@@ -412,7 +424,25 @@ inline v3 V3Normalize(v3 a)
 
 inline v3 AbsV3(v3 a)
 {
-	v3 result = { Absf32(a.x), Absf32(a.y), Absf32(a.z) };
+	v3 result = { AbsF32(a.x), AbsF32(a.y), AbsF32(a.z) };
+	return result;
+}
+
+inline v3 RandomV3InRange(v3 min, v3 max)
+{
+	v3 vec = {};
+	vec.x = RandomF32InRange(min.x, max.x);
+	vec.y = RandomF32InRange(min.y, max.y);
+	vec.z = RandomF32InRange(min.z, max.z);
+	return vec;
+}
+
+inline v3 LerpV3(v3 a, v3 b, f32 t)
+{
+	v3 result;
+	result.x = a.x + (b.x - a.x) * t;
+	result.y = a.y + (b.y - a.y) * t;
+	result.z = a.z + (b.z - a.z) * t;
 	return result;
 }
 
@@ -570,15 +600,35 @@ inline v4 V4One()
 	return v;
 }
 
+inline v4 RandomV4InRange(v4 min, v4 max)
+{
+	v4 vec = {};
+	vec.x = RandomF32InRange(min.x, max.x);
+	vec.y = RandomF32InRange(min.y, max.y);
+	vec.z = RandomF32InRange(min.z, max.z);
+	vec.w = RandomF32InRange(min.w, max.w);
+	return vec;
+}
+
+inline v4 LerpV4(v4 a, v4 b, f32 t)
+{
+	v4 result;
+	result.x = a.x + (b.x - a.x) * t;
+	result.y = a.y + (b.y - a.y) * t;
+	result.z = a.z + (b.z - a.z) * t;
+	result.w = a.w + (b.w - a.w) * t;
+	return result;
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // ──────────────── Colors ───────────────────────────────────────────────
 
 inline v4 GetRandomColor()
 {
 	v4 color = { 0 , 0, 0, 1 };
-	color.r = Randomf32InRange(0.0f, 1.0f);
-	color.g = Randomf32InRange(0.0f, 1.0f);
-	color.b = Randomf32InRange(0.0f, 1.0f);
+	color.r = RandomF32InRange(0.0f, 1.0f);
+	color.g = RandomF32InRange(0.0f, 1.0f);
+	color.b = RandomF32InRange(0.0f, 1.0f);
 	return color;
 }
 

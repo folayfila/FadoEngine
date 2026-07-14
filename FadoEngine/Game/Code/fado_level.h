@@ -6,6 +6,7 @@
 #include "fado_types.h"
 #include "fado.h"
 #include "fado_asset_format.h"
+#include "fado_particles.h"
 #include <stdio.h>
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -87,6 +88,7 @@ internal void UnloadCurrentLevel(FGameState* gameState)
     FadoZeroStruct(gameState->shared->entityTable);
     FadoZeroStruct(gameState->shared->transforms);
     FadoZeroStruct(gameState->shared->uiCommands);
+    FadoZeroStruct(gameState->shared->particles);
     FadoZeroStruct(gameState->shared->collisionWorld);
 
 #if FADO_DEBUG
