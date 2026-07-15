@@ -693,14 +693,23 @@ int WINAPI wWinMain(
 	PWSTR pCmdLine,
 	int nCmdShow)
 {
+	// Make path relative so it works regardless of how the exe was launched.
+	c8 exePath[MAX_PATH];
+	GetModuleFileNameA(NULL, exePath, MAX_PATH);
+
+	// Strip the filename, keep just the folder.
+	c8* lastSlash = strrchr(exePath, '\\');
+	if (lastSlash) *lastSlash = '\0';
+	SetCurrentDirectoryA(exePath);
+
 	LARGE_INTEGER perfFrequency;
 	QueryPerformanceFrequency(&perfFrequency);
 
 	LARGE_INTEGER lastCounter;
 	QueryPerformanceCounter(&lastCounter);
 
-	c8 sourceGameCodeDLLFullPath[MAX_PATH] = "../Debug/Game.dll";
-	c8 tempGameCodeDLLFullPath[MAX_PATH] = "../Debug/tempGame.dll";;
+	c8 sourceGameCodeDLLFullPath[MAX_PATH] = "Game.dll";
+	c8 tempGameCodeDLLFullPath[MAX_PATH] = "tempGame.dll";;
 	Win32GameCode gameCode = Win32LoadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
 
 	// Create all memory for the game upfront, and use it across the game.
