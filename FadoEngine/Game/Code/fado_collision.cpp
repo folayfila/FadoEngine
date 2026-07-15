@@ -32,9 +32,9 @@ internal FAABB AABBFromTransform(v3 position, v3 scale, v3 halfExtents)
 // Project an OBB's half-extents onto axis (returns the OBB's "radius" along axis).
 inline f32 OBBProjectedRadius(const FOBB& box, v3 axis)
 {
-    f32 r = (AbsF32(V3Dot(axis, box.axes[0])) * box.halfExtents.x) +
-            (AbsF32(V3Dot(axis, box.axes[1])) * box.halfExtents.y) +
-            (AbsF32(V3Dot(axis, box.axes[2])) * box.halfExtents.z);
+    f32 r = (Abs(V3Dot(axis, box.axes[0])) * box.halfExtents.x) +
+            (Abs(V3Dot(axis, box.axes[1])) * box.halfExtents.y) +
+            (Abs(V3Dot(axis, box.axes[2])) * box.halfExtents.z);
     return r;
 }
 
@@ -95,7 +95,7 @@ internal b32 OBBOverlap(const FOBB& a, const FOBB& b, v3* outNormal, f32* outPen
         // and measure the distance between centers along the same axis.
         f32 ra = OBBProjectedRadius(a, axis);
         f32 rb = OBBProjectedRadius(b, axis);
-        f32 dist = AbsF32(V3Dot(centerDelta, axis));
+        f32 dist = Abs(V3Dot(centerDelta, axis));
 
         // If the combined radii are smaller than the center distance, there's
         // a gap on this axis -> the boxes don't overlap at all.
@@ -284,8 +284,8 @@ internal void CollisionBroadPhase(FCollisionWorld* collisionWorld, FMemoryArena*
     // We use a simple tag array (per-frame stamp) to avoid duplicate pairs
     // when a large AABB spans multiple cells.
     // A pair (a,b) is canonical when a < b.
-    u32* pairTagA = ArenaPushArray(scratchArena, u32, MAX_COLLISION_PAIRS);
-    u32* pairTagB = ArenaPushArray(scratchArena, u32, MAX_COLLISION_PAIRS);
+    u32* pairTagA = ArenaPushArray(scratchArena, u32, FMAX_COLLISION_PAIRS);
+    u32* pairTagB = ArenaPushArray(scratchArena, u32, FMAX_COLLISION_PAIRS);
     // We will just do a linear scan to de-duplicate — fast enough for < 4k pairs.
 
     for (i32 cellIdx = 0; cellIdx < (GRID_WIDTH * GRID_HEIGHT); ++cellIdx)
@@ -316,7 +316,7 @@ internal void CollisionBroadPhase(FCollisionWorld* collisionWorld, FMemoryArena*
                     }
                 }
 
-                if (!found && (collisionWorld->pairCount < MAX_COLLISION_PAIRS))
+                if (!found && (collisionWorld->pairCount < FMAX_COLLISION_PAIRS))
                 {
                     pairTagA[collisionWorld->pairCount] = a;
                     pairTagB[collisionWorld->pairCount] = b;
@@ -420,7 +420,7 @@ internal void CollisionNarrowPhase(FCollisionWorld* collisionWorld)
                 }
             }
         }
-        if (collisionWorld->contactCount < MAX_CONTACTS)
+        if (collisionWorld->contactCount < FMAX_CONTACTS)
         {
             FContactInfo* contact = &collisionWorld->contacts[collisionWorld->contactCount++];
             contact->entityA = ca->entityID;
@@ -568,7 +568,7 @@ void CollisionInitialize(FCollisionWorld* collisionWorld)
 HCollider CollisionAddCollider(FCollisionWorld* collisionWorld, HEntity entityID,
     v3 halfExtents, ECollisionFlags flags)
 {
-    Assert(collisionWorld->colliders.count < MAX_COLLIDERS);
+    Assert(collisionWorld->colliders.count < FMAX_COLLIDERS);
     u32 handle = collisionWorld->colliders.count++;
     FCollider* c = &collisionWorld->colliders.colliders[handle];
     c->entityID = entityID;
@@ -637,3 +637,5 @@ b8 RayIntersectsAABB(FRay ray, FAABB aabb, f32* outDistance)
     *outDistance = tMin;
     return true;
 }
+
+// ────────────────────────────────────────────────────────────────────────

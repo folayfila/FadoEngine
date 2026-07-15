@@ -31,12 +31,12 @@ struct FLevel_3DShowcase : FLevel
 internal void Level_3DShowcase_Init(FGameState* gameState)
 {
     FSharedStuff* shared = gameState->shared;
-    FTransforms* transforms = shared->transforms;
-    FAssetsHandles* assets = gameState->shared->assets;
+    FTransforms* transforms = &shared->transforms;
+    FAssetsHandles* assets = &gameState->shared->assets;
     FLevel_3DShowcase* level = (FLevel_3DShowcase*)gameState->currentLevel;
 
     shared->camera.handle = SpawnEntity(shared, INVALID_HANDLE, INVALID_HANDLE);
-    shared->transforms->positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
+    shared->transforms.positions[shared->camera.handle] = { 0.0f, 2.5f, -10.0f };
 
     // infinite plane
     level->infinitePlane = SpawnEntity(shared, assets->hPlaneMesh, assets->hGridTexture);
@@ -47,21 +47,21 @@ internal void Level_3DShowcase_Init(FGameState* gameState)
     transforms->scales[level->skyBox] = { 500.0f, 500.0f, 500.0f };
 
     // Other entities
-    level->cube1 = SpawnEntity(shared, assets->hCubeMesh, 0, { 0.63f, 1, 0.21f, 1.0f }, Material_Lit);
-    transforms->positions[level->cube1] = { -3.5f, 5.0f, 0 };
-    transforms->scales[level->cube1] = { 2.5f, 0.25f, 1.0f };
+    level->cube1 = SpawnEntity(shared, assets->hCubeMesh, assets->hWhiteTexture, FColor::Lime(), Material_Lit);
+    transforms->positions[level->cube1] = { 3.0f, 5.0f, 0 };
+    transforms->scales[level->cube1] = { 2.0f, 0.25f, 1.0f };
 
-    level->cube2 = SpawnEntity(shared, assets->hCubeMesh, 0, { 1, 0.21f, 0.63f, 0.75f }, Material_Lit);
-    transforms->positions[level->cube2] = { 1.5f, 5.0f, 0 };
+    level->cube2 = SpawnEntity(shared, assets->hCubeMesh, assets->hGraniteTexture, { 1, 0.21f, 0.63f, 0.75f }, Material_Lit);
+    transforms->positions[level->cube2] = { -3.0f, 5.0f, 0 };
 
-    level->sphere1 = SpawnEntity(shared, assets->hSphereMesh, assets->hGraniteTexture, { 1,1,1, 0.25f }, Material_Lit | Material_CastShadow);
-    transforms->positions[level->sphere1] = { -1.5f, 2.0f, 0 };
+    level->sphere1 = SpawnEntity(shared, assets->hSphereMesh, assets->hWhiteTexture, { 0.25f, 0.88f, 0.82f, 0.5f }, Material_CastShadow);
+    transforms->positions[level->sphere1] = { -3.0f, 1.0f, 0 };
 
-    level->sphere2 = SpawnEntity(shared, assets->hSphereMesh, assets->hMosaicTexture, { 1,1,1, 1 }, Material_Lit | Material_CastShadow);
-    transforms->positions[level->sphere2] = { 1.5f, 2.0f, 0 };
+    level->sphere2 = SpawnEntity(shared, assets->hSphereMesh, assets->hMosaicTexture, FColor::White(), Material_Lit | Material_CastShadow);
+    transforms->positions[level->sphere2] = { 3.0f, 1.0f, 0 };
 
     level->fire = SpawnEntity(shared, assets->hCubeMesh, 0, { 1, 0, 0, 1 }, Material_Lit);
-    transforms->positions[level->fire] = { 5.0f, 2.0f, 0 };
+    transforms->positions[level->fire] = { 0, 2.0f, 0 };
     transforms->scales[level->fire] = { 0.25f, 0.25f, 0.25f };
 }
 
@@ -70,8 +70,8 @@ internal void Level_3DShowcase_Init(FGameState* gameState)
 internal void Level_3DShowcase_Begin(FGameState* gameState)
 {
     FSharedStuff* shared = gameState->shared;
-    FTransforms* transforms = shared->transforms;
-    FAssetsHandles* assets = gameState->shared->assets;
+    FTransforms* transforms = &shared->transforms;
+    FAssetsHandles* assets = &gameState->shared->assets;
     FLevel_3DShowcase* level = (FLevel_3DShowcase*)gameState->currentLevel;
 
     gameState->input->mode = Input_Game;
@@ -83,19 +83,29 @@ internal void Level_3DShowcase_Begin(FGameState* gameState)
     SoundPlay2D(gameState->soundManager, assets->hMusic, ESoundCategory::Sound_Music, 0.5f, true);
 
     // Collision
-    CollisionInitialize(shared->collisionWorld);
+    CollisionInitialize(&shared->collisionWorld);
     v3 extents = { 1.0f, 1.0f, 1.0f };
 
-    CollisionAddCollider(shared->collisionWorld, shared->camera.handle, { 1.0f, 1.0f, 1.0f }, Collision_Physics);
-    CollisionAddCollider(shared->collisionWorld, level->infinitePlane, { 1.0f, 0.01f, 1.0f }, Collision_Static);
-    CollisionAddCollider(shared->collisionWorld, level->cube1, extents, Collision_Kinematic);
-    CollisionAddCollider(shared->collisionWorld, level->cube2, extents, Collision_Static);
-    CollisionAddCollider(shared->collisionWorld, level->sphere1, extents, Collision_Dynamic);
-    CollisionAddCollider(shared->collisionWorld, level->sphere2, extents, Collision_Physics);
-    CollisionAddCollider(shared->collisionWorld, level->fire, extents, Collision_Physics);
+    CollisionAddCollider(&shared->collisionWorld, shared->camera.handle, { 1.0f, 1.0f, 1.0f }, Collision_Physics);
+    CollisionAddCollider(&shared->collisionWorld, level->infinitePlane, { 1.0f, 0.01f, 1.0f }, Collision_Static);
+    CollisionAddCollider(&shared->collisionWorld, level->cube1, extents, Collision_Kinematic);
+    CollisionAddCollider(&shared->collisionWorld, level->cube2, extents, Collision_Static);
+    CollisionAddCollider(&shared->collisionWorld, level->sphere1, extents, Collision_Dynamic);
+    CollisionAddCollider(&shared->collisionWorld, level->sphere2, extents, Collision_Physics);
+    CollisionAddCollider(&shared->collisionWorld, level->fire, extents, Collision_Physics);
 
     // Particles
-    level->hFireParticle = MakeFireParticle(shared);
+    level->hFireParticle = MakeFireParticle(&shared->particles, assets->hBlobTexture);
+
+    HParticle rParticle = MakeFireParticle(&shared->particles, assets->hBlobTexture);
+    shared->particles.emitters[rParticle].position.start = ConstRange(v3{ 5.0, 0, 0 });
+    shared->particles.emitters[rParticle].color.start = FRangeV4{ FColor::Random(), FColor::Random() };
+    shared->particles.emitters[rParticle].color.end = FRangeV4{ FColor::Random(), FColor::Random() };
+
+    HParticle lParticle = MakeFireParticle(&shared->particles, assets->hBlobTexture);
+    shared->particles.emitters[lParticle].position.start = ConstRange(v3{ -5.0, 0, 0 });
+    shared->particles.emitters[lParticle].color.start = FRangeV4{ FColor::Random(), FColor::Random() };
+    shared->particles.emitters[lParticle].color.end = FRangeV4{ FColor::Random(), FColor::Random() };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -126,7 +136,7 @@ internal void LeveL_3DShowcase_HandleGameInput(FGameState* gameState, FGameInput
     v3 up = cam->up;
 
     f32 moveSpeed = 10.0f * dt;
-    v3* camPos = &shared->transforms->positions[shared->camera.handle];
+    v3* camPos = &shared->transforms.positions[shared->camera.handle];
     if (IsStickHeld(controller->leftStickAverage, Stick_Up) || Down(&controller->dpadUp))
     {
         *camPos += forward * moveSpeed;
@@ -170,10 +180,10 @@ internal void LeveL_3DShowcase_HandleGameInput(FGameState* gameState, FGameInput
     {
         gameState->cameraYaw -= sensitivity;
     }
-    gameState->cameraPitch = ClampF32(gameState->cameraPitch, -89.0f, 89.0f);
+    gameState->cameraPitch = Clamp(gameState->cameraPitch, -89.0f, 89.0f);
     if ((gameState->cameraPitch != 0.0f) || (gameState->cameraYaw != 0.0f))
     {
-        SetRotation(shared->transforms, shared->camera.handle,
+        SetRotation(&shared->transforms, shared->camera.handle,
             { gameState->cameraPitch, gameState->cameraYaw, 0 });
     }
 
@@ -188,14 +198,14 @@ internal void LeveL_3DShowcase_HandleGameInput(FGameState* gameState, FGameInput
 
         // Clamp to prevent gimbal lock at the poles. When we pitch up or down past 90 degrees, 
         // the camera flips because there's no restriction on how far you can pitch.
-        gameState->cameraPitch += ClampF32(mousePitch, -89.0f, 89.0f);
+        gameState->cameraPitch += Clamp(mousePitch, -89.0f, 89.0f);
         gameState->cameraYaw += mouseYaw;
 
         // We rotate with mouse only if the mouse right-click is down.
         if ((mouseYaw != 0 || mousePitch != 0) && (input->mouse.isRotating))
         {
             // Rebuild quat from the two angles.
-            SetRotation(shared->transforms, shared->camera.handle,
+            SetRotation(&shared->transforms, shared->camera.handle,
                 { gameState->cameraPitch, gameState->cameraYaw, 0 });
         }
     }
@@ -238,8 +248,8 @@ internal void Level_3DShowcase_Update(FGameState* gameState, f32 dt)
 {
     FSharedStuff* shared = gameState->shared;
     FGameInput* input = gameState->input;
-    FTransforms* transforms = shared->transforms;
-    FAssetsHandles* assets = gameState->shared->assets;
+    FTransforms* transforms = &shared->transforms;
+    FAssetsHandles* assets = &gameState->shared->assets;
     FLevel_3DShowcase* level = (FLevel_3DShowcase*)gameState->currentLevel;
 
     // Each frame, feed camera into the listener for 3D audio.
@@ -267,13 +277,13 @@ internal void Level_3DShowcase_Update(FGameState* gameState, f32 dt)
 
     //  -- Test and update collisions --
     // 1. Calculate and detect.
-    CollisionUpdate(shared->collisionWorld, transforms, &shared->arena->scratch);
+    CollisionUpdate(&shared->collisionWorld, transforms, &shared->arena->scratch);
     // 2. Resolve (push solid objects apart).
-    CollisionResolve(shared->collisionWorld, transforms);
+    CollisionResolve(&shared->collisionWorld, transforms);
     // 3. React (Iterate contacts for game logic).
-    for (u32 i = 0; i < shared->collisionWorld->contactCount; ++i)
+    for (u32 i = 0; i < shared->collisionWorld.contactCount; ++i)
     {
-        FContactInfo* c = &shared->collisionWorld->contacts[i];
+        FContactInfo* c = &shared->collisionWorld.contacts[i];
         if (c->entityA == gameState->shared->camera.handle || c->entityB == gameState->shared->camera.handle)
         {
             SoundPlay2D(gameState->soundManager, assets->hCollideSFX, ESoundCategory::Sound_SFX, 0.1f, false);
@@ -284,11 +294,10 @@ internal void Level_3DShowcase_Update(FGameState* gameState, f32 dt)
     Update3DSoundsPositions(gameState->soundManager->assetBank, shared);
 
     // Fire particle should follow fire entity.
-    shared->particles->emitters[level->hFireParticle].position.start = ConstRange(transforms->positions[level->fire]);
-
-    for (u32 i = 0; i < shared->particles->count; ++i)
+    shared->particles.emitters[level->hFireParticle].position.start = ConstRange(transforms->positions[level->fire]);
+    for (u32 i = 0; i < shared->particles.count; ++i)
     {
-        UpdateParticleEmitter(&shared->particles->emitters[i], dt);
+        UpdateParticleEmitter(&shared->particles.emitters[i], dt);
     }
 }
 
@@ -304,5 +313,6 @@ inline FLevel SetupLevel_3DShowcase()
     return level;
 };
 
+// ──────────────────────────────────────────────────────────────────────────────────────────
 
 #endif	// LEVEL_3D_SHOWCASE

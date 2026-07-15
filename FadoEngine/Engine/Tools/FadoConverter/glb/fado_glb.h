@@ -8,6 +8,8 @@
 
 #include <stdio.h>
 
+// ────────────────────────────────────────────────────────────────────────
+
 /*
  * fado_glb.h  —  GLB 2.0 parser, no external dependencies
  *
@@ -762,8 +764,7 @@ internal b8 GLB_Load(cc8* filename, FGLBAsset* out)
     // ----------------------------------------------------------------
     // 5.1  Read entire file into memory
     // ----------------------------------------------------------------
-    FILE* f = nullptr;
-    fopen_s(&f, filename, "rb");
+    FILE* f = fopen(filename, "rb");
     if (!f)
     {
         fprintf(stderr, "GLB_Load: cannot open '%s'\n", filename);
@@ -1102,6 +1103,8 @@ internal void GLB_Free(FGLBAsset* asset)
         }
     }
 }
+
+// ────────────────────────────────────────────────────────────────────────
 
 #endif // FADO_GLB_H
 

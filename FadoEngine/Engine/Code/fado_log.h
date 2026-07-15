@@ -8,6 +8,8 @@
 #include <stdarg.h>
 #include <time.h>
 
+// ────────────────────────────────────────────────────────────────────────
+
 /*
 * Fado Logger
   - A simple logger that prints into a .txt.
@@ -15,7 +17,7 @@
   - To use the log simply include tis header and use FLOG().
 */
 
-// ──────────────────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────
 
 // Log levels
 #define FLOG_INFO    0
@@ -40,16 +42,20 @@ inline void FLogInternal(u32 level, cc8* file, i32 line, cc8* fmt, ...)
     if (!GlobalLogFile)
     {
 #ifdef GAME_DLL
-        fopen_s(&GlobalLogFile, "GameLog.txt", "w");
+        GlobalLogFile = fopen("GameLog.txt", "w");
 #else
-        fopen_s(&GlobalLogFile, "EditorLog.txt", "w");
+        GlobalLogFile = fopen("EditorLog.txt", "w");
 #endif
     }
 
     // Timestamp
-    time_t t = time(nullptr);
     tm tmInfo{};
+    time_t t = time(nullptr);
+#ifdef _WIN32
     localtime_s(&tmInfo, &t);
+#else
+    localtime_r(&t, &tmInfo);
+#endif
 
     c8 timeBuffer[16];
     strftime(timeBuffer, sizeof(timeBuffer), "%H:%M:%S", &tmInfo);
@@ -61,7 +67,7 @@ inline void FLogInternal(u32 level, cc8* file, i32 line, cc8* fmt, ...)
     case FLOG_INFO:    levelStr = "INFO";    break;
     case FLOG_WARNING: levelStr = "WARNING"; break;
     case FLOG_ERROR:   levelStr = "ERROR";   break;
-    default:          levelStr = "UNKNOWN"; break;
+    default:           levelStr = "UNKNOWN"; break;
     }
 
     // Format the user message
@@ -83,5 +89,7 @@ inline void FLogInternal(u32 level, cc8* file, i32 line, cc8* fmt, ...)
         fflush(GlobalLogFile);
     }
 }
+
+// ────────────────────────────────────────────────────────────────────────
 
 #endif	// FADO_LOG_H

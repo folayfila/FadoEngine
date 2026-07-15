@@ -49,7 +49,6 @@ struct FSoundBuffer
 // 3D audio instances hold a voice slot index that gets used and updated in a 3D voice pool in the platform layer and played by its own.
 struct FSoundInstance
 {
-    HEntity attachedTo;         // The entity this sound is attached to. INVALID_HANDLE for none. Used for postion update in 3D sounds.
     HSound bufferIndex;         // index into SoundAssetBank.assets
     ESoundCategory category;
     u32 cursor;                 // current playback position (sample index) ONLY 2D
@@ -60,6 +59,7 @@ struct FSoundInstance
 
     // 3d audio only:
     b8 is3D;
+    HEntity attachedTo;         // The entity this sound is attached to. INVALID_HANDLE for none. Used for postion update in 3D sounds.
     v3 position;
     f32 minDistance;
     f32 maxDistance;
@@ -73,7 +73,7 @@ struct FSoundOutput
     u32 sampleCount;    // how many samples to fill this frame, ~1000-4000 samples (a few ms of audio)
 };
 
-// Used for 3D audio. Fed from the main camera each frame.
+// Used for 3D audio. 
 struct FSoundListener
 {
     v3 position;
@@ -152,7 +152,7 @@ inline f32 SoundCalculatePan(FSoundListener* listener, v3 sourcePos)
     return pan;
 }
 
-// Pan + Volume → L / R Matrix(Equal - Power Pan)
+// Pan + Volume -> L / R Matrix(Equal - Power Pan)
 inline void SoundCalculateStereoMatrix(f32 pan, f32 volume, f32* outMatrix /* [2] */)
 {
     f32 angle = (pan + 1.0f) * 0.25f * Pi32; // maps -1..1 to 0..PI/2
@@ -325,8 +325,8 @@ inline void SoundMixInstance(FSoundManager* manager, FSoundInstance* instance, i
         i32 right = output->samples[outIdx + 1] + (i32)(buffer->samples[srcIdx + 1] * volume);
 
         // Clamp to i16 range to avoid overflow.
-        output->samples[outIdx] = ClampI16(left, I16_MIN_VALUE, I16_MAX_VALUE);
-        output->samples[outIdx + 1] = ClampI16(right, I16_MIN_VALUE, I16_MAX_VALUE);
+        output->samples[outIdx] = Clamp(left, I16_MIN_VALUE, I16_MAX_VALUE);
+        output->samples[outIdx + 1] = Clamp(right, I16_MIN_VALUE, I16_MAX_VALUE);
 
         // Advance to the next sample in this sound.
         instance->cursor++;
@@ -342,8 +342,10 @@ inline void Update3DSoundsPositions(FSoundAssetBank* assetBank, FSharedStuff* sh
         {
             continue;
         }
-        inst->position = shared->transforms->positions[inst->attachedTo];
+        inst->position = shared->transforms.positions[inst->attachedTo];
     }
 }
+
+// ────────────────────────────────────────────────────────────────────────
 
 #endif	// FADO_SOUND_H

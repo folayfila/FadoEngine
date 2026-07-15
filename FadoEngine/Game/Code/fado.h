@@ -3,14 +3,15 @@
 #ifndef FADO_H
 #define FADO_H
 
-#include "fado_types.h"
-#include "fado_ui.h"
+#include "fado_shared.h"
 #include "fado_sound.h"
+
+// ────────────────────────────────────────────────────────────────────────
 
 /*
 * Game Layer
-  - The plan is to have this as the connection layer between the game and engine and
-    for any game, we just call a specific game's update inside the update loop here.
+  - Works as a connection layer between the game and engine.
+    For any game/level, we just call a specific game's update inside the update loop here.
     This wasy, technically we can just drop game files and have a game run out of the box.
 */
 
@@ -44,7 +45,10 @@ struct FGameState
 void SetGamePaused(FGameState* gameState, b8 pause);
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
+// The only function that's exposed to the engine/platform layer.
 #define GAME_UPDATE(name) void name(FGameState* gameState, struct FGameInput* input)
 typedef GAME_UPDATE(FGameUpdate);
 
-#endif FADO_H
+// ────────────────────────────────────────────────────────────────────────
+
+#endif // FADO_H

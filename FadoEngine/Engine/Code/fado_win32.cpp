@@ -1,13 +1,12 @@
 // (C) Copyright 2026 by Abdallah Maaliki / folayfila.
 
 #include "fado_win32.h"
-#include <xinput.h>
 #include "fado_math.h"
 #include "fado_assets.h"
 #include "fado_input.h"
-#include "fado_collision.h"
-#include "fado_sprite_anim.h"
-#include "fado_particles.h"
+#include "fado_shared.h"
+
+#include <xinput.h>
 
 #if FADO_DEBUG
 #include "ThirdParty/imgui/imgui.h"
@@ -16,11 +15,10 @@
 #endif // FADO_DEBUG
 
 // ────────────────────────────────────────────────────────────────────────
-// Helpers
+// ToggleFullscreen
 // ────────────────────────────────────────────────────────────────────────
 internal void ToggleFullscreen(HWND Window)
 {
-	// Note: Copied code from internet
 	DWORD style = GetWindowLongW(Window, GWL_STYLE);
 	if (style & WS_OVERLAPPEDWINDOW)
 	{
@@ -582,7 +580,6 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPA
 // ────────────────────────────────────────────────────────────────────────
 // Win32System
 // ────────────────────────────────────────────────────────────────────────
-
 // Initialize and create the game's Window and initialze DX11.
 internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* win32System)
 {
@@ -623,7 +620,6 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 	d3dInitParams.screenWidth = screenWidth;
 	d3dInitParams.screenHeight = screenHeight;
 	d3dInitParams.vsync = VSYNC_ENABLED;
-	d3dInitParams.fullScreen = FULL_SCREEN;
 	d3dInitParams.screenDepth = SCREEN_DEPTH;
 	d3dInitParams.screenNear = SCREEN_NEAR;
 
@@ -642,43 +638,50 @@ internal void Win32InitializeWindowAndD3D(FEngineMemory* memory, Win32System* wi
 #endif // FADO_DEBUG
 }
 
+
+// ────────────────────────────────────────────────────────────────────────
+// Load Assets
 // Called before starting the game loop.
 // Loads all assets at startup.
+// ────────────────────────────────────────────────────────────────────────
 internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 {
-	FAssetsHandles* assets = gameState->shared->assets;
+	FAssetsHandles* assets = &gameState->shared->assets;
 
 	assets->hQuadMesh = GetQuad(world);
 	assets->hGroundQuad = GetGroundQuad(world);
-	assets->hPlaneMesh = LoadFModel(world, "Assets\\Models\\plane.fmodel");
-	assets->hCubeMesh = LoadFModel(world, "Assets\\Models\\cube.fmodel");
-	assets->hSphereMesh = LoadFModel(world, "Assets\\Models\\sphere.fmodel");
-	assets->hSkyBoxMesh = LoadFModel(world, "Assets\\Models\\skybox.fmodel");
-	//HMesh hMonkey = LoadGLBIntoWorld(world, "models\\monkey.fmodel");
+	assets->hPlaneMesh = LoadFModel(world, "Assets/Models/plane.fmodel");
+	assets->hCubeMesh = LoadFModel(world, "Assets/Models/cube.fmodel");
+	assets->hSphereMesh = LoadFModel(world, "Assets/Models/sphere.fmodel");
+	assets->hSkyBoxMesh = LoadFModel(world, "Assets/Models/skybox.fmodel");
 
-	assets->hWhiteTexture = LoadFImage(world, "Assets\\Textures\\white.fimage");
-	assets->hBlobTexture = LoadFImage(world, "Assets\\Textures\\blob.fimage");
-	assets->hGridTexture = LoadFImage(world, "Assets\\Textures\\grid.fimage");
-	assets->hMosaicTexture = LoadFImage(world, "Assets\\Textures\\mosaic.fimage");
-	assets->hGraniteTexture = LoadFImage(world, "Assets\\Textures\\granite.fimage");
-	assets->hSkyBoxTexture = LoadFImage(world, "Assets\\Textures\\skybox_0.fimage");
+	assets->hWhiteTexture = LoadFImage(world, "Assets/Textures/white.fimage");
+	assets->hBlobTexture = LoadFImage(world, "Assets/Textures/blob.fimage");
+	assets->hGridTexture = LoadFImage(world, "Assets/Textures/grid.fimage");
+
+	// Royalty free textures:
+	//https://opengameart.org/content/cloudy-skyboxes-0
+	assets->hSkyBoxTexture = LoadFImage(world, "Assets/Textures/skybox_0.fimage");
+	// https://opengameart.org/content/geometric-pbr-materials-mosaicdiffuseoriginalpng
+	assets->hMosaicTexture = LoadFImage(world, "Assets/Textures/mosaic.fimage");
+	// https://polyhaven.com/a/granite_tile_04
+	assets->hGraniteTexture = LoadFImage(world, "Assets/Textures/granite.fimage");
 
 	// Sprites
-	assets->hFolayfilaTex = LoadFImage(world, "Assets\\Textures\\folayfila_64_sheet.fimage");
+	assets->hFolayfilaTex = LoadFImage(world, "Assets/Textures/folayfila_64_sheet.fimage");
 	assets->hFolayfilaSheet = RegisterSpriteSheet(world, assets->hFolayfilaTex, 64, 64);
 
-	//LoadFont(world, "AssetsSource\\Fonts\\bahnschrift.ttf", 25.0f, assets->font);
-	LoadFFont(world, "Assets\\Fonts\\arialbd.ffont", 25.0f, gameState->font);
+	LoadFFont(world, "Assets/Fonts/arialbd.ffont", 25.0f, gameState->font);
 
-	// Temporary test, using royalty free sounds:
+	// Royalty free sounds:
 	// https://pixabay.com/music/video-games-sinnesl%C3%B6schen-beam-117362/
-	assets->hMusic = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets\\Audio\\Music\\sinneschlosen-sinnesloschen-beam-117362.fsound");
+	assets->hMusic = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/Music/sinneschlosen-sinnesloschen-beam-117362.fsound");
 	// https://pixabay.com/sound-effects/film-special-effects-impact-sound-effect-8-bit-retro-151796/
-	assets->hCollideSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets\\Audio\\SFX\\lesiakower-impact-sound-effect-8-bit-retro-151796.fsound");
+	assets->hCollideSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/lesiakower-impact-sound-effect-8-bit-retro-151796.fsound");
 	// https://pixabay.com/sound-effects/technology-click-21156/
-	assets->hUIClickSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets\\Audio\\SFX\\666herohero-click-21156.fsound");
+	assets->hUIClickSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/666herohero-click-21156.fsound");
 	// https://pixabay.com/sound-effects/nature-fire-crackling-sounds-427410/
-	assets->hFireSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets\\Audio\\SFX\\dragon-studio-fire-crackling-sounds-427410.fsound");
+	assets->hFireSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/dragon-studio-fire-crackling-sounds-427410.fsound");
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -696,8 +699,8 @@ int WINAPI wWinMain(
 	LARGE_INTEGER lastCounter;
 	QueryPerformanceCounter(&lastCounter);
 
-	c8 sourceGameCodeDLLFullPath[MAX_PATH] = "..\\Debug\\Game.dll";
-	c8 tempGameCodeDLLFullPath[MAX_PATH] = "..\\Debug\\tempGame.dll";;
+	c8 sourceGameCodeDLLFullPath[MAX_PATH] = "../Debug/Game.dll";
+	c8 tempGameCodeDLLFullPath[MAX_PATH] = "../Debug/tempGame.dll";;
 	Win32GameCode gameCode = Win32LoadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
 
 	// Create all memory for the game upfront, and use it across the game.
@@ -708,16 +711,9 @@ int WINAPI wWinMain(
 	engineMemory.scratch = ArenaMake((u8*)base + PERMANENT_ARENA_SIZE, SCRATCH_ARENA_SIZE);
 	engineMemory.level = ArenaMake((u8*)base + PERMANENT_ARENA_SIZE + SCRATCH_ARENA_SIZE, LEVEL_ARENA_SIZE);
 
-	// Game state
+	// Game state and shared stuff.
 	FGameState* gameState = ArenaPushType(&engineMemory.permanent, FGameState);
 	gameState->shared = ArenaPushType(&engineMemory.permanent, FSharedStuff);
-	gameState->shared->entityTable = ArenaPushType(&engineMemory.permanent, FEntityTable);
-	gameState->shared->transforms = ArenaPushType(&engineMemory.permanent, FTransforms);
-	gameState->shared->assets = ArenaPushType(&engineMemory.permanent, FAssetsHandles);
-	gameState->shared->spriteSheetTable = ArenaPushType(&engineMemory.permanent, FSpriteSheetTable);
-	gameState->shared->collisionWorld = ArenaPushType(&engineMemory.permanent, FCollisionWorld);
-	gameState->shared->uiCommands = ArenaPushType(&engineMemory.permanent, FUICommandBucket);
-	gameState->shared->particles = ArenaPushType(&engineMemory.permanent, FParticleEmitterPool);
 	gameState->shared->arena = &engineMemory;
 	gameState->currentLevel = ArenaPushSize(&engineMemory.level, FLevel, LEVEL_ARENA_SIZE);
 	gameState->font = ArenaPushType(&engineMemory.permanent, FFont);
@@ -777,6 +773,9 @@ int WINAPI wWinMain(
 		ImGui_ImplDX11_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
+		ImGui::Begin("Stats");
+		ImGui::Text("FPS: %.1f (%.3f ms)", 1.0f / deltaTime, deltaTime * 1000.0f);
+		ImGui::End();
 #endif // FADO_DEBUG
 
 		// Handle keyboard and controller input.
@@ -802,6 +801,7 @@ int WINAPI wWinMain(
 		// check how many buffers XAudio2 still has queued.
 		XAUDIO2_VOICE_STATE state;
 		win32Sound.sourceVoice->GetState(&state);
+
 		// only mix and submit if XAudio2 is hungry.
 		if (state.BuffersQueued < WIN32_SOUND_BUFFER_COUNT)
 		{
@@ -853,3 +853,5 @@ int WINAPI wWinMain(
 
 	return 0;
 }
+
+// ────────────────────────────────────────────────────────────────────────

@@ -3,6 +3,8 @@
 #ifndef FADO_D3D_H
 #define FADO_D3D_H
 
+// ────────────────────────────────────────────────────────────────────────
+
 /*
 * ** Renderer **
 * DX11 requires these pieces regardless of how you structure your code:
@@ -13,16 +15,13 @@
 * Shaders — compiles HLSL, creates the input layout, uploads constants. You always need shaders.
 */
 
-
 // ───────────
 // Includes //
 // ───────────
+#include "fado_shared.h"
 #include <d3d11.h>
 #include <directxmath.h>
 #include <d3dcompiler.h>
-#include "fado_types.h"
-#include "fado_ui.h"
-#include "fado_sprite_anim.h"
 
 // ──────────
 // LINKING //
@@ -91,7 +90,6 @@ struct FD3DInitParams
 	i32 screenWidth;
 	i32 screenHeight;
 	b32 vsync;
-	b32 fullScreen;
 	f32 screenDepth;
 	f32 screenNear;
 };
@@ -100,7 +98,7 @@ struct FD3DInitParams
 // ─────────────────────────────────
 /// Debug lines
 // ─────────────────────────────────
-#define MAX_DEBUG_LINES 4096
+#define FMAX_DEBUG_LINES 4096
 
 struct FDebugLine
 {
@@ -116,7 +114,7 @@ struct FDebugVertex
 
 struct FDebugLineBucket
 {
-	FDebugLine  lines[MAX_DEBUG_LINES];
+	FDebugLine  lines[FMAX_DEBUG_LINES];
 	u32         count;
 
 	ID3D11Buffer* vertexBuffer;   // dynamic, re-uploaded each frame
@@ -184,14 +182,6 @@ struct FMaterialBuffer
 // ────────────
 // CPU-side Shader Data
 
-// Global directional light.
-struct FDirectionalLight
-{
-	DXFloat4 ambientColor;
-	DXFloat4 diffuseColor;
-	DXFloat3 lightDirection;
-};
-
 // Vertex layout.
 // Must exactly match:
 //   - D3D11_INPUT_ELEMENT_DESC
@@ -212,30 +202,18 @@ struct FParticleShader
 	ID3D11PixelShader* pixelShader;
 	ID3D11InputLayout* layout;
 
-	ID3D11Buffer* matrixBuffer;    // VS b0 — view/projection only, no per-entity world
-	ID3D11Buffer* instanceBuffer;  // dynamic, re-filled every frame
+	ID3D11Buffer* matrixBuffer;    // VS b0: view/projection matrices
+	ID3D11Buffer* instanceBuffer;  // Per-instance particle data, updated every frame
 
 	ID3D11SamplerState* sampleState;
 };
 
 // ─────────────────────────────────
 // UI Shader
+// Renders textured 2D UI with vertex colors and alpha blending.
 // ─────────────────────────────────
-#define MAX_UI_VERTS (MAX_UI_COMMANDS * 6) // 6 verts per quad (2 tris)
-
-// Simple shader for rendering 2D UI.
-//
-// Supports:
-// - Textured quads
-// - Vertex colors
-// - Alpha blending
-//
-// The vertex shader transforms vertices into clip space using a single
-// constant buffer. The pixel shader samples a texture and multiplies it
-// by the vertex color.
 struct FUIShader
 {
-	// Compiled shaders.
 	ID3D11VertexShader* vertexShader;
 	ID3D11PixelShader* pixelShader;
 
@@ -249,22 +227,22 @@ struct FUIShader
 	ID3D11SamplerState* samplerState;
 };
 
-// Vertex layout.
-// Must exactly match:
-//   - D3D11_INPUT_ELEMENT_DESC
-//   - VertexInput in the UI HLSL shader.
+#define FMAX_UI_VERTS (FMAX_UI_COMMANDS * 6) // 6 verts per quad (2 tris)
+
+// UI vertex.
+// Must match the input layout and HLSL vertex input.
 struct FUIVertex
 {
-	v2 pos;		// Screen/local position.
-	v2 coords;	// Texture UVs.
-	v4 color;	// Vertex tint.
+	v2 position;
+	v2 coords;	// UVs.
+	v4 color;	// Tint.
 };
 
 // ─────────────────────────────────
 // Loaded Texturs
 // ─────────────────────────────────
 
-// Image load results from custom format ".fasset".
+// Image load results from custom format ".fimage".
 // - Check "fado_asset_format.h" for more details.
 struct FImageLoadResult
 {
@@ -300,12 +278,11 @@ struct FMeshBuffer
 // Frustum Culling
 // ──────────────────────────────────
 
-// Extract 6 planes from our view-projection matrix, then test each entity's bounding volume (sphere) against those planes.
-// Used to draw only entities in our view.
+// View frustum used for frustum culling.
 struct FFrustumPlane
 {
 	v3 normal;
-	f32 d;
+	f32 distance;
 };
 
 struct FFrustum
@@ -317,55 +294,53 @@ struct FFrustum
 // ──────────────────────────────────
 /// Renderer
 // ──────────────────────────────────
-#define MAX_DRAW_CALLS 265
 
-// Draw call: one mesh, one material, one world matrix.
+// One mesh/material draw request.
 struct FDrawCall
 {
 	DXMatrix worldMatrix;
 	HMesh hMesh;
 	FMaterial material;
-	v4 spriteRect;  // used for sprites only. altas coords.
+	v4 spriteRect;		// Atlas UVs (sprites only)
 };
+
+#define FMAX_DRAW_CALLS 265
 
 // Draw calls are pushed into the bucket and flushed every frame.
 struct FRenderBucket
 {
-	FDrawCall calls[MAX_DRAW_CALLS];
+	FDrawCall calls[FMAX_DRAW_CALLS];
 	u32 count;
 };
 
-// Aka world
-// This struct includes everything that is displayed on the screen,
-// shaders, meshes, textures and the camera matrix.
+// Renderer state and GPU resources.
+// This struct includes everything that is displayed on the screen.
 struct FRenderWorld
 {
 	FD3D d3d;
 	FSharedStuff* shared;
 
-	// Shaders — one of each, initialized once.
+	// Shaders (initialized once).
 	FMaterialShader materialShader;
 	FParticleShader particleShader;
 	FUIShader uiShader;
 
-	FDirectionalLight dirLight;
-
-	// Opaque and Transparent buckets. We draw the opaque bucket first.
+	// Draw buckets (opaque rendered before transparent).
 	FRenderBucket opaqueBucket;
 	FRenderBucket transparentBucket;
-	// ui bucket is in "shared", because the game uses it too.
-
-#if FADO_DEBUG
-	FDebugLineBucket debugBucket;
-#endif
+	// UI bucket lives in shared (used by both game and renderer).
 
 	// GPU buffer pool (shared by both simple meshes and baked models).
 	FMeshBuffer meshes[FMAX_MESHES];
 	u32 meshCount;
 
-	// Standalone texture pool (for .fasset images loaded independently).
+	// Texture pool.
 	FTexture textures[FMAX_TEXTURES];
 	u32 texturesCount;
+
+#if FADO_DEBUG
+	FDebugLineBucket debugBucket;
+#endif
 };
 
 // ────────────────────────────────────────────────────────────────
@@ -395,5 +370,7 @@ void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 s
 #if FADO_DEBUG
 void DebugRender(FRenderWorld* world);
 #endif // FADO_DEBUG
+
+// ────────────────────────────────────────────────────────────────────────
 
 #endif	// FADO_D3D_H

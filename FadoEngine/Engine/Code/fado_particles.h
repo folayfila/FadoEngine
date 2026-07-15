@@ -122,7 +122,7 @@ struct FParticleEmitter
 // -- Particle Emitter Pool --
 #define FMAX_PARTICLE_EMITTERS 64
 
-struct FParticleEmitterPool
+struct FParticleEmitterTable
 {
 	FParticleEmitter emitters[FMAX_PARTICLE_EMITTERS];
 	u32 count;
@@ -139,14 +139,17 @@ internal f32 EvaluateCurveF32(FParticleCurveF32 curve, f32 t)
 		return curve.start.min; // constant case — min == max
 	}
 
-	return LerpF32(curve.start.min, curve.end.min, t);
+	return Lerp(curve.start.min, curve.end.min, t);
 }
 
+// Spawns a particle by rolling values from the emitter's ranges.
+// If a range has min == max, RollRange() returns that value, making it constant
+// instead of random. Disabled properties reuse their start value.
 internal void SpawnParticle(FParticleEmitter* e)
 {
 	if (e->aliveCount >= FMAX_PARTICLES_PER_EMITTER)
 	{
-		return;
+		return; // pool full, drop this spawn
 	}
 
 	FParticle* p = &e->particles[e->aliveCount++];
@@ -195,11 +198,9 @@ internal u32 BuildParticleInstances(FParticleEmitter* emitter, FParticleInstance
 // ──────────────────────────────────────────────────────────────────────────────────────────
 // -- Public API --
 
-// Returns particle handle into a pool, zero-initialized
-inline HParticle CreateParticleEmitter(FSharedStuff* shared, FParticleEmitter** outParticle)
+// Returns particle handle into a pool, and zero-initializes the particle.
+inline HParticle CreateParticleEmitter(FParticleEmitterTable* pool, FParticleEmitter** outParticle)
 {
-	FParticleEmitterPool* pool = shared->particles;
-
 	Assert(pool->count < FMAX_PARTICLE_EMITTERS);
 
 	HParticle handle = pool->count++;
@@ -223,7 +224,7 @@ inline void UpdateParticleEmitter(FParticleEmitter* emitter, f32 dt)
 			f32 rate = emitter->spawnRate;
 			if (emitter->count.enabled)
 			{
-				f32 t = (emitter->lifetime > 0.0f) ? SaturateF32(emitter->emitterAge / emitter->lifetime) : 1.0f;
+				f32 t = (emitter->lifetime > 0.0f) ? Saturate(emitter->emitterAge / emitter->lifetime) : 1.0f;
 				rate = EvaluateCurveF32(emitter->count, t);
 			}
 
@@ -261,10 +262,10 @@ inline void UpdateParticleEmitter(FParticleEmitter* emitter, f32 dt)
 		f32 t = (p->lifetime > 0.0f) ? (p->age / p->lifetime) : 1.0f;
 
 		// Lerp each property from THIS particle's own rolled start/end, not the emitter's range.
-		if (emitter->size.enabled)  p->size = LerpF32(p->sizeStart, p->sizeEnd, t);
+		if (emitter->size.enabled)  p->size = Lerp(p->sizeStart, p->sizeEnd, t);
 		if (emitter->color.enabled) p->color = LerpV4(p->colorStart, p->colorEnd, t);
 
-		f32 speed = emitter->speed.enabled ? LerpF32(p->speedStart, p->speedEnd, t) : p->speedStart;
+		f32 speed = emitter->speed.enabled ? Lerp(p->speedStart, p->speedEnd, t) : p->speedStart;
 		f32 curLen = V3Length(p->velocity);
 		if (emitter->speed.enabled && (curLen > 0.0001f))
 		{
@@ -281,22 +282,22 @@ inline void UpdateParticleEmitter(FParticleEmitter* emitter, f32 dt)
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 // -- Presets --
-ForceInline HParticle MakeFireParticle(FSharedStuff* shared)
+ForceInline HParticle MakeFireParticle(FParticleEmitterTable* pool, HTexture blobTexture)
 {
 	FParticleEmitter* fire = nullptr;
-	HParticle handle = CreateParticleEmitter(shared, &fire);
-	fire->texture = shared->assets->hBlobTexture;
+	HParticle handle = CreateParticleEmitter(pool, &fire);
+	fire->texture = blobTexture;
 	fire->lifetime = 1.0f;
 	fire->active = true;
 	fire->spawnRate = 100.0f;
 
 	fire->position.start = ConstRange(V3Zero());  // shared spawn origin
-	fire->position.end = { {0,1,0}, {RandomF32InRange(-1.0f, 1.0f), RandomF32InRange(1.0f, 2.0f),0}};  // each particle rolls its own drift target
+	fire->position.end = { {-1.0f, 1.0f, -1.0f}, {1.0f, 2.0f, 1.0f} };  // each particle rolls its own drift target
 	fire->position.enabled = true;
 
 	fire->direction = V3Normalize({ 0.0f, 1.0f, 0.0f });
 
-	fire->speed.start = { 0.1f, 0.25f };     // each particle rolls its own initial speed
+	fire->speed.start = { 0.01f, 0.1f };     // each particle rolls its own initial speed
 	fire->speed.enabled = false;            // no ramp — constant per-particle speed
 
 	fire->color.start = ConstRange(FColor::Red());
@@ -309,5 +310,6 @@ ForceInline HParticle MakeFireParticle(FSharedStuff* shared)
 	return handle;
 }
 
+// ────────────────────────────────────────────────────────────────────────
 
 #endif // FADO_PARTICLES_H

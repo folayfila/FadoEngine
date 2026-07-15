@@ -312,7 +312,9 @@ AssetImporter* FindImporter(const char* path)
 // ────────────────────────────────────────────────────────────────────────
 // Imposters functions implementations
 
-// -- Images --
+// ────────────────
+// Images
+// ────────────────
 bool BakeImage(const char* src, const char* dst)
 {
     i32 width, height, channels;
@@ -428,7 +430,9 @@ bool BakeImage(const char* src, const char* dst)
     return true;
 }
 
-// -- .glb Models --
+// ────────────────
+// .glb Models
+// ────────────────
 bool BakeModel(const char* src, const char* dst)
 {
     FGLBAsset asset = {};
@@ -529,7 +533,9 @@ bool BakeModel(const char* src, const char* dst)
     return true;
 }
 
-// -- Fonts --
+// ────────────────
+// Fonts
+// ────────────────
 bool BakeFont(const char* src, const char* dst)
 {
     FILE* in = fopen(src, "rb");
@@ -588,7 +594,9 @@ bool BakeFont(const char* src, const char* dst)
     return true;
 }
 
-// -- Sound --
+// ────────────────
+// Sound
+// ────────────────
 bool BakeSound(const char* src, const char* dst)
 {
     FILE* file = fopen(src, "rb");
@@ -727,3 +735,5 @@ int main(int argc, char** argv)
 
     return 0;
 }
+
+// ────────────────────────────────────────────────────────────────────────

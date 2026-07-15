@@ -31,12 +31,11 @@ struct FSpriteSheet
 	u32 clipsCount;
 };
 
-#define MAX_SPRITESHEETS 64
+#define FMAX_SPRITESHEETS 64
 
-// Sprite sheet table. Lives in FSharedStuff
 struct FSpriteSheetTable
 {
-	FSpriteSheet sheets[MAX_SPRITESHEETS];
+	FSpriteSheet sheets[FMAX_SPRITESHEETS];
 	u32 count;
 };
 
@@ -104,4 +103,6 @@ inline void UpdateAnimState(FEntity* entity, FSpriteSheet* sheet, f32 deltaTime)
 	entity->spriteRect.height = frameHeight;
 }
 
-#endif FADO_SPRITE_ANIM_H
+// ────────────────────────────────────────────────────────────────────────
+
+#endif // FADO_SPRITE_ANIM_H

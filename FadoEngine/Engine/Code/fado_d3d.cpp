@@ -1,11 +1,10 @@
 // (C) Copyright 2026 by Abdallah Maaliki / folayfila.
 
 #include "fado_d3d.h"
-#include "fado_asset_format.h"
-#include "fado_sound.h"
 #include "fado_assets.h"
+#include "fado_sound.h"
+#include "fado_asset_format.h"
 #include "fado_math.h"
-#include "fado_particles.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "ThirdParty/stb/stb_truetype.h"
@@ -27,8 +26,7 @@ cc8* k_vsEntryFuncName = "VertexShaderEntry";
 cc8* k_psEntryFuncName = "PixelShaderEntry";
 
 // ────────────────────────────────────────────────────────────────────────
-// mat4 to DXMatrix Helpers
-// ────────────────────────────────────────────────────────────────────────
+
 internal inline mat4 DXMatrixToMat4(DXMatrix m)
 {
 	mat4 result;
@@ -174,8 +172,8 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 	swapChainDesc.SampleDesc.Count = 1;
 	swapChainDesc.SampleDesc.Quality = 0;
 
-	// Set to full screen or windowed mode.
-	swapChainDesc.Windowed = !d3dInitParams->fullScreen;
+	// Always start windowed.
+	swapChainDesc.Windowed = true;
 
 	// Set the scan line ordering and scaling to unspecified.
 	swapChainDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
@@ -308,7 +306,7 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 	// Create ui vertex buffer and blend state.
 	D3D11_BUFFER_DESC vbDesc = {};
 	vbDesc.Usage = D3D11_USAGE_DYNAMIC;
-	vbDesc.ByteWidth = sizeof(FUIVertex) * MAX_UI_VERTS;
+	vbDesc.ByteWidth = sizeof(FUIVertex) * FMAX_UI_VERTS;
 	vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	vbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
@@ -342,12 +340,14 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 	transDepthDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO; // read only
 	transDepthDesc.DepthFunc = D3D11_COMPARISON_LESS;
 	transDepthDesc.StencilEnable = false;
-	d3d->device->CreateDepthStencilState(&transDepthDesc, &d3d->transparentDepthState);
+	result = d3d->device->CreateDepthStencilState(&transDepthDesc, &d3d->transparentDepthState);
+	Assert(!FAILED(result));
 
 	D3D11_DEPTH_STENCIL_DESC uiDepthDesc = {};
 	uiDepthDesc.DepthEnable = false;
 	uiDepthDesc.StencilEnable = false;
-	d3d->device->CreateDepthStencilState(&uiDepthDesc, &d3d->uiDepthStencilState);
+	result = d3d->device->CreateDepthStencilState(&uiDepthDesc, &d3d->uiDepthStencilState);
+	Assert(!FAILED(result));
 
 	// Setup the viewport for rendering.
 	shared->viewport.topLeftX = 0.0f;
@@ -460,30 +460,12 @@ internal void InitializeMaterialShader(FMaterialShader* shader, ID3D11Device* de
 	LoadAndCompileShader(device, hlslFileName, vsBuffer, psBuffer,
 		shader->vertexShader, shader->pixelShader);
 
-	D3D11_INPUT_ELEMENT_DESC layout[3];
-	layout[0].SemanticName = "POSITION";
-	layout[0].SemanticIndex = 0;
-	layout[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-	layout[0].InputSlot = 0;
-	layout[0].AlignedByteOffset = 0;
-	layout[0].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	layout[0].InstanceDataStepRate = 0;
-	
-	layout[1].SemanticName = "NORMAL";
-	layout[1].SemanticIndex = 0;
-	layout[1].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-	layout[1].InputSlot = 0;
-	layout[1].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-	layout[1].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	layout[1].InstanceDataStepRate = 0;
-	
-	layout[2].SemanticName = "TEXCOORD";
-	layout[2].SemanticIndex = 0;
-	layout[2].Format = DXGI_FORMAT_R32G32_FLOAT;
-	layout[2].InputSlot = 0;
-	layout[2].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-	layout[2].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	layout[2].InstanceDataStepRate = 0;
+	D3D11_INPUT_ELEMENT_DESC layout[] =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,                            D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
 
 	u32 numElements = ArrayCount(layout);
 	HRESULT result = device->CreateInputLayout(layout, numElements, vsBuffer->GetBufferPointer(), vsBuffer->GetBufferSize(), &shader->layout);
@@ -536,9 +518,7 @@ internal void SetMaterialShaderParameters(FRenderWorld* world, FDrawCall* call)
 	deviceContext->Map(shader->lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 
 	FLightBuffer* lightBuffer = (FLightBuffer*)mapped.pData;
-	lightBuffer->ambientColor = world->dirLight.ambientColor;
-	lightBuffer->diffuseColor = world->dirLight.diffuseColor;
-	lightBuffer->lightDirection = world->dirLight.lightDirection;
+	fmemcpy(lightBuffer, &world->shared->dirLight, sizeof(FLightBuffer));
 	lightBuffer->padding = 0.0f;
 
 	deviceContext->Unmap(shader->lightBuffer, 0);
@@ -560,7 +540,7 @@ internal void SetMaterialShaderParameters(FRenderWorld* world, FDrawCall* call)
 	deviceContext->PSSetConstantBuffers(1, 1, &shader->materialBuffer);
 
 	// Texture — bind white texture if none
-	HTexture whiteTex = world->shared->assets->hWhiteTexture;
+	HTexture whiteTex = world->shared->assets.hWhiteTexture;
 	HTexture hTex = mat->texture == INVALID_HANDLE ? whiteTex : mat->texture;
 	deviceContext->PSSetShaderResources(0, 1, &world->textures[hTex].textureView);
 }
@@ -625,7 +605,8 @@ internal void DrawParticleEmitter(FRenderWorld* world, FParticleEmitter* emitter
 	ID3D11DeviceContext* ctx = d3d->deviceContext;
 
 	// Build and upload instance data.
-	FParticleInstance instances[FMAX_PARTICLE_INSTANCES];
+	FMemoryArena* scratch = &world->shared->arena->scratch;
+	FParticleInstance* instances = ArenaPushArray(scratch, FParticleInstance, FMAX_PARTICLE_INSTANCES);
 	u32 instanceCount = BuildParticleInstances(emitter, instances);
 	if (instanceCount == 0)
 	{
@@ -646,7 +627,7 @@ internal void DrawParticleEmitter(FRenderWorld* world, FParticleEmitter* emitter
 	ctx->VSSetConstantBuffers(0, 1, &shader->matrixBuffer);
 
 	// Bind quad mesh (slot 0) + instance buffer (slot 1).
-	FMeshBuffer* quadMesh = &world->meshes[world->shared->assets->hQuadMesh];
+	FMeshBuffer* quadMesh = &world->meshes[world->shared->assets.hQuadMesh];
 	ID3D11Buffer* buffers[2] = { quadMesh->vertexBuffer, shader->instanceBuffer };
 	u32 strides[2] = { quadMesh->vertexStride, sizeof(FParticleInstance) };
 	u32 offsets[2] = { 0, 0 };
@@ -672,6 +653,8 @@ internal void DrawParticleEmitter(FRenderWorld* world, FParticleEmitter* emitter
 	// Restore state for whatever draws next.
 	ctx->OMSetBlendState(d3d->opaqueBlendState, NULL, 0xffffffff);
 	ctx->OMSetDepthStencilState(d3d->depthStencilState, 0);
+
+	ArenaReset(scratch);
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -687,34 +670,16 @@ internal void InitializeUIShader(FUIShader* uiShader, ID3D11Device* device, HWND
 
 	// Create the vertex input layout description.
 	// This setup needs to match the VertexType stucture in the model and in the shader.
-	D3D11_INPUT_ELEMENT_DESC polygonLayout[3];
-	polygonLayout[0].SemanticName = "POSITION";
-	polygonLayout[0].SemanticIndex = 0;
-	polygonLayout[0].Format = DXGI_FORMAT_R32G32_FLOAT;
-	polygonLayout[0].InputSlot = 0;
-	polygonLayout[0].AlignedByteOffset = 0;
-	polygonLayout[0].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	polygonLayout[0].InstanceDataStepRate = 0;
-
-	polygonLayout[1].SemanticName = "TEXCOORD";
-	polygonLayout[1].SemanticIndex = 0;
-	polygonLayout[1].Format = DXGI_FORMAT_R32G32_FLOAT;
-	polygonLayout[1].InputSlot = 0;
-	polygonLayout[1].AlignedByteOffset = 8;
-	polygonLayout[1].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	polygonLayout[1].InstanceDataStepRate = 0;
-
-	polygonLayout[2].SemanticName = "COLOR";
-	polygonLayout[2].SemanticIndex = 0;
-	polygonLayout[2].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	polygonLayout[2].InputSlot = 0;
-	polygonLayout[2].AlignedByteOffset = 16;
-	polygonLayout[2].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	polygonLayout[2].InstanceDataStepRate = 0;
+	D3D11_INPUT_ELEMENT_DESC layout[] =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,			0, 0,                            D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,			0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "COLOR",	  0, DXGI_FORMAT_R32G32B32A32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
 
 	// Create the vertex input layout.
-	u32 numElements = sizeof(polygonLayout) / sizeof(polygonLayout[0]);
-	HRESULT result = device->CreateInputLayout(polygonLayout, numElements, vertexShaderBuffer->GetBufferPointer(),
+	u32 numElements = sizeof(layout) / sizeof(layout[0]);
+	HRESULT result = device->CreateInputLayout(layout, numElements, vertexShaderBuffer->GetBufferPointer(),
 		vertexShaderBuffer->GetBufferSize(), &uiShader->layout);
 	Assert(!FAILED(result));
 
@@ -888,296 +853,6 @@ internal void RenderMesh(FMeshBuffer* mesh, ID3D11DeviceContext* deviceContext)
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Draw call helpers
-// ────────────────────────────────────────────────────────────────────────
-// Add a draw call to the passed bucket.
-internal void PushDrawCall(FRenderWorld* world, DXMatrix worldMatrix, HMesh hMesh, FMaterial material, v4 spriteRect)
-{
-	// Push to right bucket based on the material color's alpha channel.
-	FRenderBucket* bucket = &world->opaqueBucket;
-	if (material.color.a < 1.0f || (material.flags & Material_Transparent))
-	{
-		bucket = &world->transparentBucket;
-	}
-
-	Assert(bucket->count < MAX_DRAW_CALLS);
-	FDrawCall* call = &bucket->calls[bucket->count++];
-	call->worldMatrix = worldMatrix;
-	call->hMesh = hMesh;
-	call->material = material;
-	call->spriteRect = spriteRect;
-}
-
-internal void PushBlobShadow2D(FRenderWorld* world, v3 entityPos, v2 size = V2One())
-{
-	// Same quad, same billboard orientation as your sprites — just offset and squashed.
-	DXMatrix scale = DirectX::XMMatrixScaling(size.x, size.y * 0.4f, 1.0f); // flattened ellipse
-	DXMatrix translate = DirectX::XMMatrixTranslation(entityPos.x, entityPos.y - size.y * 0.5f, entityPos.z + 0.01f);
-	DXMatrix worldMatrix = scale * translate;
-
-	FAssetsHandles* assets = world->shared->assets;
-
-	FMaterial mat = {};
-	mat.color = { 0.0f, 0.0f, 0.0f, 0.4f };
-	mat.texture = assets->hBlobTexture;
-	mat.flags = Material_Transparent;
-
-	PushDrawCall(world, worldMatrix, assets->hQuadMesh, mat, v4{0,0,1,1});
-}
-
-internal void PushBlobShadow(FRenderWorld* world, v3 entityPos, f32 radius = 2.0f, f32 groundY = 0.0f)
-{
-	f32 heightFactor = Max(0.25f, (1.0f - (entityPos.y * 0.01f)));
-	radius *= heightFactor;
-
-	// Flatten to ground level, slightly above the floor to avoid z-fighting.
-	DXMatrix scale = DirectX::XMMatrixScaling(radius, 1.0f, radius);
-	DXMatrix translate = DirectX::XMMatrixTranslation(entityPos.x, groundY + 0.01f, entityPos.z);
-	DXMatrix worldMatrix = scale * translate;
-
-	FAssetsHandles* assets = world->shared->assets;
-
-	FMaterial mat = {};
-	mat.color = { 0.0f, 0.0f, 0.0f, 0.5f };   // black, semi-transparent
-	mat.texture = assets->hBlobTexture;
-	mat.flags = Material_Transparent;
-
-	PushDrawCall(world, worldMatrix, assets->hGroundQuad, mat, v4{0,0,1,1} /* full texture, no atlas */);
-}
-
-// ────────────────────────────────────────────────────────────────────────
-//  Buckets
-// ────────────────────────────────────────────────────────────────────────
-
-// Opaque buckets
-internal void FlushOpaqueBucket(FRenderWorld* world)
-{
-	FD3D* d3d = &world->d3d;
-	d3d->deviceContext->RSSetState(d3d->rasterState);
-
-
-	for (u32 i = 0; i < world->opaqueBucket.count; i++)
-	{
-		FDrawCall* call = &world->opaqueBucket.calls[i];
-		d3d->worldMatrix = call->worldMatrix;
-		SetMaterialShaderParameters(world, call);
-		FMeshBuffer* mesh = &world->meshes[call->hMesh];
-		RenderMesh(mesh, d3d->deviceContext);
-		d3d->deviceContext->DrawIndexed(mesh->indexCount, 0, 0);
-	}
-	world->opaqueBucket.count = 0;
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// Transparent buckets
-// ────────────────────────────────────────────────────────────────────────
-internal void FlushTransparentBucket(FRenderWorld* world)
-{
-	FD3D* d3d = &world->d3d;
-	d3d->deviceContext->RSSetState(d3d->noCullRasterState);
-
-	for (u32 i = 0; i < world->transparentBucket.count; i++)
-	{
-		FDrawCall* call = &world->transparentBucket.calls[i];
-		d3d->worldMatrix = call->worldMatrix;
-		SetMaterialShaderParameters(world, call);
-		FMeshBuffer* mesh = &world->meshes[call->hMesh];
-		RenderMesh(mesh, d3d->deviceContext);
-		d3d->deviceContext->DrawIndexed(mesh->indexCount, 0, 0);
-	}
-	world->transparentBucket.count = 0;
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// UI Bucket
-// 
-// Draws all queued UI commands (rects + text-as-rects) for this frame.
-// - UI has no concept of depth: layering is purely by submission order (first pushed = bottom, last pushed = top),
-//   so depth testing is disabled for this entire pass. Without this, UI quads would be
-//   depth-tested against each other (and the 3D scene) and incorrectly discarded/hidden, since most UI sits at the same Z.
-// - Alpha blending is enabled so partially-transparent quads composite correctly over whatever was drawn before them in this same pass.
-// ────────────────────────────────────────────────────────────────────────
-internal void FlushUIBucket(FRenderWorld* world)
-{
-	FUICommandBucket* bucket = world->shared->uiCommands;
-	if (bucket->count == 0)
-	{
-		return;
-	}
-
-	FUIVertex* verts = ArenaPushArray(&world->shared->arena->scratch, FUIVertex, MAX_UI_VERTS);
-	u32 vertCount = 0;
-
-	// Set pipeline state once
-	ID3D11DeviceContext* deviceContext = world->d3d.deviceContext;
-	u32 stride = sizeof(FUIVertex), offset = 0;
-	deviceContext->IASetVertexBuffers(0, 1, &world->d3d.uiVertexBuffer, &stride, &offset);
-	deviceContext->IASetInputLayout(world->uiShader.layout);
-	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	deviceContext->VSSetShader(world->uiShader.vertexShader, nullptr, 0);
-	deviceContext->PSSetShader(world->uiShader.pixelShader, nullptr, 0);
-	deviceContext->VSSetConstantBuffers(0, 1, &world->uiShader.constantBuffer);
-
-	f32 blendFactor[4] = { 0, 0, 0, 0 };
-	deviceContext->OMSetBlendState(world->d3d.transparentBlendState, blendFactor, 0xFFFFFFFF);
-	deviceContext->OMSetDepthStencilState(world->d3d.uiDepthStencilState, 0);
-
-	// Draw per texture group
-	ID3D11ShaderResourceView* currentTexture = nullptr;
-
-	for (u32 i = 0; i < bucket->count; ++i)
-	{
-		FUICommand* cmd = &bucket->commands[i];
-
-		ID3D11ShaderResourceView* cmdTexture = nullptr;
-		v4 rect, coords, color;
-
-		switch (cmd->type)
-		{
-		case UICommand_Rect:
-		{
-			cmdTexture = world->textures[cmd->rect.hTexture].textureView;
-			rect = cmd->rect.rect;
-			coords = cmd->rect.coords;
-			color = cmd->rect.color;
-		} break;
-
-		default:
-		{ continue; }
-		}
-
-		// Flush if texture changes.
-		if ((cmdTexture != currentTexture) && (vertCount > 0))
-		{
-			D3D11_MAPPED_SUBRESOURCE mapped = {};
-			deviceContext->Map(world->d3d.uiVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-			fmemcpy(mapped.pData, verts, sizeof(FUIVertex) * vertCount);
-			deviceContext->Unmap(world->d3d.uiVertexBuffer, 0);
-			deviceContext->PSSetShaderResources(0, 1, &currentTexture);
-			deviceContext->Draw(vertCount, 0);
-			vertCount = 0;
-		}
-
-		currentTexture = cmdTexture;
-		PushQuad(verts, &vertCount, rect, coords, color);
-	}
-
-	// Final flush
-	if (vertCount > 0)
-	{
-		D3D11_MAPPED_SUBRESOURCE mapped = {};
-		deviceContext->Map(world->d3d.uiVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-		fmemcpy(mapped.pData, verts, sizeof(FUIVertex) * vertCount);
-		deviceContext->Unmap(world->d3d.uiVertexBuffer, 0);
-		deviceContext->PSSetShaderResources(0, 1, &currentTexture);
-		deviceContext->Draw(vertCount, 0);
-	}
-
-	deviceContext->OMSetDepthStencilState(world->d3d.depthStencilState, 1);
-	deviceContext->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF);
-
-	bucket->count = 0;
-	ArenaReset(&world->shared->arena->scratch);
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// Flush all buckets
-// ────────────────────────────────────────────────────────────────────────
-internal void FlushBuckets(FRenderWorld* world)
-{
-	FD3D* d3d = &world->d3d;
-	ID3D11DeviceContext* deviceContext = d3d->deviceContext;
-	FMaterialShader* shader = &world->materialShader;
-
-	deviceContext->IASetInputLayout(shader->layout);
-	deviceContext->VSSetShader(shader->vertexShader, NULL, 0);
-	deviceContext->PSSetShader(shader->pixelShader, NULL, 0);
-	deviceContext->PSSetSamplers(0, 1, &shader->sampleState);
-
-	// 1. Opaque 3D
-	f32 blendFactor[4] = { 0, 0, 0, 0 };
-	deviceContext->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF); // blending off
-	deviceContext->OMSetDepthStencilState(d3d->depthStencilState, 1); // depth on
-	FlushOpaqueBucket(world);
-
-	// 2. Transparent 3D — reuse uiBlendState, keep depth READ on, WRITE off
-	deviceContext->OMSetBlendState(d3d->transparentBlendState, blendFactor, 0xFFFFFFFF);
-	deviceContext->OMSetDepthStencilState(d3d->transparentDepthState, 1);
-	FlushTransparentBucket(world);
-
-	// 3. Particles
-	for (u32 i = 0; i < world->shared->particles->count; ++i)
-	{
-		DrawParticleEmitter(world, &world->shared->particles->emitters[i]);
-	}
-
-	// 4. UI
-	FlushUIBucket(world);
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// FCamera
-// ────────────────────────────────────────────────────────────────────────
-// Updates the camera view matrix and the shared FCamera.
-internal void RenderCamera(FRenderWorld* world)
-{
-	FSharedStuff* shared = world->shared;
-	quat rot = shared->transforms->rotations[shared->camera.handle];
-
-	// Update shared CameraView.
-	FCamera* cam = &shared->camera;
-	cam->forward = QuatForward(rot);
-	cam->right = QuatRight(rot);
-	cam->up = QuatUp(rot);
-
-	// Load quaternion directly into DirectXMath.
-	DirectX::XMVECTOR quatVector = DirectX::XMVectorSet(rot.x, rot.y, rot.z, rot.w);
-
-	// Build rotation matrix from quaternion.
-	DXMatrix rotationMatrix = DirectX::XMMatrixRotationQuaternion(quatVector);
-
-	// Position
-	v3 pos = shared->transforms->positions[shared->camera.handle];
-	DirectX::XMVECTOR positionVector = DirectX::XMVectorSet(pos.x, pos.y, pos.z, 0.0f);
-
-	// Default forward, up, right, rotated by the quaternion matrix.
-	DirectX::XMVECTOR forwardVector = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-	DirectX::XMVECTOR upVector = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	DirectX::XMVECTOR rightVector = DirectX::XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
-
-	forwardVector = DirectX::XMVector3TransformCoord(forwardVector, rotationMatrix);
-	upVector = DirectX::XMVector3TransformCoord(upVector, rotationMatrix);
-	rightVector = DirectX::XMVector3TransformCoord(rightVector, rotationMatrix);
-
-	DirectX::XMVECTOR lookAtVector = DirectX::XMVectorAdd(positionVector, forwardVector);
-
-	DXMatrix camMatrix = DirectX::XMMatrixLookAtLH(positionVector, lookAtVector, upVector);
-	cam->view = DXMatrixToMat4(camMatrix);
-	BuildCameraProjection(cam);
-}
-
-// Returns a DXMatrix by building it from the Entity's transform.
-internal DXMatrix BuildEntityWorldMatrix(HEntity entityID, FSharedStuff* shared)
-{
-	FEntity* entity = &shared->entityTable->entities[entityID];
-	FTransforms* transforms = shared->transforms;
-
-	v3 scale = transforms->scales[entityID];
-	DXMatrix scaleMatrix = DirectX::XMMatrixScaling(scale.x, scale.y, scale.z);
-
-	quat rot = transforms->rotations[entityID];
-	DirectX::XMVECTOR quatVector = DirectX::XMVectorSet(rot.x, rot.y, rot.z, rot.w);
-	DXMatrix rotMatrix = DirectX::XMMatrixRotationQuaternion(quatVector);
-
-	v3 pos = transforms->positions[entityID];
-	DXMatrix transMatrix = DirectX::XMMatrixTranslation(pos.x, pos.y, pos.z);
-
-	DXMatrix resultMatrix = DirectX::XMMatrixMultiply(scaleMatrix, rotMatrix);
-	resultMatrix = DirectX::XMMatrixMultiply(resultMatrix, transMatrix);
-	return resultMatrix;
-}
-
-// ────────────────────────────────────────────────────────────────────────
 // Frustum culling
 // ────────────────────────────────────────────────────────────────────────
 // Extract 6 planes from our view-projection matrix, then test each entity's bounding volume (sphere) against those planes.
@@ -1204,12 +879,12 @@ internal void ExtractFrustumPlanes(FFrustum* frustum, DXMatrix viewProj)
 	for (i32 i = 0; i < 6; ++i)
 	{
 		f32 len = sqrtf(frustum->planes[i].normal.x * frustum->planes[i].normal.x +
-						frustum->planes[i].normal.y * frustum->planes[i].normal.y +
-						frustum->planes[i].normal.z * frustum->planes[i].normal.z);
+			frustum->planes[i].normal.y * frustum->planes[i].normal.y +
+			frustum->planes[i].normal.z * frustum->planes[i].normal.z);
 		frustum->planes[i].normal.x /= len;
 		frustum->planes[i].normal.y /= len;
 		frustum->planes[i].normal.z /= len;
-		frustum->planes[i].d /= len;
+		frustum->planes[i].distance /= len;
 	}
 }
 
@@ -1218,7 +893,7 @@ internal b8 SphereInFrustum(FFrustum* frustum, v3 center, f32 radius)
 	for (i32 i = 0; i < 6; ++i)
 	{
 		FFrustumPlane p = frustum->planes[i];
-		f32 dist = (p.normal.x * center.x) + (p.normal.y * center.y) + (p.normal.z * center.z) + p.d;
+		f32 dist = (p.normal.x * center.x) + (p.normal.y * center.y) + (p.normal.z * center.z) + p.distance;
 		if (dist < -radius)
 		{
 			return false; // fully outside this plane
@@ -1228,12 +903,481 @@ internal b8 SphereInFrustum(FFrustum* frustum, v3 center, f32 radius)
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Texture loader — .fasset image
+// Draw call helpers
+// ────────────────────────────────────────────────────────────────────────
+// Add a draw call to the passed bucket.
+internal void PushDrawCall(FRenderWorld* world, DXMatrix worldMatrix, HMesh hMesh, FMaterial material, v4 spriteRect)
+{
+	// Push to right bucket based on the material color's alpha channel.
+	FRenderBucket* bucket = &world->opaqueBucket;
+	if (material.color.a < 1.0f || (material.flags & Material_Transparent))
+	{
+		bucket = &world->transparentBucket;
+	}
+
+	Assert(bucket->count < FMAX_DRAW_CALLS);
+	FDrawCall* call = &bucket->calls[bucket->count++];
+	call->worldMatrix = worldMatrix;
+	call->hMesh = hMesh;
+	call->material = material;
+	call->spriteRect = spriteRect;
+}
+
+internal void PushBlobShadow2D(FRenderWorld* world, v3 entityPos, v2 size = V2One())
+{
+	// Same quad, same billboard orientation as your sprites — just offset and squashed.
+	DXMatrix scale = DirectX::XMMatrixScaling(size.x, size.y * 0.4f, 1.0f); // flattened ellipse
+	DXMatrix translate = DirectX::XMMatrixTranslation(entityPos.x, entityPos.y - size.y * 0.5f, entityPos.z + 0.01f);
+	DXMatrix worldMatrix = scale * translate;
+
+	FAssetsHandles* assets = &world->shared->assets;
+
+	FMaterial mat = {};
+	mat.color = { 0.0f, 0.0f, 0.0f, 0.4f };
+	mat.texture = assets->hBlobTexture;
+	mat.flags = Material_Transparent;
+
+	PushDrawCall(world, worldMatrix, assets->hQuadMesh, mat, v4{0,0,1,1});
+}
+
+internal void PushBlobShadow(FRenderWorld* world, v3 entityPos, f32 radius = 2.0f, f32 groundY = 0.0f)
+{
+	f32 heightFactor = Max(0.25f, (1.0f - (entityPos.y * 0.01f)));
+	radius *= heightFactor;
+
+	// Flatten to ground level, slightly above the floor to avoid z-fighting.
+	DXMatrix scale = DirectX::XMMatrixScaling(radius, 1.0f, radius);
+	DXMatrix translate = DirectX::XMMatrixTranslation(entityPos.x, groundY + 0.01f, entityPos.z);
+	DXMatrix worldMatrix = scale * translate;
+
+	FAssetsHandles* assets = &world->shared->assets;
+
+	FMaterial mat = {};
+	mat.color = { 0.0f, 0.0f, 0.0f, 0.5f };   // black, semi-transparent
+	mat.texture = assets->hBlobTexture;
+	mat.flags = Material_Transparent;
+
+	PushDrawCall(world, worldMatrix, assets->hGroundQuad, mat, v4{0,0,1,1} /* full texture, no atlas */);
+}
+
+// ────────────────────────────────────────────────────────────────────────
+//  Buckets
+// ────────────────────────────────────────────────────────────────────────
+internal void FlushRenderBucket(FRenderWorld* world, FRenderBucket* bucket, ID3D11RasterizerState* rasterState)
+{
+	FD3D* d3d = &world->d3d;
+	d3d->deviceContext->RSSetState(rasterState);
+
+	for (u32 i = 0; i < bucket->count; i++)
+	{
+		FDrawCall* call = &bucket->calls[i];
+		d3d->worldMatrix = call->worldMatrix;
+		SetMaterialShaderParameters(world, call);
+		FMeshBuffer* mesh = &world->meshes[call->hMesh];
+		RenderMesh(mesh, d3d->deviceContext);
+		d3d->deviceContext->DrawIndexed(mesh->indexCount, 0, 0);
+	}
+	bucket->count = 0;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// UI Bucket
+// Draws queued UI (rects and text), layered by submission order, so depth testing is disabled.
+// Alpha blending is enabled for correct transparency.
+// ────────────────────────────────────────────────────────────────────────
+internal void FlushUIBucket(FRenderWorld* world)
+{
+	FUICommandsBucket* bucket = &world->shared->uiBucket;
+	if (bucket->count == 0)
+	{
+		return;
+	}
+
+	FMemoryArena* scratch = &world->shared->arena->scratch;
+	FUIVertex* verts = ArenaPushArray(scratch, FUIVertex, FMAX_UI_VERTS);
+	u32 vertCount = 0;
+
+	// Set pipeline state once
+	ID3D11DeviceContext* deviceContext = world->d3d.deviceContext;
+	u32 stride = sizeof(FUIVertex), offset = 0;
+	deviceContext->IASetVertexBuffers(0, 1, &world->d3d.uiVertexBuffer, &stride, &offset);
+	deviceContext->IASetInputLayout(world->uiShader.layout);
+	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	deviceContext->VSSetShader(world->uiShader.vertexShader, nullptr, 0);
+	deviceContext->PSSetShader(world->uiShader.pixelShader, nullptr, 0);
+	deviceContext->VSSetConstantBuffers(0, 1, &world->uiShader.constantBuffer);
+
+	f32 blendFactor[4] = { 0, 0, 0, 0 };
+	deviceContext->OMSetBlendState(world->d3d.transparentBlendState, blendFactor, 0xFFFFFFFF);
+	deviceContext->OMSetDepthStencilState(world->d3d.uiDepthStencilState, 0);
+
+	// Draw per texture group
+	ID3D11ShaderResourceView* currentTexture = nullptr;
+
+	for (u32 i = 0; i < bucket->count; ++i)
+	{
+		FUICommand* cmd = &bucket->commands[i];
+
+		ID3D11ShaderResourceView* cmdTexture = nullptr;
+		cmdTexture = world->textures[cmd->hTexture].textureView;
+
+		// Flush if texture changes.
+		if ((cmdTexture != currentTexture) && (vertCount > 0))
+		{
+			D3D11_MAPPED_SUBRESOURCE mapped = {};
+			deviceContext->Map(world->d3d.uiVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+			fmemcpy(mapped.pData, verts, sizeof(FUIVertex) * vertCount);
+			deviceContext->Unmap(world->d3d.uiVertexBuffer, 0);
+			deviceContext->PSSetShaderResources(0, 1, &currentTexture);
+			deviceContext->Draw(vertCount, 0);
+			vertCount = 0;
+		}
+
+		currentTexture = cmdTexture;
+		PushQuad(verts, &vertCount, cmd->rect, cmd->coords, cmd->color);
+	}
+
+	// Final flush
+	if (vertCount > 0)
+	{
+		D3D11_MAPPED_SUBRESOURCE mapped = {};
+		deviceContext->Map(world->d3d.uiVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+		fmemcpy(mapped.pData, verts, sizeof(FUIVertex) * vertCount);
+		deviceContext->Unmap(world->d3d.uiVertexBuffer, 0);
+		deviceContext->PSSetShaderResources(0, 1, &currentTexture);
+		deviceContext->Draw(vertCount, 0);
+	}
+
+	deviceContext->OMSetDepthStencilState(world->d3d.depthStencilState, 1);
+	deviceContext->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF);
+
+	bucket->count = 0;
+	ArenaReset(scratch);
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Flush all buckets
+// ────────────────────────────────────────────────────────────────────────
+internal void FlushBuckets(FRenderWorld* world)
+{
+	FD3D* d3d = &world->d3d;
+	ID3D11DeviceContext* deviceContext = d3d->deviceContext;
+	FMaterialShader* shader = &world->materialShader;
+
+	deviceContext->IASetInputLayout(shader->layout);
+	deviceContext->VSSetShader(shader->vertexShader, NULL, 0);
+	deviceContext->PSSetShader(shader->pixelShader, NULL, 0);
+	deviceContext->PSSetSamplers(0, 1, &shader->sampleState);
+
+	// 1. Opaque 3D
+	f32 blendFactor[4] = { 0, 0, 0, 0 };
+	deviceContext->OMSetBlendState(nullptr, blendFactor, 0xFFFFFFFF); // blending off
+	deviceContext->OMSetDepthStencilState(d3d->depthStencilState, 1); // depth on
+	FlushRenderBucket(world, &world->opaqueBucket, world->d3d.rasterState);
+
+	// 2. Transparent 3D — reuse uiBlendState, keep depth READ on, WRITE off
+	deviceContext->OMSetBlendState(d3d->transparentBlendState, blendFactor, 0xFFFFFFFF);
+	deviceContext->OMSetDepthStencilState(d3d->transparentDepthState, 1);
+	FlushRenderBucket(world, &world->transparentBucket, world->d3d.noCullRasterState);
+
+	// 3. Particles
+	for (u32 i = 0; i < world->shared->particles.count; ++i)
+	{
+		DrawParticleEmitter(world, &world->shared->particles.emitters[i]);
+	}
+
+	// 4. UI
+	FlushUIBucket(world);
+}
+
+// Returns a DXMatrix by building it from the Entity's transform.
+internal DXMatrix BuildEntityWorldMatrix(HEntity entityID, FSharedStuff* shared)
+{
+	FEntity* entity = &shared->entityTable.entities[entityID];
+	FTransforms* transforms = &shared->transforms;
+
+	v3 scale = transforms->scales[entityID];
+	DXMatrix scaleMatrix = DirectX::XMMatrixScaling(scale.x, scale.y, scale.z);
+
+	quat rot = transforms->rotations[entityID];
+	DirectX::XMVECTOR quatVector = DirectX::XMVectorSet(rot.x, rot.y, rot.z, rot.w);
+	DXMatrix rotMatrix = DirectX::XMMatrixRotationQuaternion(quatVector);
+
+	v3 pos = transforms->positions[entityID];
+	DXMatrix transMatrix = DirectX::XMMatrixTranslation(pos.x, pos.y, pos.z);
+
+	DXMatrix resultMatrix = DirectX::XMMatrixMultiply(scaleMatrix, rotMatrix);
+	resultMatrix = DirectX::XMMatrixMultiply(resultMatrix, transMatrix);
+	return resultMatrix;
+}
+
+// Push draw calls for all entities in the frustum;
+internal void DrawSceneEntities(FRenderWorld* world)
+{
+	FFrustum frustum;
+	DXMatrix viewProj = (DXMatrix)(world->shared->camera.view * world->shared->camera.projection).m;
+	ExtractFrustumPlanes(&frustum, viewProj);
+
+	FEntityTable* entTable = &world->shared->entityTable;
+	for (u32 i = 0; i < entTable->count; ++i)
+	{
+		FEntity* entity = &entTable->entities[i];
+		if (entity->hMesh == INVALID_HANDLE)
+		{
+			continue;
+		}
+
+		v3 pos = world->shared->transforms.positions[i];
+		f32 entityRadius = 2.5f * GetEntityScaleAverage(world->shared, i);
+
+		if (!SphereInFrustum(&frustum, pos, entityRadius))
+		{
+			continue;
+		}
+
+		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
+		PushDrawCall(world, worldMatrix, entity->hMesh, entity->material, entity->spriteRect);
+
+		if (entity->material.flags & Material_CastShadow)
+		{
+			if (entity->material.flags & Material_Transparent)
+			{
+				PushBlobShadow2D(world, pos);
+			}
+			else
+			{
+				PushBlobShadow(world, pos, entityRadius);
+			}
+		}
+	}
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// FCamera
+// ────────────────────────────────────────────────────────────────────────
+// Updates the shared FCamera view and projections matrices.
+internal void RenderCamera(FRenderWorld* world)
+{
+	FSharedStuff* shared = world->shared;
+	quat rot = shared->transforms.rotations[shared->camera.handle];
+
+	// Update shared CameraView.
+	FCamera* cam = &shared->camera;
+	cam->forward = QuatForward(rot);
+	cam->right = QuatRight(rot);
+	cam->up = QuatUp(rot);
+
+	// Load quaternion directly into DirectXMath.
+	DirectX::XMVECTOR quatVector = DirectX::XMVectorSet(rot.x, rot.y, rot.z, rot.w);
+
+	// Build rotation matrix from quaternion.
+	DXMatrix rotationMatrix = DirectX::XMMatrixRotationQuaternion(quatVector);
+
+	// Position
+	v3 pos = shared->transforms.positions[shared->camera.handle];
+	DirectX::XMVECTOR positionVector = DirectX::XMVectorSet(pos.x, pos.y, pos.z, 0.0f);
+
+	// Default forward, up, right, rotated by the quaternion matrix.
+	DirectX::XMVECTOR forwardVector = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+	DirectX::XMVECTOR upVector = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	DirectX::XMVECTOR rightVector = DirectX::XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+
+	forwardVector = DirectX::XMVector3TransformCoord(forwardVector, rotationMatrix);
+	upVector = DirectX::XMVector3TransformCoord(upVector, rotationMatrix);
+	rightVector = DirectX::XMVector3TransformCoord(rightVector, rotationMatrix);
+
+	DirectX::XMVECTOR lookAtVector = DirectX::XMVectorAdd(positionVector, forwardVector);
+
+	DXMatrix camMatrix = DirectX::XMMatrixLookAtLH(positionVector, lookAtVector, upVector);
+	cam->view = DXMatrixToMat4(camMatrix);
+	BuildCameraProjection(cam);
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Global Functions:
+
+// ──────────────────────────
+// InitializeFD3D
+// ──────────────────────────
+void InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams)
+{
+	InitializeDX11(d3dInitParams, world);
+
+	// Init shaders
+	InitializeMaterialShader(&world->materialShader, world->d3d.device);
+	InitializeParticleShader(&world->particleShader, world->d3d.device);
+	InitializeUIShader(&world->uiShader, world->d3d.device, d3dInitParams->window);
+
+	SetUIProjection(world);
+
+#if FADO_DEBUG
+	// 2 verts per line, MAX_DEBUG_LINES lines
+	D3D11_BUFFER_DESC desc = {};
+	desc.Usage = D3D11_USAGE_DYNAMIC;
+	desc.ByteWidth = sizeof(FDebugVertex) * FMAX_DEBUG_LINES * 2;
+	desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	HRESULT result = world->d3d.device->CreateBuffer(&desc, NULL, &world->debugBucket.vertexBuffer);
+	Assert(!FAILED(result));
+
+	world->debugBucket.count = 0;
+#endif // FADO_DEBUG
+}
+
+// ──────────────────────────
+// Render
+// ──────────────────────────
+void Render(FRenderWorld* world)
+{
+	FD3D* d3d = &world->d3d;
+
+	// Clear the buffers to begin the scene.
+	BeginScene(d3d, v4{ 0.0f, 0.0f, 0.0f, 1.0f });
+
+	// Generate the view matrix based on the camera's position.
+	RenderCamera(world);
+
+	DrawSceneEntities(world);
+	FlushBuckets(world);
+
+	// Present the rendered scene to the screen.
+	EndScene(d3d);
+}
+
+// ──────────────────────────
+// Resize
+// ──────────────────────────
+void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 screenDepth)
+{
+	FD3D* d3d = &world->d3d;
+
+	if (!d3d->swapChain)
+	{
+		return;
+	}
+
+#if FADO_DEBUG
+	ImGui_ImplDX11_InvalidateDeviceObjects();
+#endif // FADO_DEBUG
+
+	// Release old views/buffers — they hold references to the old back buffer.
+	d3d->deviceContext->OMSetRenderTargets(0, nullptr, nullptr);
+	d3d->renderTargetView->Release();
+	d3d->depthStencilView->Release();
+	d3d->depthStencilBuffer->Release();
+
+	// Resize the swap chain's buffers to the new size.
+	d3d->swapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
+
+	// Recreate render target view from the new back buffer.
+	ID3D11Texture2D* backBuffer;
+	d3d->swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+	d3d->device->CreateRenderTargetView(backBuffer, nullptr, &d3d->renderTargetView);
+	backBuffer->Release();
+
+	// Recreate depth/stencil buffer at the new size.
+	D3D11_TEXTURE2D_DESC depthDesc = {};
+	depthDesc.Width = width;
+	depthDesc.Height = height;
+	depthDesc.MipLevels = 1;
+	depthDesc.ArraySize = 1;
+	depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	depthDesc.SampleDesc.Count = 1;
+	depthDesc.Usage = D3D11_USAGE_DEFAULT;
+	depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	d3d->device->CreateTexture2D(&depthDesc, nullptr, &d3d->depthStencilBuffer);
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+	dsvDesc.Format = depthDesc.Format;
+	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	d3d->device->CreateDepthStencilView(d3d->depthStencilBuffer, &dsvDesc, &d3d->depthStencilView);
+
+	d3d->deviceContext->OMSetRenderTargets(1, &d3d->renderTargetView, d3d->depthStencilView);
+
+	// Update viewport.
+	FSharedStuff* shared = world->shared;
+	shared->viewport.topLeftX = 0.0f;
+	shared->viewport.topLeftY = 0.0f;
+	shared->viewport.width = (f32)width;
+	shared->viewport.height = (f32)height;
+	shared->viewport.minDepth = 0.0f;
+	shared->viewport.maxDepth = 1.0f;
+
+	D3D11_VIEWPORT d3d11Viewport = {
+		shared->viewport.topLeftX,
+		shared->viewport.topLeftY,
+		shared->viewport.width,
+		shared->viewport.height,
+		shared->viewport.minDepth,
+		shared->viewport.maxDepth
+	};
+
+	// Create the viewport.
+	d3d->deviceContext->RSSetViewports(1, &d3d11Viewport);
+
+	// Update projection matrix aspect ratio.
+	f32 aspect = (f32)width / (f32)height;
+	f32 fovY = shared->camera.fovY;
+	shared->camera.projection = DXMatrixToMat4(DirectX::XMMatrixPerspectiveFovLH(fovY, aspect, 0.3f, 1000.0f));
+
+	SetUIProjection(world);
+
+#if FADO_DEBUG
+	ImGui_ImplDX11_CreateDeviceObjects();
+#endif // FADO_DEBUG
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Build a simple quad mesh.
+// ────────────────────────────────────────────────────────────────────────
+HMesh GetQuad(FRenderWorld* world)
+{
+	HMesh quad = world->meshCount++;
+
+	FTextureVertex verts[] =
+	{
+		{ {-0.5f,  0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f } },
+		{ { 0.5f,  0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f } },
+		{ { 0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 1.0f } },
+		{ {-0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 1.0f } },
+	};
+
+	u32 indices[] = { 0, 1, 2, 0, 2, 3 };
+	UploadMesh(&world->meshes[quad], world->d3d.device, verts, 4, sizeof(FTextureVertex), indices, 6);
+	return quad;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Build a simple blob mesh.
+// Flat quad in the XZ plane, facing up (+Y). Used for ground decals like blob shadows.
+// ────────────────────────────────────────────────────────────────────────
+HMesh GetGroundQuad(FRenderWorld* world)
+{
+	HMesh quad = world->meshCount++;
+
+	FTextureVertex verts[] =
+	{
+		{ {-0.5f, 0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
+		{ { 0.5f, 0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
+		{ { 0.5f, 0.0f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } },
+		{ {-0.5f, 0.0f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } },
+	};
+
+	u32 indices[] = { 0, 1, 2, 0, 2, 3 };
+	UploadMesh(&world->meshes[quad], world->d3d.device, verts, 4, sizeof(FTextureVertex), indices, 6);
+	return quad;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Loaders:
+
+// ────────────────────────────────────────────────────────────────────────
+// Texture loader — .fimage
 // ────────────────────────────────────────────────────────────────────────
 HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 {
-	FILE* file = nullptr;
-	fopen_s(&file, fileName, "rb");
+	FILE* file = fopen(fileName, "rb");
 	Assert(file);
 
 	FAssetHeader assetHeader = {};
@@ -1353,8 +1497,7 @@ HTexture LoadFImage(FRenderWorld* world, cc8* fileName)
 // ────────────────────────────────────────────────────────────────────────
 HMesh LoadFModel(FRenderWorld* world, cc8* fileName)
 {
-	FILE* file = nullptr;
-	fopen_s(&file, fileName, "rb");
+	FILE* file = fopen(fileName, "rb");
 	if (!file)
 	{
 		return INVALID_HANDLE;
@@ -1411,8 +1554,7 @@ HMesh LoadFModel(FRenderWorld* world, cc8* fileName)
 // ────────────────────────────────────────────────────────────────────────
 HTexture LoadFFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outFont)
 {
-	FILE* file = nullptr;
-	fopen_s(&file, filename, "rb");
+	FILE* file = fopen(filename, "rb");
 	if (!file)
 	{
 		return false;
@@ -1475,14 +1617,12 @@ HTexture LoadFFont(FRenderWorld* world, cc8* filename, f32 fontSize, FFont* outF
 	return outFont->atlas;
 }
 
-
 // ────────────────────────────────────────────────────────────────────────
 // Sound loader — .fsound
 // ────────────────────────────────────────────────────────────────────────
 HSound LoadFSound(FSoundManager* SoundManager, FEngineMemory* arena, cc8* filename)
 {
-	FILE* file;
-	fopen_s(&file, filename, "rb");
+	FILE* file = fopen(filename, "rb");
 	Assert(file);
 
 	FAssetHeader header = {};
@@ -1521,8 +1661,8 @@ HSound LoadFSound(FSoundManager* SoundManager, FEngineMemory* arena, cc8* filena
 // ────────────────────────────────────────────────────────────────────────
 HSpriteSheet RegisterSpriteSheet(FRenderWorld* world, HTexture hTex, u32 frameWidth, u32 frameHeight)
 {
-	FSpriteSheetTable* spriteSheetTable = world->shared->spriteSheetTable;
-	Assert(spriteSheetTable->count < MAX_SPRITESHEETS);
+	FSpriteSheetTable* spriteSheetTable = &world->shared->spriteSheetTable;
+	Assert(spriteSheetTable->count < FMAX_SPRITESHEETS);
 	HSpriteSheet handle = spriteSheetTable->count++;
 	FSpriteSheet* sheet = &spriteSheetTable->sheets[handle];
 
@@ -1538,219 +1678,9 @@ HSpriteSheet RegisterSpriteSheet(FRenderWorld* world, HTexture hTex, u32 frameWi
 	return handle;
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Build a simple quad mesh.
-// ────────────────────────────────────────────────────────────────────────
-HMesh GetQuad(FRenderWorld* world)
-{
-	HMesh quad = world->meshCount++;
-
-	FTextureVertex verts[] =
-	{
-		{ {-0.5f,  0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f } },
-		{ { 0.5f,  0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f } },
-		{ { 0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 1.0f } },
-		{ {-0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 1.0f } },
-	};
-
-	u32 indices[] = { 0, 1, 2, 0, 2, 3 };
-	UploadMesh(&world->meshes[quad], world->d3d.device, verts, 4, sizeof(FTextureVertex), indices, 6);
-	return quad;
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// Build a simple blob mesh.
-// Flat quad in the XZ plane, facing up (+Y). Used for ground decals like blob shadows.
-// ────────────────────────────────────────────────────────────────────────
-HMesh GetGroundQuad(FRenderWorld* world)
-{
-	HMesh quad = world->meshCount++;
-
-	FTextureVertex verts[] =
-	{
-		{ {-0.5f, 0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
-		{ { 0.5f, 0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } },
-		{ { 0.5f, 0.0f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } },
-		{ {-0.5f, 0.0f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } },
-	};
-
-	u32 indices[] = { 0, 1, 2, 0, 2, 3 };
-	UploadMesh(&world->meshes[quad], world->d3d.device, verts, 4, sizeof(FTextureVertex), indices, 6);
-	return quad;
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// Global Functions
-// ────────────────────────────────────────────────────────────────────────
-void InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams)
-{
-	InitializeDX11(d3dInitParams, world);
-
-	// Init shaders
-	InitializeMaterialShader(&world->materialShader, world->d3d.device);
-	InitializeParticleShader(&world->particleShader, world->d3d.device);
-	InitializeUIShader(&world->uiShader, world->d3d.device, d3dInitParams->window);
-
-	SetUIProjection(world);
-
-	world->dirLight.ambientColor = { 0.5f, 0.35f, 0.25f, 1.0f };
-	world->dirLight.diffuseColor = { 1.75f, 1.0f, 1.0f, 1.0f };
-	world->dirLight.lightDirection = { 1.75f, -1.0f, 1.0f };
-
-#if FADO_DEBUG
-	// 2 verts per line, MAX_DEBUG_LINES lines
-	D3D11_BUFFER_DESC desc = {};
-	desc.Usage = D3D11_USAGE_DYNAMIC;
-	desc.ByteWidth = sizeof(FDebugVertex) * MAX_DEBUG_LINES * 2;
-	desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-	HRESULT result = world->d3d.device->CreateBuffer(&desc, NULL, &world->debugBucket.vertexBuffer);
-	Assert(!FAILED(result));
-
-	world->debugBucket.count = 0;
-#endif // FADO_DEBUG
-}
-
-void Render(FRenderWorld* world)
-{
-	FD3D* d3d = &world->d3d;
-
-	// Clear the buffers to begin the scene.
-	BeginScene(d3d, v4{ 0.0f, 0.0f, 0.0f, 1.0f });
-
-	// Generate the view matrix based on the camera's position.
-	RenderCamera(world);
-
-	// Draw all entites in view.
-	FFrustum frustum;
-	DXMatrix viewProj = (DXMatrix)(world->shared->camera.view * world->shared->camera.projection).m;
-	ExtractFrustumPlanes(&frustum, viewProj);
-
-	FEntityTable* entTable = world->shared->entityTable;
-	f32 entityRadius = 2.5f;
-	for (u32 i = 0; i < entTable->count; ++i)
-	{
-		FEntity* entity = &entTable->entities[i];
-		if (entity->hMesh == INVALID_HANDLE)
-		{
-			continue;
-		}
-
-		v3 pos = world->shared->transforms->positions[i];
-		entityRadius = 2.5f * GetEntityScaleAverage(world->shared, i); // reuse your existing scale helper
-
-		if (!SphereInFrustum(&frustum, pos, entityRadius))
-		{
-			continue; // skip entirely — no draw call, no shadow blob
-		}
-
-		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
-		PushDrawCall(world, worldMatrix, entity->hMesh, entity->material, entity->spriteRect);
-
-		if (entity->material.flags & Material_CastShadow)
-		{
-			if (entity->material.flags & Material_Transparent)
-			{
-				PushBlobShadow2D(world, world->shared->transforms->positions[i]);
-			}
-			else
-			{
-				PushBlobShadow(world, world->shared->transforms->positions[i], entityRadius);
-			}
-		}
-	}
-
-	// Flush all buckets.
-	FlushBuckets(world);
-
-	// Present the rendered scene to the screen.
-	EndScene(d3d);
-}
-
-void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 screenDepth)
-{
-	FD3D* d3d = &world->d3d;
-
-	if (!d3d->swapChain)
-	{
-		return;
-	}
-
-#if FADO_DEBUG
-	ImGui_ImplDX11_InvalidateDeviceObjects();
-#endif // FADO_DEBUG
-
-	// Release old views/buffers — they hold references to the old back buffer.
-	d3d->deviceContext->OMSetRenderTargets(0, nullptr, nullptr);
-	d3d->renderTargetView->Release();
-	d3d->depthStencilView->Release();
-	d3d->depthStencilBuffer->Release();
-
-	// Resize the swap chain's buffers to the new size.
-	d3d->swapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
-
-	// Recreate render target view from the new back buffer.
-	ID3D11Texture2D* backBuffer;
-	d3d->swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
-	d3d->device->CreateRenderTargetView(backBuffer, nullptr, &d3d->renderTargetView);
-	backBuffer->Release();
-
-	// Recreate depth/stencil buffer at the new size.
-	D3D11_TEXTURE2D_DESC depthDesc = {};
-	depthDesc.Width = width;
-	depthDesc.Height = height;
-	depthDesc.MipLevels = 1;
-	depthDesc.ArraySize = 1;
-	depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	depthDesc.SampleDesc.Count = 1;
-	depthDesc.Usage = D3D11_USAGE_DEFAULT;
-	depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-	d3d->device->CreateTexture2D(&depthDesc, nullptr, &d3d->depthStencilBuffer);
-
-	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-	dsvDesc.Format = depthDesc.Format;
-	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-	d3d->device->CreateDepthStencilView(d3d->depthStencilBuffer, &dsvDesc, &d3d->depthStencilView);
-
-	d3d->deviceContext->OMSetRenderTargets(1, &d3d->renderTargetView, d3d->depthStencilView);
-
-	// Update viewport.
-	FSharedStuff* shared = world->shared;
-	shared->viewport.topLeftX = 0.0f;
-	shared->viewport.topLeftY = 0.0f;
-	shared->viewport.width = (f32)width;
-	shared->viewport.height = (f32)height;
-	shared->viewport.minDepth = 0.0f;
-	shared->viewport.maxDepth = 1.0f;
-
-	D3D11_VIEWPORT d3d11Viewport = {
-		shared->viewport.topLeftX,
-		shared->viewport.topLeftY,
-		shared->viewport.width,
-		shared->viewport.height,
-		shared->viewport.minDepth,
-		shared->viewport.maxDepth
-	};
-
-	// Create the viewport.
-	d3d->deviceContext->RSSetViewports(1, &d3d11Viewport);
-
-	// Update projection matrix aspect ratio.
-	f32 aspect = (f32)width / (f32)height;
-	f32 fovY = Pi32 / 4.0f; // match whatever FOV you used at init
-	shared->camera.projection = DXMatrixToMat4(DirectX::XMMatrixPerspectiveFovLH(fovY, aspect, 0.3f, 1000.0f));
-
-	SetUIProjection(world);
-
-#if FADO_DEBUG
-	ImGui_ImplDX11_CreateDeviceObjects();
-#endif // FADO_DEBUG
-}
-
-
-// ─────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────────────────────────
 /// Debug Only
+// ───────────────────────────────────────────────────────────────────────────────────────────────────
 #if FADO_DEBUG
 #include "fado_collision.h"
 
@@ -1758,7 +1688,7 @@ void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 s
 internal void DebugDrawLine(FRenderWorld* world, v3 start, v3 end, v4 color)
 {
 	FDebugLineBucket* bucket = &world->debugBucket;
-	if (bucket->count >= MAX_DEBUG_LINES) { return; }
+	if (bucket->count >= FMAX_DEBUG_LINES) { return; }
 	FDebugLine* line = &bucket->lines[bucket->count++];
 	line->start = start;
 	line->end = end;
@@ -1838,7 +1768,7 @@ internal void ShowDebugGui(FRenderWorld* world)
 	ImGui::Begin("Inspector");
 
 	u32 selected =world->shared->selectedEntity;
-	FTransforms* transforms = world->shared->transforms;
+	FTransforms* transforms = &world->shared->transforms;
 
 	c8 label[64];
 
@@ -1854,7 +1784,7 @@ internal void ShowDebugGui(FRenderWorld* world)
 	snprintf(label, sizeof(label), "Light");
 	if (ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		FDirectionalLight* light = &world->dirLight;
+		FDirectionalLight* light = &world->shared->dirLight;
 
 		snprintf(label, sizeof(label), "Ambient Color");
 		ImGui::DragFloat4(label, &light->ambientColor.x, 0.1f);
@@ -1966,49 +1896,10 @@ void DebugRender(FRenderWorld* world)
 	// Generate the view matrix based on the camera's position.
 	RenderCamera(world);
 
-	// Draw all entites in view.
-	FFrustum frustum;
-	DXMatrix viewProj = (DXMatrix)(world->shared->camera.view * world->shared->camera.projection).m;
-	ExtractFrustumPlanes(&frustum, viewProj);
-
-	FEntityTable* entTable = world->shared->entityTable;
-	f32 entityRadius = 2.5f;
-	for (u32 i = 0; i < entTable->count; ++i)
-	{
-		FEntity* entity = &entTable->entities[i];
-		if (entity->hMesh == INVALID_HANDLE)
-		{
-			continue;
-		}
-
-		v3 pos = world->shared->transforms->positions[i];
-		entityRadius = 2.5f * GetEntityScaleAverage(world->shared, i);
-
-		if (!SphereInFrustum(&frustum, pos, entityRadius))
-		{
-			continue; // skip entirely — no draw call, no shadow blob
-		}
-
-		DXMatrix worldMatrix = BuildEntityWorldMatrix(i, world->shared);
-		PushDrawCall(world, worldMatrix, entity->hMesh, entity->material, entity->spriteRect);
-
-		if (entity->material.flags & Material_CastShadow)
-		{
-			if (entity->material.flags & Material_Transparent)
-			{
-				PushBlobShadow2D(world, world->shared->transforms->positions[i]);
-			}
-			else
-			{
-				PushBlobShadow(world, world->shared->transforms->positions[i], entityRadius);
-			}
-		}
-	}
-
-	// Flush all buckets — shader bound once per bucket, zero branching.
+	DrawSceneEntities(world);
 	FlushBuckets(world);
 
-	FCollisionWorld* collisionWorld = world->shared->collisionWorld;
+	FCollisionWorld* collisionWorld = &world->shared->collisionWorld;
 	for (u32 i = 0; i < collisionWorld->colliders.count; ++i)
 	{
 		FCollider* c = &collisionWorld->colliders.colliders[i];
@@ -2033,5 +1924,7 @@ void DebugRender(FRenderWorld* world)
 	// Present the rendered scene to the screen.
 	EndScene(d3d);
 }
+
+// ────────────────────────────────────────────────────────────────────────
 
 #endif // FADO_DEBUG

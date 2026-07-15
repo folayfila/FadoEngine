@@ -6,18 +6,15 @@
 #include "fado_types.h"
 #include "fado_math.h"
 
-// Command types
-// - Rect: Includes images and font textures.
-enum EUICommandType
-{
-	UICommand_Rect
-};
+// ─────────────────────────────────────────────
 
+// ────────────────
 // UICommand to add a rect.
 // Rects use the texture they have as a base and apply a color on it,
 // this allows us to use plain white textures to display colored rects and any texture
 // for stylized rects.
-struct FUIRectCommand
+// ────────────────
+struct FUICommand
 {
 	v4 rect;
 	v4 coords;
@@ -25,20 +22,11 @@ struct FUIRectCommand
 	HTexture hTexture;
 };
 
-struct FUICommand
-{
-	EUICommandType type;
-	union
-	{
-		FUIRectCommand rect;
-	};
-};
+#define FMAX_UI_COMMANDS 256
 
-#define MAX_UI_COMMANDS 256
-
-struct FUICommandBucket
+struct FUICommandsBucket
 {
-	FUICommand commands[MAX_UI_COMMANDS];
+	FUICommand commands[FMAX_UI_COMMANDS];
 	u32 count;
 };
 
@@ -64,17 +52,16 @@ struct FUINavState
 // ────────────────────────────────────────────
 
 // Pushes a rect into the ui bucket to draw on the screen.
-inline void UIPushRect(FUICommandBucket* bucket, v4 rect, v4 coords, v4 color, HTexture hTexture)
+inline void UIPushRect(FUICommandsBucket* bucket, v4 rect, v4 coords, v4 color, HTexture hTexture)
 {
-	Assert(bucket->count < MAX_UI_COMMANDS);
+	Assert(bucket->count < FMAX_UI_COMMANDS);
 	FUICommand* cmd = &bucket->commands[bucket->count++];
-	cmd->type = UICommand_Rect;
-	cmd->rect = { rect, coords, color, hTexture };
+	*cmd = { rect, coords, color, hTexture };
 }
 
 // Pushes text into the ui bucket to draw on the screen using a font.
 // Font glyphs are just rects being drawn on the screen.
-inline void UIPushText(FUICommandBucket* bucket, FFont* font, cc8* text, v2 pos, v4 color)
+inline void UIPushText(FUICommandsBucket* bucket, FFont* font, cc8* text, v2 pos, v4 color)
 {
 	// Current pen position while laying out glyphs.
 	v2 cursor = pos;
@@ -123,7 +110,7 @@ inline v2 UIMeasureTextWidth(FFont* font, cc8* text)
 }
 
 // Pushes a stylized button into the ui commads bucket.
-inline void UIPushButton(v4 rect, cc8* text, FUICommandBucket* bucket, FUIButtonStyle* style, FFont* font, b8 clicked, b8 hovered)
+inline void UIPushButton(v4 rect, cc8* text, FUICommandsBucket* bucket, FUIButtonStyle* style, FFont* font, b8 clicked, b8 hovered)
 {
 	v4 color = style->idleColor;
 	if (clicked)
@@ -188,4 +175,6 @@ inline void UINavigateBack(FUINavState* nav, b8 wrap = true)
 	}
 }
 
-#endif FADO_UI_H
+// ─────────────────────────────────────────────
+
+#endif // FADO_UI_H

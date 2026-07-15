@@ -4,13 +4,13 @@
 #include "fado_math.h"
 #include "fado_assets.h"
 #include "fado_input.h"
-#include "fado_collision.h"
 #include "fado_level.h"
 #include "Levels/level_3d_showcase.h"
 #include "Levels/level_2d_showcase.h"
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 // -- UI --
+// Currently shared between both showcase levels, so it lives here.
 
 // Creates a stylized button and pushes it to ui bucket.
 // Returns if the button was clicked.
@@ -34,12 +34,12 @@ internal u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* te
         clicked = hovered && input->mouse.buttons[0].isDown && !input->mouse.buttons[0].wasDown;
     }
 
-    FUICommandBucket* bucket = gameState->shared->uiCommands;
+    FUICommandsBucket* bucket = &gameState->shared->uiBucket;
     UIPushButton(rect, text, bucket, style, gameState->font, clicked, hovered);
 
     if (clicked)
     {
-        SoundPlay2D(gameState->soundManager, gameState->shared->assets->hUIClickSFX, ESoundCategory::Sound_UI, 0.25f, false);
+        SoundPlay2D(gameState->soundManager, gameState->shared->assets.hUIClickSFX, ESoundCategory::Sound_UI, 0.25f, false);
     }
 
     return clicked;
@@ -49,7 +49,7 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
 {
     gameState->uiNavState.buttonCount = 0;
 
-    FUICommandBucket* uiBucket = gameState->shared->uiCommands;
+    FUICommandsBucket* uiBucket = &gameState->shared->uiBucket;
 
     f32 buttonsYOffset = 20.0f;
     v4 rect = { 0, 0, 200, 65 };
@@ -58,7 +58,7 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
         /*hover*/   FColor::LightRed(),
         /*pressed*/ FColor::Green(),
         /*text*/    FColor::DarkBlue(),
-        gameState->shared->assets->hWhiteTexture
+        gameState->shared->assets.hWhiteTexture
     };
 
     v2 textPos = { 500, 500 };
@@ -101,6 +101,7 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
+#if FADO_DEBUG
 // Returns the handle of the closest entity that the ray passed through.
 // The entity must have a collider for it to register.
 internal HEntity PickEntity(FRay ray, FCollisionWorld* collisions)
@@ -146,10 +147,11 @@ internal FRay ScreenPointToRay(FSharedStuff* shared, f32 mouseX, f32 mouseY)
              (cam->up * (ndcY * halfHeight));
 
     FRay ray = {};
-    ray.origin = shared->transforms->positions[cam->handle];
+    ray.origin = shared->transforms.positions[cam->handle];
     ray.direction = V3Normalize(dir);
     return ray;
 }
+#endif // FADO_DEBUG
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
@@ -173,6 +175,11 @@ GAME_UPDATE(GameUpdate)
         gameState->shared->canSelect = true;
 #endif // FADO_DEBUG
 
+        FDirectionalLight* dirLight = &gameState->shared->dirLight;
+        dirLight->ambientColor = { 0.5f, 0.35f, 0.25f, 1.0f };
+        dirLight->diffuseColor = { 1.75f, 1.0f, 1.0f, 1.0f };
+        dirLight->lightDirection = { 1.75f, -1.0f, 1.0f };
+
         // Load level_3d_showcase by default.
         LoadLevel(gameState, SetupLevel_3DShowcase());
     }
@@ -193,7 +200,7 @@ GAME_UPDATE(GameUpdate)
     if (Pressed(&input->mouse.buttons[0]) && shared->canSelect)
     {
         FRay ray = ScreenPointToRay(gameState->shared, (f32)input->mouse.x, (f32)input->mouse.y);
-        i32 picked = PickEntity(ray, shared->collisionWorld);
+        i32 picked = PickEntity(ray, &shared->collisionWorld);
         if (picked >= 0)
         {
             shared->selectedEntity = picked;
@@ -201,3 +208,5 @@ GAME_UPDATE(GameUpdate)
     }
 #endif // FADO_DEBUG
 }
+
+// ────────────────────────────────────────────────────────────────────────

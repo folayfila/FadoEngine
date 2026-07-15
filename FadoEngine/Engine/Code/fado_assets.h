@@ -5,6 +5,8 @@
 
 #include "fado_types.h"
 
+// ────────────────────────────────────────────────────────────────────────
+
 // Fat list of all the assets we load in the engine
 struct FAssetsHandles
 {
@@ -34,5 +36,7 @@ struct FAssetsHandles
     HSound hUIClickSFX;
     HSound hFireSFX;
 };
+
+// ────────────────────────────────────────────────────────────────────────
 
 #endif // FADO_ASSETS_H

@@ -3,10 +3,8 @@
 #ifndef FADO_LEVEL_H
 #define FADO_LEVEL_H
 
-#include "fado_types.h"
 #include "fado.h"
 #include "fado_asset_format.h"
-#include "fado_particles.h"
 #include <stdio.h>
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -23,10 +21,13 @@
   - Loading a level first unloads the current level by simply resetting the level and FGameState memebers that need reseting.
   - Every level must have an init function which sets the intial values of all entities in that level. The function always gets called
     whether he level has a saved file or not. If it does have a saved file, the entities data is overriden in order.
-  - Each level has its own entities/handles, but use the general assets handles from the FAssetHandler.
+  - Each level has its own entities/handles, but use the general assets handles from the FAssetsHandles in fado_assets.h.
   - ** ORDER IS VERY IMPORTANT **
     - Loaded entities are overriden in order, so always spawn saved entities first and keep that order.
+      Same goes with loading the entities, if a save entity has HTexture 1, then suddely 1 is something else, it will use that different texture.
 */
+
+// ──────────────────────────────────────────────────────────────────────────────────────────
 
 /*
 * FLevel
@@ -46,21 +47,21 @@ struct FLevel
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
-// outPath = Assets\\Levels\\LevelName
+// outPath = Assets/Levels/LevelName.flevel
 inline void GetLevelPathFromName(c8* outPath, cc8* levelName)
 {
-    snprintf(outPath, FMAX_PATH, "Assets\\Levels\\%s.flevel", levelName);
+    snprintf(outPath, FMAX_PATH, "Assets/Levels/%s.flevel", levelName);
 }
 
 // Adds an entity to the entity table and gives it a transform.
-// - No dynamic allocation of any sorts, just setting values to an existing array.
+// - No dynamic allocation of any sorts, just setting values to an existing array/table.
 inline HEntity SpawnEntity(FSharedStuff* shared, HMesh hMesh, HTexture hTex = INVALID_HANDLE, 
     v4 color = V4One(), u8 materialFlags = Material_None, v4 rect = { 0, 0, 1, 1 })
 {
-    FTransforms* transforms = shared->transforms;
+    FTransforms* transforms = &shared->transforms;
 
-    HEntity handle = shared->entityTable->count++;
-    FEntity* entity = &shared->entityTable->entities[handle];
+    HEntity handle = shared->entityTable.count++;
+    FEntity* entity = &shared->entityTable.entities[handle];
     entity->hMesh = hMesh;
 
     FMaterial mat = {};
@@ -85,11 +86,11 @@ internal void UnloadCurrentLevel(FGameState* gameState)
 {
     SetGamePaused(gameState, false);
 
-    FadoZeroStruct(gameState->shared->entityTable);
-    FadoZeroStruct(gameState->shared->transforms);
-    FadoZeroStruct(gameState->shared->uiCommands);
-    FadoZeroStruct(gameState->shared->particles);
-    FadoZeroStruct(gameState->shared->collisionWorld);
+    FadoZeroStruct(&gameState->shared->entityTable);
+    FadoZeroStruct(&gameState->shared->transforms);
+    FadoZeroStruct(&gameState->shared->uiBucket);
+    FadoZeroStruct(&gameState->shared->particles);
+    FadoZeroStruct(&gameState->shared->collisionWorld);
 
 #if FADO_DEBUG
     gameState->shared->selectedEntity = 0;
@@ -106,15 +107,14 @@ inline b8 SaveCurrentLevel(FGameState* gameState)
     c8 dst[FMAX_PATH];
     GetLevelPathFromName(dst, gameState->currentLevel->name);
 
-    FILE* file;
-    fopen_s(&file, dst, "wb");
+    FILE* file = fopen(dst, "wb");
     if (!file)
     {
         return false;
     }
 
-    FEntity* entities = gameState->shared->entityTable->entities;
-    u32 entitiesCount = gameState->shared->entityTable->count;
+    FEntity* entities = gameState->shared->entityTable.entities;
+    u32 entitiesCount = gameState->shared->entityTable.count;
 
     FAssetHeader assetHeader = {};
     assetHeader.magic = FASSET_MAGIC;
@@ -128,8 +128,8 @@ inline b8 SaveCurrentLevel(FGameState* gameState)
     levelHeader.flags = 0;
     fwrite(&levelHeader, sizeof(FLevelHeader), 1, file);
 
-    // TODO: Add EntityFlags of some sorts so we can only save those that need saving
-    FTransforms* transformTable = gameState->shared->transforms;
+    // Add EntityFlags of some sorts so we can only save those that need saving
+    FTransforms* transformTable = &gameState->shared->transforms;
     FEntityDesc entityDesc;
     for (u32 i = 0; i < entitiesCount; ++i)
     {
@@ -158,8 +158,7 @@ inline b8 LoadLevel(FGameState* gameState, FLevel level)
     c8 src[FMAX_PATH];
     GetLevelPathFromName(src, level.name);
 
-    FILE* file;
-    fopen_s(&file, src, "rb");
+    FILE* file = fopen(src, "rb");
     if (file)
     {
         FAssetHeader assetHeader = {};
@@ -177,12 +176,12 @@ inline b8 LoadLevel(FGameState* gameState, FLevel level)
         fread(&levelHeader, sizeof(FLevelHeader), 1, file);
 
         // Override saved entities data from the saved file.
-        FTransforms* transforms = gameState->shared->transforms;
+        FTransforms* transforms = &gameState->shared->transforms;
         for (u32 i = 0; i < levelHeader.entityCount; ++i)
         {
             FEntityDesc desc;
             fread(&desc, sizeof(FEntityDesc), 1, file);
-            FEntity* entity = &gameState->shared->entityTable->entities[i];
+            FEntity* entity = &gameState->shared->entityTable.entities[i];
             *entity = desc.entity;
             transforms->positions[i] = desc.pos;
             transforms->scales[i] = desc.scale;
@@ -196,4 +195,6 @@ inline b8 LoadLevel(FGameState* gameState, FLevel level)
     return true;
 }
 
-#endif FADO_LEVEL_H
+// ──────────────────────────────────────────────────────────────────────────────────────────
+
+#endif // FADO_LEVEL_H

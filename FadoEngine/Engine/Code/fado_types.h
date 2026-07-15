@@ -8,7 +8,7 @@
 //  FADO_DEBUG
 //   0 - Build for public release.
 //   1 - Build for developer only.
-#define FADO_DEBUG 0
+#define FADO_DEBUG 1
 
 #if FADO_DEBUG
 #define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
@@ -27,7 +27,6 @@
    - This file must be included in all engine code, the only exceptions are tools and imported files.
    
    - The engine is divided into 2 parts, the engine (.exe) which currently includes the engine and renderer code,
-   
      and the game (.dll) which includes the game code and collision implementation.
   	This structure allows for hot reloading and seperation between the game and engine such that different games can
   	just be imported into the game code and work out of the box.
@@ -78,6 +77,10 @@ typedef wchar_t wchar;
 #define FMAX_NAME 64
 
 // ─────────────────────────────────────────────
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <string.h>
 
 ForceInline void fmemset(void* dst, i32 value, u64 size)
@@ -102,7 +105,7 @@ ForceInline void fmemcpy(void* dst, const void* src, u64 size)
 // ─────────────────────────────────────────────
 /*
  * Vectors and matrices are defined here but all
- * operator overloads and functions are in "fado_math.h".
+ * operator overloads except '=' and functions are in "fado_math.h".
 */
 
 // 2D Vector
@@ -252,8 +255,6 @@ internal void ArenaReset(FMemoryArena* arena)
 }
 // ─────────────────────────────────────────────
 
-// ──────────────── Entities ──────────────────
-
 #define INVALID_HANDLE 0xFFFFFFFF
 
 #define FMAX_ENTITIES 512
@@ -270,6 +271,7 @@ typedef u32 HSpriteSheet;
 
 // ────────────────
 // Material
+// ────────────────
 
 enum EMaterialFlags : u8
 {
@@ -282,15 +284,26 @@ enum EMaterialFlags : u8
 // Used to draw entities.
 // A material can be based on a loaded texture, or can be an rgb color.
 // If the texture is valid, the color is applied as tint to it.
-// Optional lit/unlit.
 struct FMaterial
 {
 	v4 color;			// Used as the main texture or applied as tint to a texture.
-	HTexture texture;   // WHITE_TEXTURE = no texture (color)
+	HTexture texture;   // hWhiteTexture = no texture (color)
 	u8 flags;			// Material flags
 };
 
+// Global directional light.
+struct FDirectionalLight
+{
+	v4 ambientColor;
+	v4 diffuseColor;
+	v3 lightDirection;
+};
+
+
+// ────────────────
+// Animation State
 // Runtime animation state — per entity
+// ────────────────
 struct FAnimState
 {
 	HSpriteSheet hSheet;
@@ -299,10 +312,12 @@ struct FAnimState
 	f32 timer;          // counts up to 1/fps
 };
 
-// Main entity struct.
+// ────────────────
+// Entities
+// ────────────────
 struct FEntity
 {
-    HMesh hMesh;				// INVALID_HANDLE for 2D
+    HMesh hMesh;				// hQuad for 2D
 	FMaterial material;			// texture, color, alpha
 
 	v4 spriteRect;				// UV region, {0,0,1,1} for non-atlas
@@ -315,8 +330,10 @@ struct FEntityTable
 	u32 count;
 };
 
-// ──────────────── Transform ──────────────────
-// Transfomrs use the same handle as the entity. An entity most likely has a transform anyway.
+// ────────────────
+// Transform 
+// Transfomrs use the same handle as the entity. An entity has a transform anyway.
+// ────────────────
 struct FTransforms
 {
 	v3 positions[FMAX_ENTITIES];
@@ -326,6 +343,7 @@ struct FTransforms
 
 // ─────────────────────────────────────────────
 
+
 // ──────────────── Camera and Viewport ───────────────
 enum ECameraType
 {
@@ -333,8 +351,10 @@ enum ECameraType
 	Camera_Orthographic
 };
 
+// ────────────────
 // FCamera
 // Check the struct for details.
+// ────────────────
 struct FCamera
 {
 	HEntity handle;	// camera entity handle
@@ -367,72 +387,16 @@ struct FViewPort
 	f32 minDepth;
 	f32 maxDepth;
 };
-// ─────────────────────────────────────────────
-
-// ──────────────── Shared Stuff ───────────────
-/*
- * Given the structure of the engine, some data needs to be accessed in both the renderer and
- * game, so the following section covers this data which is shared between the egine and game.
-*/
-
-// Containes data that both the renderer and the game use/access.
-struct FSharedStuff
-{
-	FCamera camera;
-	FViewPort viewport;
-
-	FEntityTable* entityTable;
-	FTransforms* transforms;
-	struct FAssetsHandles* assets;
-	struct FSpriteSheetTable* spriteSheetTable;
-	struct FCollisionWorld* collisionWorld;
-	struct FUICommandBucket* uiCommands;
-	struct FParticleEmitterPool* particles;
-
-	FEngineMemory* arena;
-
-#if FADO_DEBUG
-	// Currently only used in debug mode.
-	HEntity selectedEntity;
-	b32 canSelect;
-#endif // FADO_DEBUG
-};
-
-// ───── Helpers ─────
-
-ForceInline FEntity* GetEntity(FSharedStuff* shared, HEntity hEntity)
-{
-	return &shared->entityTable->entities[hEntity];
-}
-
-ForceInline v3 GetEntityPosition(FSharedStuff* shared, HEntity hEntity)
-{
-	return shared->transforms->positions[hEntity];
-}
-
-ForceInline quat GetEntityRotation(FSharedStuff* shared, HEntity hEntity)
-{
-	return shared->transforms->rotations[hEntity];
-}
-
-ForceInline v3 GetEntityScale(FSharedStuff* shared, HEntity hEntity)
-{
-	return shared->transforms->scales[hEntity];
-}
-
-ForceInline f32 GetEntityScaleAverage(FSharedStuff* shared, HEntity hEntity)
-{
-	v3 scale = shared->transforms->scales[hEntity];
-	f32 avg = (scale.x + scale.y + scale.z) / 3.0f;
-	return avg;
-}
 
 // ─────────────────────────────────────────────
 
 // ──────────────── Fonts ───────────────
+
+// ────────────────
 // Font glyphs are presented as textures on the screen,
 // each glyph is merely a part of the font file captured by the
 // uv coords.
+// ────────────────
 struct FFontGlyph
 {
 	v4 coords;
@@ -443,9 +407,11 @@ struct FFontGlyph
 
 #define GLYPHS_COUNT 96
 
+// ────────────────
 // Font struct:
 // Currently ASCII 32-127 only
 // - size: Font size
+// ────────────────
 struct FFont
 {
 	HTexture atlas;
@@ -454,29 +420,5 @@ struct FFont
 };
 
 // ─────────────────────────────────────────────
-
-// ─────────────────────────────────────────────
-// Other:
-
-// ──────
-// Strings:
-
-// Simple cstring copy through a loop.
-inline void CopyCString(c8* dst, cc8* src, i32 maxLen)
-{
-	if (!dst || !src)
-	{
-		return;
-	}
-
-	i32 i = 0;
-	for (; ((src[i] != '\0') && (i < maxLen - 1)); ++i)
-	{
-		dst[i] = src[i];
-	}
-
-	dst[i] = '\0';
-}
-
 
 #endif // FADO_TYPES_H

@@ -9,8 +9,8 @@
 // -- Input -- 
 
 // Input Modes
-// Usually Input_Game during gameplay, and
-// Input_UI during pause, menu or any UI interaction.
+// Input_Game: during gameplay, and
+// Input_UI: during pause, menu or any UI interaction.
 // Can be both.
 enum EInputMode : u32
 {
@@ -147,7 +147,7 @@ struct FGameControllerInput
             FGameButtonState start;
             FGameButtonState back;
 
-            //? All buttons must be added above this one.
+            //>> All buttons must be added above this one.
             FGameButtonState terminator;
         };
     };

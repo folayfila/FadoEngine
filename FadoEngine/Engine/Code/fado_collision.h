@@ -11,9 +11,9 @@ typedef u32 HCollider;
 // ─────────────────────────────────────────────
 //  Limits
 // ─────────────────────────────────────────────
-#define MAX_COLLIDERS           1024
-#define MAX_COLLISION_PAIRS     4096   // broad-phase candidate pairs per frame
-#define MAX_CONTACTS            2048   // confirmed narrow-phase contacts per frame
+#define FMAX_COLLIDERS           1024
+#define FMAX_COLLISION_PAIRS     4096   // broad-phase candidate pairs per frame
+#define FMAX_CONTACTS            2048   // confirmed narrow-phase contacts per frame
 
 #define GRID_CELL_SIZE          4.0f   // world-units per cell (set ≈ your average entity diameter)
 #define GRID_WIDTH              128    // cells along X  (GRID_WIDTH  * GRID_CELL_SIZE = world extent)
@@ -95,7 +95,7 @@ struct FCollider
 // ─────────────────────────────────────────────
 struct FColliderTable
 {
-	FCollider   colliders[MAX_COLLIDERS];
+	FCollider   colliders[FMAX_COLLIDERS];
 	u32         count;
 };
 
@@ -155,10 +155,10 @@ struct FCollisionWorld
 	FUniformGrid    grid;
 
 	// Scratch buffers, reset each frame:
-	FCollisionPair  pairs[MAX_COLLISION_PAIRS];
+	FCollisionPair  pairs[FMAX_COLLISION_PAIRS];
 	u32             pairCount;
 
-	FContactInfo    contacts[MAX_CONTACTS];
+	FContactInfo    contacts[FMAX_CONTACTS];
 	u32             contactCount;
 };
 
@@ -191,5 +191,7 @@ b8 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEn
 
 // Checks if the ray intersects an AABB.
 b8 RayIntersectsAABB(FRay ray, FAABB aabb, f32* outDistance);
+
+// ────────────────────────────────────────────────────────────────────────
 
 #endif // FADO_COLIISION_H
