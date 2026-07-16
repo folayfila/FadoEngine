@@ -60,7 +60,7 @@ compile_commands.json
 *.exp
 *.lib
 *.dll
-*.exe
+FadoEngine/Engine/*.exe
 
 # Test / coverage
 TestResults/
@@ -123,3 +123,4 @@ FadoEngine/FadoEngine/Log.txt
 FadoEngine/FadoEngine/imgui.ini
 FadoEngine/FadoEngine.vcxproj
 FadoEngine/FadoEngine.vcxproj.filters
+FadoEngine/Engine/Tools/FadoConverter/fado_converter.exe
