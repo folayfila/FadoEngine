@@ -8,7 +8,7 @@
 //  FADO_DEBUG
 //   0 - Build for public release.
 //   1 - Build for developer only.
-#define FADO_DEBUG 1
+#define FADO_DEBUG 0
 
 #if FADO_DEBUG
 #define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}

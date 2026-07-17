@@ -90,7 +90,6 @@ struct FSoundAssetBank
     u32 assetsCount;
 };
 
-
 // The sound manager, lives in the permanent arena and is used to manage and access all sound assets and instances.
 struct FSoundManager
 {

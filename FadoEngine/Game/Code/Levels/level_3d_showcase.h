@@ -284,7 +284,7 @@ internal void Level_3DShowcase_Update(FGameState* gameState, f32 dt)
     for (u32 i = 0; i < shared->collisionWorld.contactCount; ++i)
     {
         FContactInfo* c = &shared->collisionWorld.contacts[i];
-        if (c->entityA == gameState->shared->camera.handle || c->entityB == gameState->shared->camera.handle)
+        if (IsEntityInPair(c, gameState->shared->camera.handle))
         {
             SoundPlay2D(gameState->soundManager, assets->hCollideSFX, ESoundCategory::Sound_SFX, 0.1f, false);
         }

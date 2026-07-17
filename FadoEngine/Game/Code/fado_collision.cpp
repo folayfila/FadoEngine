@@ -587,10 +587,15 @@ void CollisionUpdate(FCollisionWorld* collisionWorld, FTransforms* transforms, F
 
 b8 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEntityB)
 {
-
     b8 areColliding = ((contactInfo->entityA == hEntityA) && (contactInfo->entityB == hEntityB)) ||
         ((contactInfo->entityA == hEntityB) && (contactInfo->entityB == hEntityA));
     return areColliding;
+}
+
+b8 IsEntityInPair(FContactInfo* contactInfo, HEntity hEntity)
+{
+    b8 isInPair = (contactInfo->entityA == hEntity) || (contactInfo->entityB == hEntity);
+    return isInPair;
 }
 
 b8 RayIntersectsAABB(FRay ray, FAABB aabb, f32* outDistance)

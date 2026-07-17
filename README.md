@@ -9,6 +9,9 @@ dynamic containers in the hot path.
 
 ![Description](media/showcase.gif)
 
+
+### Full Documentation: https://www.abdallahmaaliki.com/fado-engine
+
 ---
 
 ## Table of Contents
@@ -25,7 +28,6 @@ dynamic containers in the hot path.
 - [Entities, Transforms & Handles](#entities-transforms--handles)
 - [Subsystems](#subsystems)
 - [Conventions](#conventions)
-- [Latest Features](#latest-features)
 
 ---
 

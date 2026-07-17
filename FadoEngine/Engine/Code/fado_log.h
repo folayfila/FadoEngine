@@ -64,10 +64,10 @@ inline void FLogInternal(u32 level, cc8* file, i32 line, cc8* fmt, ...)
     cc8* levelStr = nullptr;
     switch (level)
     {
-    case FLOG_INFO:    levelStr = "INFO";    break;
-    case FLOG_WARNING: levelStr = "WARNING"; break;
-    case FLOG_ERROR:   levelStr = "ERROR";   break;
-    default:           levelStr = "UNKNOWN"; break;
+        case FLOG_INFO:    levelStr = "INFO";    break;
+        case FLOG_WARNING: levelStr = "WARNING"; break;
+        case FLOG_ERROR:   levelStr = "ERROR";   break;
+        default:           levelStr = "UNKNOWN"; break;
     }
 
     // Format the user message

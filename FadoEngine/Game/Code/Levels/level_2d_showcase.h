@@ -48,7 +48,7 @@ internal void Level_2DShowcase_Init(FGameState* gameState)
     transforms->scales[level->background] = { 1000.0f, 1000.0f, 0.0f };
 
     // folayfila
-    level->folayfila = SpawnEntity(shared, assets->hQuadMesh, assets->hFolayfilaTex, V4One(), Material_Transparent);
+    level->folayfila = SpawnEntity(shared, assets->hQuadMesh, assets->hFolayfilaTex, V4One(), Material_Transparent | Material_CastShadow);
     transforms->positions[level->folayfila] = V3Zero();
 
     // borders

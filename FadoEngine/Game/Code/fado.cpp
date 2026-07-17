@@ -52,7 +52,7 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
     FUICommandsBucket* uiBucket = &gameState->shared->uiBucket;
 
     f32 buttonsYOffset = 20.0f;
-    v4 rect = { 0, 0, 200, 65 };
+    v4 rect = { 800, 300, 200, 65 };
     FUIButtonStyle buttonStyle = {
         /*idle*/    FColor::Cyan(),
         /*hover*/   FColor::LightRed(),

@@ -189,6 +189,9 @@ void CollisionResolve(FCollisionWorld* collisionWorld, FTransforms* transforms);
 // Checks if contactInfo->entityA and contactInfo->entityB are the same 2 entity handles passed.
 b8 AreEntitiesColliding(FContactInfo* contactInfo, HEntity hEntityA, HEntity hEntityB);
 
+// Checks if an entity is either contactInfo->entityA or contactInfo->entityB.
+b8 IsEntityInPair(FContactInfo* contactInfo, HEntity hEntity);
+
 // Checks if the ray intersects an AABB.
 b8 RayIntersectsAABB(FRay ray, FAABB aabb, f32* outDistance);
 
