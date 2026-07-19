@@ -41,6 +41,8 @@ project "Engine"
 
     postbuildcommands
     {
+        'if not exist "%{wks.location}/Engine/Assets/Levels" mkdir "%{wks.location}/Engine/Assets/Levels"',
+
         "{COPYDIR} %{wks.location}/Engine/Assets %{cfg.targetdir}/Assets",
         "{COPYDIR} %{wks.location}/Engine/Shaders %{cfg.targetdir}/Shaders"
     }
