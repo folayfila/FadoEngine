@@ -98,6 +98,13 @@ inline f32 RandomF32InRange(f32 min, f32 max)
 	return result;
 }
 
+inline u32 RandomU32InRange(u32 min, u32 max)
+{
+	u32 result = min + (rand() % (max - min + 1));
+
+	return result;
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // ──────────────── Vectors ───────────────────────────────────────────────
 

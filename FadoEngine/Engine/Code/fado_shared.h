@@ -36,6 +36,8 @@ struct FSharedStuff
 
 	FEngineMemory* arena;
 
+	f32* dt;
+
 #if FADO_DEBUG
 	// Currently only used in debug mode.
 	HEntity selectedEntity;

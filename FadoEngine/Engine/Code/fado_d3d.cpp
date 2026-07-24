@@ -533,8 +533,12 @@ internal void SetMaterialShaderParameters(FRenderWorld* world, FDrawCall* call)
 	matBuffer->color = { mat->color.x, mat->color.y, mat->color.z, mat->color.a };
 	matBuffer->hasTexture = (mat->texture != INVALID_HANDLE) ? 1 : 0;
 	matBuffer->isLit = mat->flags & Material_Lit;
-	matBuffer->pad[0] = matBuffer->pad[1] = 0.0f;
+	matBuffer->time = world->time;
+	matBuffer->pad = 0.0f;
 	matBuffer->spriteRect = call->spriteRect;
+	matBuffer->noiseScale = { 1.0f, 1.0f };
+	matBuffer->squiggleStrength = 1.0f;
+	matBuffer->squiggleFPS = 6.0f;
 
 	deviceContext->Unmap(shader->materialBuffer, 0);
 	deviceContext->PSSetConstantBuffers(1, 1, &shader->materialBuffer);
@@ -543,6 +547,10 @@ internal void SetMaterialShaderParameters(FRenderWorld* world, FDrawCall* call)
 	HTexture whiteTex = world->shared->assets.hWhiteTexture;
 	HTexture hTex = mat->texture == INVALID_HANDLE ? whiteTex : mat->texture;
 	deviceContext->PSSetShaderResources(0, 1, &world->textures[hTex].textureView);
+
+	// Noise texture
+	deviceContext->PSSetShaderResources(1, 1, &world->textures[world->shared->assets.hNoiseTexture].textureView);
+	deviceContext->PSSetSamplers(1, 1, &shader->sampleState);
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -698,6 +706,15 @@ internal void InitializeUIShader(FUIShader* uiShader, ID3D11Device* device, HWND
 	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
 	result = device->CreateBuffer(&cbDesc, nullptr, &uiShader->constantBuffer);
+	Assert(!FAILED(result));
+
+	cbDesc = {};
+	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
+	cbDesc.ByteWidth = sizeof(FSquiggleBuffer);
+	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	result = device->CreateBuffer(&cbDesc, nullptr, &uiShader->squiggleBuffer);
 	Assert(!FAILED(result));
 
 	D3D11_SAMPLER_DESC samplerDesc = {};
@@ -1007,6 +1024,23 @@ internal void FlushUIBucket(FRenderWorld* world)
 	deviceContext->PSSetShader(world->uiShader.pixelShader, nullptr, 0);
 	deviceContext->VSSetConstantBuffers(0, 1, &world->uiShader.constantBuffer);
 
+	// --- Squiggle setup ---
+	FSquiggleBuffer squiggleData = {};
+	squiggleData.time = world->time;
+	squiggleData.noiseScale = { 100.0f, 100.0f };   // tune for UI scale
+	squiggleData.squiggleStrength = 0.5f;
+	squiggleData.squiggleFPS = 6.0f;
+
+	D3D11_MAPPED_SUBRESOURCE mappedSquiggle = {};
+	deviceContext->Map(world->uiShader.squiggleBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSquiggle);
+	fmemcpy(mappedSquiggle.pData, &squiggleData, sizeof(FSquiggleBuffer));
+	deviceContext->Unmap(world->uiShader.squiggleBuffer, 0);
+
+	deviceContext->PSSetConstantBuffers(1, 1, &world->uiShader.squiggleBuffer);
+	deviceContext->PSSetShaderResources(1, 1, &world->textures[world->shared->assets.hNoiseTexture].textureView);
+	deviceContext->PSSetSamplers(1, 1, &world->materialShader.sampleState);
+	// --- end squiggle setup ---
+
 	f32 blendFactor[4] = { 0, 0, 0, 0 };
 	deviceContext->OMSetBlendState(world->d3d.transparentBlendState, blendFactor, 0xFFFFFFFF);
 	deviceContext->OMSetDepthStencilState(world->d3d.uiDepthStencilState, 0);
@@ -1231,6 +1265,8 @@ void InitializeFD3D(FRenderWorld* world, FD3DInitParams* d3dInitParams)
 void Render(FRenderWorld* world)
 {
 	FD3D* d3d = &world->d3d;
+
+	world->time += *world->shared->dt;
 
 	// Clear the buffers to begin the scene.
 	BeginScene(d3d, v4{ 0.0f, 0.0f, 0.0f, 1.0f });

@@ -467,6 +467,12 @@ internal void Win32HandleKeyboardInput(MSG* msg, WPARAM wParam, LPARAM lParam, F
 	{
 		Win32ProcessButtonState(&keyboard->dpadRight, isDown, deltaTime);
 	}
+
+	if (vKCode == VK_SPACE)
+	{
+		Win32ProcessButtonState(&keyboard->actionDown, isDown, deltaTime);
+	}
+
 	if (vKCode == 'E')
 	{
 		Win32ProcessButtonState(&keyboard->rightShoulder, isDown, deltaTime);
@@ -650,38 +656,41 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 
 	assets->hQuadMesh = GetQuad(world);
 	assets->hGroundQuad = GetGroundQuad(world);
-	assets->hPlaneMesh = LoadFModel(world, "Assets/Models/plane.fmodel");
-	assets->hCubeMesh = LoadFModel(world, "Assets/Models/cube.fmodel");
-	assets->hSphereMesh = LoadFModel(world, "Assets/Models/sphere.fmodel");
-	assets->hSkyBoxMesh = LoadFModel(world, "Assets/Models/skybox.fmodel");
 
 	assets->hWhiteTexture = LoadFImage(world, "Assets/Textures/white.fimage");
 	assets->hBlobTexture = LoadFImage(world, "Assets/Textures/blob.fimage");
-	assets->hGridTexture = LoadFImage(world, "Assets/Textures/grid.fimage");
 
-	// Royalty free textures:
-	//https://opengameart.org/content/cloudy-skyboxes-0
-	assets->hSkyBoxTexture = LoadFImage(world, "Assets/Textures/skybox_0.fimage");
-	// https://opengameart.org/content/geometric-pbr-materials-mosaicdiffuseoriginalpng
-	assets->hMosaicTexture = LoadFImage(world, "Assets/Textures/mosaic.fimage");
-	// https://polyhaven.com/a/granite_tile_04
-	assets->hGraniteTexture = LoadFImage(world, "Assets/Textures/granite.fimage");
-
-	// Sprites
-	assets->hFolayfilaTex = LoadFImage(world, "Assets/Textures/folayfila_64_sheet.fimage");
-	assets->hFolayfilaSheet = RegisterSpriteSheet(world, assets->hFolayfilaTex, 64, 64);
-
-	LoadFFont(world, "Assets/Fonts/arialbd.ffont", 25.0f, gameState->font);
-
-	// Royalty free sounds:
-	// https://pixabay.com/music/video-games-sinnesl%C3%B6schen-beam-117362/
-	assets->hMusic = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/Music/sinneschlosen-sinnesloschen-beam-117362.fsound");
-	// https://pixabay.com/sound-effects/film-special-effects-impact-sound-effect-8-bit-retro-151796/
-	assets->hCollideSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/lesiakower-impact-sound-effect-8-bit-retro-151796.fsound");
 	// https://pixabay.com/sound-effects/technology-click-21156/
 	assets->hUIClickSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/666herohero-click-21156.fsound");
-	// https://pixabay.com/sound-effects/nature-fire-crackling-sounds-427410/
-	assets->hFireSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/dragon-studio-fire-crackling-sounds-427410.fsound");
+
+	////////////////////////////////////////////////////////////////
+
+	// GMTK Assets:
+
+	LoadFFont(world, "Assets/Fonts/Schoolbell-Regular.ffont", 100.0f, gameState->font);
+
+	assets->hNoiseTexture = LoadFImage(world, "Assets/Textures/noise.fimage");
+	assets->hLinesBGTexture = LoadFImage(world, "Assets/Textures/lines_bg.fimage");
+
+	assets->hRacerTex = LoadFImage(world, "Assets/Textures/racer_sheet.fimage");
+	assets->hRacerSheet = RegisterSpriteSheet(world, assets->hRacerTex, 512, 512);
+
+	assets->hBookTex = LoadFImage(world, "Assets/Textures/book_sheet.fimage");
+	assets->hEvilGuyTex = LoadFImage(world, "Assets/Textures/evil_guy_sheet.fimage");
+	assets->hCoffeeTex = LoadFImage(world, "Assets/Textures/coffee_sheet.fimage");
+	assets->hCoffeeSheet = RegisterSpriteSheet(world, assets->hCoffeeTex, 256, 450);
+
+	assets->hBuildingTex = LoadFImage(world, "Assets/Textures/building_sheet.fimage");
+	assets->hParachuteTex = LoadFImage(world, "Assets/Textures/parachute_sheet.fimage");
+	assets->hParachuteSheet = RegisterSpriteSheet(world, assets->hParachuteTex, 512, 512);
+
+	assets->hRocketTex = LoadFImage(world, "Assets/Textures/rocket_sheet.fimage");
+	assets->hRocketSheet = RegisterSpriteSheet(world, assets->hRocketTex, 512, 512);
+
+	assets->hBallTex = LoadFImage(world, "Assets/Textures/ball_sheet.fimage");
+	assets->hBasketballTex = LoadFImage(world, "Assets/Textures/basket_sheet.fimage");
+	assets->hBasketballSheet_0 = RegisterSpriteSheet(world, assets->hBasketballTex, 200, 480);
+	assets->hBasketballSheet_1 = RegisterSpriteSheet(world, assets->hBasketballTex, 200, 480);
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -737,6 +746,7 @@ int WINAPI wWinMain(
 	Win32LoadXInput();
 	FGameInput* input = ArenaPushType(&engineMemory.permanent, FGameInput);
 	gameState->input = input;
+	gameState->shared->dt = &gameState->input->deltaTime;
 
 	// Sound
 	Win32SoundState win32Sound = *ArenaPushType(&engineMemory.permanent, Win32SoundState);
@@ -769,6 +779,13 @@ int WINAPI wWinMain(
 			deltaTime = 1.0f / 60.0f;
 		}
 		input->deltaTime = deltaTime;
+
+		fullScreenStartTimer -= deltaTime;
+		if (!hasToggledFullScreen && fullScreenStartTimer <= 0)
+		{
+			ToggleFullscreen(win32System.window);
+			hasToggledFullScreen = true;
+		}
 
 		// Check if we need to reload the game code (hot reload).
 		FILETIME newDLLWriteTime = Win32GetLastWriteTime(sourceGameCodeDLLFullPath);

@@ -50,8 +50,12 @@ cbuffer MaterialBuffer : register(b1)
     float4 color;
     int hasTexture;
     int isLit;
-    float2 _pad;
+    float time;
+    float _pad;
     float4 spriteRect;
+    float2 noiseScale; // new
+    float squiggleStrength; // new
+    float squiggleFPS; // new
 };
 
 // Resource registers:
@@ -70,6 +74,12 @@ cbuffer MaterialBuffer : register(b1)
 Texture2D ShaderTexture : register(t0);
 SamplerState SampleType : register(s0);
 
+Texture2D NoiseTexture : register(t1);
+SamplerState WrapSampler : register(s1);
+
+static const float PI = 3.14159265f;
+static const float2 OFFSET_MULT = float2(3.14159265f, 2.71828183f); // pi, e
+
 /////////////
 // TYPEDEFS //
 /////////////
@@ -85,6 +95,7 @@ struct PixelInput
     float4 position : SV_POSITION; // SV = System Value
     float3 normal :   NORMAL;
     float2 tex :      TEXCOORD0;
+    float2 worldPos : TEXCOORD1; // new
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,12 +107,13 @@ PixelInput VertexShaderEntry(VertexInput input)
     
     input.position.w = 1.0f;
     
-    output.position = mul(input.position, worldMatrix);
-    output.position = mul(output.position, viewMatrix);
+    float4 worldPosition = mul(input.position, worldMatrix);
+    output.position = mul(worldPosition, viewMatrix);
     output.position = mul(output.position, projectionMatrix);
     
     output.normal = normalize(mul(input.normal, (float3x3) worldMatrix));
     output.tex = input.tex;
+    output.worldPos = worldPosition.xy; // new
     
     return output;
 }
@@ -109,13 +121,25 @@ PixelInput VertexShaderEntry(VertexInput input)
 ////////////////////////////////////////////////////////////////////////////////
 // Pixel Shader
 ////////////////////////////////////////////////////////////////////////////////
+float hash(float2 p)
+{
+    return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453123);
+}
+
 float4 PixelShaderEntry(PixelInput input) : SV_TARGET
 {
     float4 baseColor = color;
 
     if (hasTexture)
     {
-        float2 atlasUV = input.tex * spriteRect.zw + spriteRect.xy;
+        float2 noiseUV = input.worldPos / noiseScale;
+        float2 noiseOffset = floor(time * squiggleFPS) * OFFSET_MULT;
+        float noiseSample = NoiseTexture.Sample(WrapSampler, noiseUV + noiseOffset).r * 4.0f * PI;
+
+        float2 direction = float2(cos(noiseSample), sin(noiseSample));
+        float2 squiggleUV = input.tex + direction * squiggleStrength * 0.005f;
+
+        float2 atlasUV = squiggleUV * spriteRect.zw + spriteRect.xy;
         baseColor *= ShaderTexture.Sample(SampleType, atlasUV);
     }
 
@@ -123,9 +147,7 @@ float4 PixelShaderEntry(PixelInput input) : SV_TARGET
     {
         float3 lightDir = -lightDirection;
         float lightIntensity = saturate(dot(input.normal, lightDir));
-        
         float4 litColor = ambientColor + (diffuseColor * lightIntensity);
-        
         baseColor *= saturate(litColor);
     }
 

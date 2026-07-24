@@ -175,8 +175,12 @@ struct FMaterialBuffer
 	DXFloat4 color;		// Material tint.
 	b32 hasTexture;		// Sample texture if true.
 	b32 isLit;			// Apply lighting if true.
-	f32 pad[2];			// Pad to 16-byte alignment.
+	f32 time;			// Pad to 16-byte alignment.
+	f32 pad;			// Pad to 16-byte alignment.
 	v4  spriteRect;		// sprite atlas coords.
+	v2  noiseScale;         // new
+	f32 squiggleStrength;   // new
+	f32 squiggleFPS;        // new
 };
 
 // ────────────
@@ -222,9 +226,19 @@ struct FUIShader
 
 	// VS b0 - UI transform/projection data.
 	ID3D11Buffer* constantBuffer;
+	ID3D11Buffer* squiggleBuffer;
 
 	// Texture sampling state (PS s0).
 	ID3D11SamplerState* samplerState;
+};
+
+struct FSquiggleBuffer
+{
+	f32 time;
+	v2  noiseScale;
+	f32 squiggleStrength;
+	f32 squiggleFPS;
+	v3  pad; // pad to 16-byte multiple — total struct must be 32 bytes here
 };
 
 #define FMAX_UI_VERTS (FMAX_UI_COMMANDS * 6) // 6 verts per quad (2 tris)
@@ -337,6 +351,9 @@ struct FRenderWorld
 	// Texture pool.
 	FTexture textures[FMAX_TEXTURES];
 	u32 texturesCount;
+
+	// Time: Used for wobble effect
+	f32 time;
 
 #if FADO_DEBUG
 	FDebugLineBucket debugBucket;

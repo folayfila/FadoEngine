@@ -122,6 +122,8 @@ struct Win32System
 global_variable Win32System* GlobalWin32System;
 global_variable WINDOWPLACEMENT GlobalWindowPosition = { sizeof(GlobalWindowPosition) };
 global_variable b32 GlobalRunning = true;
+global_variable f32 fullScreenStartTimer = 0.10f;
+global_variable b32 hasToggledFullScreen = false;
 
 // ────────────────────────────────────────────────────────────────────────
 

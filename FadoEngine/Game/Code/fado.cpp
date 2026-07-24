@@ -5,8 +5,7 @@
 #include "fado_assets.h"
 #include "fado_input.h"
 #include "fado_level.h"
-#include "Levels/level_3d_showcase.h"
-#include "Levels/level_2d_showcase.h"
+#include "Levels/level_countdown.h"
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 // -- UI --
@@ -14,7 +13,7 @@
 
 // Creates a stylized button and pushes it to ui bucket.
 // Returns if the button was clicked.
-internal u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* text, FUIButtonStyle* style)
+u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* text, FUIButtonStyle* style)
 {
     FUINavState* nav = &gameState->uiNavState;
     i32 myIndex = nav->buttonCount++;
@@ -43,60 +42,6 @@ internal u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* te
     }
 
     return clicked;
-}
-
-internal void UpdateUI(FGameState* gameState, FGameInput* input)
-{
-    gameState->uiNavState.buttonCount = 0;
-
-    FUICommandsBucket* uiBucket = &gameState->shared->uiBucket;
-
-    f32 buttonsYOffset = 20.0f;
-    v4 rect = { 800, 300, 200, 65 };
-    FUIButtonStyle buttonStyle = {
-        /*idle*/    FColor::Cyan(),
-        /*hover*/   FColor::LightRed(),
-        /*pressed*/ FColor::Green(),
-        /*text*/    FColor::DarkBlue(),
-        gameState->shared->assets.hWhiteTexture
-    };
-
-    v2 textPos = { 500, 500 };
-    if (UIButton(gameState, input, rect, "Save Level", &buttonStyle))
-    {
-        if (SaveCurrentLevel(gameState))
-        {
-            UIPushText(uiBucket, gameState->font, "Level Saved", textPos, FColor::HotPink());
-        }
-    }
-    rect.y += rect.height + buttonsYOffset;
-    if (UIButton(gameState, input, rect, "Load 3D Level", &buttonStyle))
-    {
-        LoadLevel(gameState, SetupLevel_3DShowcase());
-    }
-    rect.y += rect.height + buttonsYOffset;
-    if (UIButton(gameState, input, rect, "Load 2D Level", &buttonStyle))
-    {
-        LoadLevel(gameState, SetupLevel_2DShowcase());
-    }
-
-    rect.y += rect.height + buttonsYOffset;
-    if (UIButton(gameState, input, rect, "Switch Camera", &buttonStyle))
-    {
-        FCamera* cam = &gameState->shared->camera;
-
-        if (cam->type == Camera_Perspective)
-        {
-            cam->type = Camera_Orthographic;
-        }
-        else
-        {
-            cam->type = Camera_Perspective;
-        }
-
-        SetGamePaused(gameState, false);
-
-    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -180,18 +125,12 @@ GAME_UPDATE(GameUpdate)
         dirLight->diffuseColor = { 1.75f, 1.0f, 1.0f, 1.0f };
         dirLight->lightDirection = { 1.75f, -1.0f, 1.0f };
 
-        // Load level_3d_showcase by default.
-        LoadLevel(gameState, SetupLevel_3DShowcase());
+        LoadLevel(gameState, SetupLevel_Countdown());
     }
 
     if (gameState->currentLevel->Update)
     {
         gameState->currentLevel->Update(gameState, gameState->input->deltaTime);
-    }
-
-    if (gameState->paused)
-    {
-        UpdateUI(gameState, input);
     }
 
 #if FADO_DEBUG
