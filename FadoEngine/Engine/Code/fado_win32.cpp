@@ -708,6 +708,26 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 
 	assets->hInputTex = LoadFImage(world, "Assets/Textures/input_sheet.fimage");
 	assets->hInputSheet = RegisterSpriteSheet(world, assets->hInputTex, 256, 256);
+
+	// Sounds
+	assets->hMusic = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/music.fsound");
+	assets->hYaySFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/yay_sfx.fsound");
+	assets->hBooSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/boo_sfx.fsound");
+	assets->hCountdownSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/countdown_sfx.fsound");
+	assets->hRunningSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/running_sfx.fsound");
+	assets->hSoldierHornSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/soldier_horn_sfx.fsound");
+	assets->hParachuteSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/parachute_sfx.fsound");
+	assets->rocketSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/rocket_sfx.fsound");
+	assets->hEvilLaughSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/evil_laugh_sfx.fsound");
+	assets->hGreenLightSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/green_light_sfx.fsound");
+	assets->hRedLightSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/red_light_sfx.fsound");
+	assets->sportWhistleSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/sport_whistle_sfx.fsound");
+	assets->dearBasketballSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/dear_basketball.fsound");
+	assets->yehawSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/yehaw_sfx.fsound");
+	assets->movieSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/movie_sfx.fsound");
+	assets->bombStartSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/bomb_diffues_sfx.fsound");
+	assets->bombEndSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/bomb_sfx.fsound");
+	assets->flashSFX = LoadFSound(gameState->soundManager, gameState->shared->arena, "Assets/Audio/SFX/flash_sfx.fsound");
 }
 
 // ────────────────────────────────────────────────────────────────────────

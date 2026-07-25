@@ -167,18 +167,18 @@ inline void SoundCalculateStereoMatrix(f32 pan, f32 volume, f32* outMatrix /* [2
 // Public API
 
 // Starts playing a 2D sound by its handle. Assuming the buffer has been already filled.
-inline void SoundPlay2D(FSoundManager* manager, HSound bufferIndex, ESoundCategory category, f32 volume, b8 loop)
+inline HSound SoundPlay2D(FSoundManager* manager, HSound bufferIndex, ESoundCategory category, f32 volume, b8 loop)
 {
     FSoundAssetBank* bank = manager->assetBank;
     if (bank->assetInstanceCount[bufferIndex] >= FMAX_SOUND_ASSET_INSTANCES_AT_ONCE)
     {
-        return; // This sound asset has maximum simultaneous playing instances.
+        return -1; // This sound asset has maximum simultaneous playing instances.
     }
 
     i32 instanceSlot = GetFirstFreeInstanceSlot(manager);
     if (instanceSlot == -1)
     {
-        return;
+        return -1;
     }
 
     FSoundInstance* instance = &bank->instances[instanceSlot];
@@ -193,6 +193,8 @@ inline void SoundPlay2D(FSoundManager* manager, HSound bufferIndex, ESoundCatego
     // we don't care about the rest, they are 0 by default.
 
     bank->assetInstanceCount[bufferIndex]++;
+
+    return instanceSlot;
 }
 
 // Starts playing a 3D sound by its handle. Assuming the buffer has been already filled.

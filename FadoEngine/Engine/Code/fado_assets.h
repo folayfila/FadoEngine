@@ -52,6 +52,26 @@ struct FAssetsHandles
     HTexture hInputTex;
     HSpriteSheet hInputSheet;
 
+    // Sounds
+    HSound hMusic;
+    HSound hYaySFX;
+    HSound hBooSFX;
+    HSound hCountdownSFX;
+    HSound hRunningSFX;
+    HSound hSoldierHornSFX;
+    HSound hParachuteSFX;
+    HSound rocketSFX;
+    HSound hEvilLaughSFX;
+    HSound hGreenLightSFX;
+    HSound hRedLightSFX;
+    HSound sportWhistleSFX;
+    HSound dearBasketballSFX;
+    HSound yehawSFX;
+    HSound movieSFX;
+    HSound bombStartSFX;
+    HSound bombEndSFX;
+    HSound flashSFX;
+
     ///////////////////////////////////////////////////////////////////////
 
     // Mesh handles

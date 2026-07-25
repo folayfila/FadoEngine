@@ -104,11 +104,11 @@ struct FLevel_Countdown : FLevel
 
     b8 wonLastMiniGame;
 
-
     //--------------------
     // Race
     HEntity racer;
     HEntity raceBar;
+    HSound runSoundInst;
 
     //--------------------
     // Parachute
@@ -125,6 +125,7 @@ struct FLevel_Countdown : FLevel
     HEntity book;
     HEntity evilGuy;
     HEntity coffee;
+    HEntity evilLaughSFXInst;
 
     //--------------------
     // Red/Green Light
@@ -192,6 +193,7 @@ internal void Level_Countdown_Init(FGameState* gameState)
     level->background = SpawnEntity(shared, assets->hQuadMesh, assets->hLinesBGTexture, FColor::White());
     transforms->positions[level->background] = { 0, 0, 1.0f };
     transforms->scales[level->background] = { 100.0f, 30.0f, 0.0f };
+    Rotate(transforms, level->background, { 0, 0, 45.0f });
 
     // ───────────────────────────────────────────────
     // Racer
@@ -206,6 +208,9 @@ internal void Level_Countdown_Init(FGameState* gameState)
     level->raceBar = SpawnEntity(shared, assets->hQuadMesh, assets->hWhiteTexture, { 1, 1, 1, 0.75f }, Material_Transparent);
     transforms->positions[level->raceBar] = { 0, 0, -100.0f };
     transforms->scales[level->raceBar] = { 0.25, 0.5, 0 };
+
+    level->runSoundInst = SoundPlay2D(gameState->soundManager, assets->hRunningSFX, ESoundCategory::Sound_SFX, 2.0f, true);
+    SoundPause(gameState->soundManager, level->runSoundInst);
 
     // ───────────────────────────────────────────────
     // parachute
@@ -249,6 +254,9 @@ internal void Level_Countdown_Init(FGameState* gameState)
     AddClip(&shared->spriteSheetTable.sheets[assets->hCoffeeSheet], 0, 2, 1.0f, true);
     AddClip(&shared->spriteSheetTable.sheets[assets->hCoffeeSheet], 2, 2, 1.0f, true);
     AddClip(&shared->spriteSheetTable.sheets[assets->hCoffeeSheet], 4, 2, 1.0f, true);
+
+    level->evilLaughSFXInst = SoundPlay3D(gameState->soundManager, level->evilGuy, assets->hEvilLaughSFX, 
+        ESoundCategory::Sound_SFX, 1.0f, true, {0,0,0}, 10.0f, 100.0f);
 
     // ───────────────────────────────────────────────
     // red light green light
@@ -345,6 +353,8 @@ internal void Level_Countdown_Begin(FGameState* gameState)
 
     gameState->input->mode = Input_UI;
     gameState->shared->camera.type = Camera_Orthographic;
+
+    SoundPlay2D(gameState->soundManager, assets->hMusic, ESoundCategory::Sound_Music, 0.1f, true);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -588,7 +598,7 @@ internal void RaceMiniGame(FGameState* gameState, FGameInput* input, FGameContro
             f32 w = gameState->shared->viewport.width / 2.75f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "RUUUUUNNN!!", textPos, FColor::HotPink());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "RUUUUUNNN!!", textPos, {1, 0.3f, 0.3f, 1});
             
             FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
             SetClip(inputAnim, InputHints_SpaceClick);
@@ -598,6 +608,8 @@ internal void RaceMiniGame(FGameState* gameState, FGameInput* input, FGameContro
 
         case MiniGame_Update:
         {
+            SoundResume(gameState->soundManager, level->runSoundInst);
+
             if (Pressed(&controller->actionDown))
             {
                 runningValue += 0.25f;
@@ -649,6 +661,7 @@ internal void RaceMiniGame(FGameState* gameState, FGameInput* input, FGameContro
         } break;
         case MiniGame_End:
         {
+            SoundPause(gameState->soundManager, level->runSoundInst);
             shared->transforms.positions[level->racer] = { 0, 0, -100.0f };
             shared->transforms.positions[level->raceBar] = { 0, 0, -100 };
         }
@@ -679,6 +692,8 @@ internal void ParachuteMiniGame(FGameState* gameState, FGameInput* input, FGameC
             parachuteOpenPosY = RandomF32InRange(-3.0f, 3.0);
 
             shared->transforms.positions[level->building] = { 7,0,0 };
+
+            SoundPlay2D(gameState->soundManager, assets->hSoldierHornSFX, ESoundCategory::Sound_SFX, 0.25f, false);
         } break;
 
         case MiniGame_Countdown:
@@ -686,7 +701,7 @@ internal void ParachuteMiniGame(FGameState* gameState, FGameInput* input, FGameC
             f32 w = gameState->shared->viewport.width / 2.75f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "LAND SAFELY!", textPos, FColor::HotPink());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "LAND SAFELY!", textPos, FColor::LightGreen());
 
             shared->transforms.positions[level->parachute] = { 0, 5.0f ,0 };
 
@@ -711,6 +726,8 @@ internal void ParachuteMiniGame(FGameState* gameState, FGameInput* input, FGameC
             {
                 if (!hasOpenedChute)
                 {
+                    SoundPlay2D(gameState->soundManager, assets->hParachuteSFX, ESoundCategory::Sound_SFX, 0.5f, false);
+
                     hasOpenedChute = true;
 
                     f32 min = playerPosY - 1.0f;
@@ -768,6 +785,7 @@ internal void RocketMiniGame(FGameState* gameState, FGameInput* input, FGameCont
 
     local_presist f32 tilt = 0.0f;
     local_presist f32 sign = -1.0f;
+    local_presist b8 sound = false;
 
     switch (level->miniGameState)
     {
@@ -776,6 +794,7 @@ internal void RocketMiniGame(FGameState* gameState, FGameInput* input, FGameCont
             level->wonLastMiniGame = true;
             tilt = 0.0f;
             sign = -1.0f;
+            sound = false;
 
             shared->transforms.positions[level->rocket] = {0, -3, 0};
             shared->transforms.rotations[level->rocket] = QuatIdentity();
@@ -787,7 +806,7 @@ internal void RocketMiniGame(FGameState* gameState, FGameInput* input, FGameCont
             f32 w = gameState->shared->viewport.width / 3.50f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "LAUNCH THE ROCKET!!", textPos, FColor::HotPink());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "LAUNCH THE ROCKET!!", textPos, { 0.3f, 0.6f, 1.0f, 1.0f });
 
             FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
             SetClip(inputAnim, InputHints_AD);
@@ -797,6 +816,12 @@ internal void RocketMiniGame(FGameState* gameState, FGameInput* input, FGameCont
 
         case MiniGame_Update:
         {
+            if (!sound)
+            {
+                SoundPlay2D(gameState->soundManager, assets->rocketSFX, ESoundCategory::Sound_SFX, 0.4f, false);
+                sound = true;
+            }
+
             if (Down(&controller->dpadLeft) && !Down(&controller->dpadRight))
             {
                 sign = -1.0f;
@@ -883,12 +908,11 @@ internal void CoffeeMiniGame(FGameState* gameState, FGameInput* input, FGameCont
             f32 w = gameState->shared->viewport.width / 4.0f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "KEEP THE COFFEE WARM!!", textPos, FColor::HotPink());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "KEEP THE COFFEE WARM!!", textPos, FColor::SaddleBrown());
 
             FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
             SetClip(inputAnim, InputHints_AD);
             UpdateAnimState(&shared->entityTable.entities[level->inputHints], &shared->spriteSheetTable.sheets[assets->hInputSheet], input->deltaTime);
-
         } break;
 
         case MiniGame_Update:
@@ -938,6 +962,11 @@ internal void CoffeeMiniGame(FGameState* gameState, FGameInput* input, FGameCont
             else if (Down(&controller->dpadLeft))  { shared->transforms.positions[level->book] = { -4.0f, 0, 0 }; }
             else { shared->transforms.positions[level->book] = { 0, 0, -100 }; }
 
+            // Each frame, feed camera into the listener for 3D audio.
+            quat coffeeRot = shared->transforms.rotations[level->coffee];
+            gameState->soundManager->listener.position = shared->transforms.positions[level->coffee];
+            gameState->soundManager->listener.forward = QuatForward(coffeeRot);
+            gameState->soundManager->listener.up = QuatUp(coffeeRot);
 #if FADO_DEBUG
             f32 w = gameState->shared->viewport.width / 4.0f;
             f32 h = gameState->shared->viewport.height / 4.0f;
@@ -982,6 +1011,9 @@ internal void RedLightMiniGame(FGameState* gameState, FGameInput* input, FGameCo
     local_presist f32 redTime = RandomF32InRange(1.0, 3.0f);
     local_presist f32 goalValue = 0.0f;
 
+    local_presist b8 greenSFX = false;
+    local_presist b8 redSFX = false;
+
     switch (level->miniGameState)
     {
         case MiniGame_Init:
@@ -989,6 +1021,8 @@ internal void RedLightMiniGame(FGameState* gameState, FGameInput* input, FGameCo
             level->wonLastMiniGame = true;
             redTime = RandomF32InRange(1.0, 3.0f);
             goalValue = 0.0f;
+            greenSFX = false;
+            redSFX = false;
         } break;
 
         case MiniGame_Countdown:
@@ -996,7 +1030,7 @@ internal void RedLightMiniGame(FGameState* gameState, FGameInput* input, FGameCo
             f32 w = gameState->shared->viewport.width / 4.0f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "RED LIGHT GREEN LIGHT!!", textPos, FColor::HotPink());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "RED LIGHT GREEN LIGHT!!", textPos, FColor::Orange());
 
             shared->transforms.positions[level->redLight] = { 0, 0, 0};
             SetClip(anim, 0);
@@ -1009,6 +1043,12 @@ internal void RedLightMiniGame(FGameState* gameState, FGameInput* input, FGameCo
 
         case MiniGame_Update:
         {
+            if (!greenSFX)
+            {
+                SoundPlay2D(gameState->soundManager, assets->hGreenLightSFX, Sound_SFX, 1.0f, false);
+                greenSFX = true;
+            }
+
             f32 w = gameState->shared->viewport.width / 4.0f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
@@ -1016,6 +1056,12 @@ internal void RedLightMiniGame(FGameState* gameState, FGameInput* input, FGameCo
             if (level->timer <= redTime)
             {
                 SetClip(anim, 1);
+
+                if (!redSFX)
+                {
+                    SoundPlay2D(gameState->soundManager, assets->hRedLightSFX, Sound_SFX, 1.0f, false);
+                    redSFX = true;
+                }
 
                 shared->transforms.positions[level->redGreenBar] = { 0, 0, -100 };
 
@@ -1083,6 +1129,9 @@ internal void BasketballMiniGame(FGameState* gameState, FGameInput* input, FGame
     local_presist f32 jumpStrength = 0.0f;
     local_presist f32 jumpGoal = RandomF32InRange(1.0f, 2.0f);
 
+    local_presist b8 whistleSFX = false;
+    local_presist b8 dearBasketballSFX = false;
+
     switch (level->miniGameState)
     {
     case MiniGame_Init:
@@ -1098,6 +1147,9 @@ internal void BasketballMiniGame(FGameState* gameState, FGameInput* input, FGame
         shared->transforms.positions[level->basketMan_1] = { 3, -3, 0 };
         SetClip(anim_0, 0);
         SetClip(anim_1, 0);
+
+        whistleSFX = false;
+        dearBasketballSFX = false;
     } break;
 
     case MiniGame_Countdown:
@@ -1106,7 +1158,7 @@ internal void BasketballMiniGame(FGameState* gameState, FGameInput* input, FGame
         f32 w = gameState->shared->viewport.width / 2.95f;
         f32 h = gameState->shared->viewport.height / 4.0f;
         v2 textPos = { w, h };
-        UIPushText(&gameState->shared->uiBucket, gameState->font, "GRAB THE BALL!!", textPos, FColor::HotPink());
+        UIPushText(&gameState->shared->uiBucket, gameState->font, "GRAB THE BALL!!", textPos, { 1.0f, 0.4f, 0.0f, 1.0f });
 
         FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
         SetClip(inputAnim, InputHints_SpaceClick);
@@ -1116,6 +1168,12 @@ internal void BasketballMiniGame(FGameState* gameState, FGameInput* input, FGame
 
     case MiniGame_Update:
     {
+        if (!whistleSFX)
+        {
+            SoundPlay2D(gameState->soundManager, assets->sportWhistleSFX, ESoundCategory::Sound_SFX, 1.0f, false);
+            whistleSFX = true;
+        }
+
         Rotate(&shared->transforms, level->ball, { 0, 0, 100.0f * input->deltaTime });
         shared->transforms.positions[level->ball].y -= 0.5f * input->deltaTime;
         shared->transforms.positions[level->basketMan_0].y += 0.5f * input->deltaTime;
@@ -1164,6 +1222,12 @@ internal void BasketballMiniGame(FGameState* gameState, FGameInput* input, FGame
                 SetClip(anim_1, 0);
 
                 level->wonLastMiniGame = true;
+
+                if (!dearBasketballSFX)
+                {
+                    SoundPlay2D(gameState->soundManager, assets->dearBasketballSFX, ESoundCategory::Sound_SFX, 2.0f, false);
+                    dearBasketballSFX = true;
+                }
             }
             else
             {
@@ -1224,6 +1288,7 @@ internal void BullMiniGame(FGameState* gameState, FGameInput* input, FGameContro
     local_presist f32 changeTimer = 1.0f;
     local_presist f32 changeElapsed = 0;
     local_presist b8 passed = true;
+    local_presist b8 yehaw = false;
 
     switch (level->miniGameState)
     {
@@ -1234,6 +1299,7 @@ internal void BullMiniGame(FGameState* gameState, FGameInput* input, FGameContro
             changeTimer = 1.0f;
             changeElapsed = 1.0f;
             passed = true;
+            yehaw = false;
 
             shared->transforms.positions[level->bull] = {};
             SetClip(anim, Bull_None);
@@ -1244,7 +1310,9 @@ internal void BullMiniGame(FGameState* gameState, FGameInput* input, FGameContro
             f32 w = gameState->shared->viewport.width / 4.5f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "YEEHAW OOPOSITE THE BULL!!", textPos, FColor::HotPink());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "YEEHAW OOPOSITE THE BULL!!", textPos, FColor::SaddleBrown());
+
+            shared->transforms.positions[level->inputHints].x = -6.5f;
 
             FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
             SetClip(inputAnim, InputHints_WASD);
@@ -1254,6 +1322,12 @@ internal void BullMiniGame(FGameState* gameState, FGameInput* input, FGameContro
 
         case MiniGame_Update:
         {
+            if (!yehaw)
+            {
+                SoundPlay2D(gameState->soundManager, assets->yehawSFX, ESoundCategory::Sound_SFX, 0.5f, false);
+                yehaw = true;
+            }
+
             changeElapsed += input->deltaTime;
 
             if (changeElapsed >= changeTimer)
@@ -1398,6 +1472,7 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
     local_presist f32 changeTimer = 1.0f;
     local_presist f32 changeElapsed = 0;
     local_presist b8 passed = true;
+    local_presist b8 sound = false;
 
     switch (level->miniGameState)
     {
@@ -1408,6 +1483,7 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
         changeTimer = 1.0f;
         changeElapsed = 1.0f;
         passed = true;
+        sound = false;
 
         shared->transforms.positions[level->movie] = {};
         SetClip(anim, 0);
@@ -1418,8 +1494,9 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
         f32 w = gameState->shared->viewport.width / 4.0f;
         f32 h = gameState->shared->viewport.height / 4.0f;
         v2 textPos = { w, h };
-        UIPushText(&gameState->shared->uiBucket, gameState->font, "FOLLOW THE DIRECTOR!!", textPos, FColor::HotPink());
+        UIPushText(&gameState->shared->uiBucket, gameState->font, "FOLLOW THE DIRECTOR!!", textPos, { 1, 0.3f, 0.3f, 1 });
 
+        shared->transforms.positions[level->inputHints].x = -6.5f;
         FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
         SetClip(inputAnim, InputHints_WASD);
         UpdateAnimState(&shared->entityTable.entities[level->inputHints], &shared->spriteSheetTable.sheets[assets->hInputSheet], input->deltaTime);
@@ -1428,6 +1505,12 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
 
     case MiniGame_Update:
     {
+        if (!sound)
+        {
+            SoundPlay2D(gameState->soundManager, assets->movieSFX, ESoundCategory::Sound_SFX, 1.0f, false);
+            sound = true;
+        }
+
         SetClip(anim, 1);
 
         changeElapsed += input->deltaTime;
@@ -1454,6 +1537,8 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
         f32 h = gameState->shared->viewport.height / 2.0f;
         v2 textPos = { w, h };
 
+        v4 color = { 1, 0.3f, 0.3f, 1 };
+
         switch (movieDir)
         {
         case Movie_Left:
@@ -1470,7 +1555,7 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
                 }
             }
             cc8* windText = "LEFT!";
-            UIPushText(&gameState->shared->uiBucket, gameState->font, windText, textPos, FColor::Red());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, windText, textPos, color);
         } break;
 
         case Movie_Right:
@@ -1487,7 +1572,7 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
                 }
             }
             cc8* windText = "RIGHT!";
-            UIPushText(&gameState->shared->uiBucket, gameState->font, windText, textPos, FColor::Red());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, windText, textPos, color);
         } break;
 
         case Movie_Front:
@@ -1504,7 +1589,7 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
                 }
             }
             cc8* windText = "FRONT!";
-            UIPushText(&gameState->shared->uiBucket, gameState->font, windText, textPos, FColor::Red());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, windText, textPos, color);
         } break;
 
         case Movie_Back:
@@ -1521,7 +1606,7 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
                 }
             }
             cc8* windText = "BACK!";
-            UIPushText(&gameState->shared->uiBucket, gameState->font, windText, textPos, FColor::Red());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, windText, textPos, color);
         } break;
 
         default:
@@ -1556,6 +1641,8 @@ internal void BombMiniGame(FGameState* gameState, FGameInput* input, FGameContro
     local_presist u32 targetNum = RandomU32InRange(0, 99);
     local_presist u32 currentNum = 0;
 
+    local_presist b8 sound = false;
+
     switch (level->miniGameState)
     {
         case MiniGame_Init:
@@ -1563,6 +1650,7 @@ internal void BombMiniGame(FGameState* gameState, FGameInput* input, FGameContro
             level->wonLastMiniGame = true;
             targetNum = RandomU32InRange(0, 99);
             currentNum = 0;
+            sound = false;
         } break;
 
         case MiniGame_Countdown:
@@ -1570,10 +1658,11 @@ internal void BombMiniGame(FGameState* gameState, FGameInput* input, FGameContro
             f32 w = gameState->shared->viewport.width / 3.7f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "DIFFUSE THE BOOOMB!!", textPos, FColor::HotPink());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "DIFFUSE THE BOOOMB!!", textPos, FColor::Red());
 
             transforms->positions[level->bomb] = { 0,0,0 };
 
+            shared->transforms.positions[level->inputHints].x = -6.5f;
             FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
             SetClip(inputAnim, InputHints_WASD);
             UpdateAnimState(&shared->entityTable.entities[level->inputHints], &shared->spriteSheetTable.sheets[assets->hInputSheet], input->deltaTime);
@@ -1582,6 +1671,12 @@ internal void BombMiniGame(FGameState* gameState, FGameInput* input, FGameContro
 
         case MiniGame_Update:
         {
+            if (!sound)
+            {
+                SoundPlay2D(gameState->soundManager, assets->bombStartSFX, ESoundCategory::Sound_SFX, 0.75f, false);
+                sound = true;
+            }
+
             if (level->timer > 0.0f)
             {
                 if (Pressed(&controller->dpadDown))
@@ -1606,6 +1701,10 @@ internal void BombMiniGame(FGameState* gameState, FGameInput* input, FGameContro
                 if (currentNum != targetNum)
                 {
                     level->wonLastMiniGame = false;
+                }
+                else
+                {
+                    SoundPlay2D(gameState->soundManager, assets->bombEndSFX, ESoundCategory::Sound_SFX, 0.75f, false);
                 }
             }
 
@@ -1660,9 +1759,9 @@ internal void CameraMiniGame(FGameState* gameState, FGameInput* input, FGameCont
         case MiniGame_Countdown:
         {
             f32 w = gameState->shared->viewport.width / 3.75f;
-            f32 h = gameState->shared->viewport.height / 4.0f;
+            f32 h = gameState->shared->viewport.height / 5.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "SMILE ON THE FLASH!!", textPos, FColor::HotPink());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "SMILE ON THE FLASH!!", textPos, FColor::Violet());
 
             FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
             SetClip(inputAnim, InputHints_SpaceHold);
@@ -1675,6 +1774,8 @@ internal void CameraMiniGame(FGameState* gameState, FGameInput* input, FGameCont
             {
                 if (!flashed)
                 {
+                    SoundPlay2D(gameState->soundManager, assets->flashSFX, ESoundCategory::Sound_SFX, 1.0f, false);
+
                     flashed = true;
                 }
 
@@ -1758,15 +1859,22 @@ internal void Level_Countdown_HandleGameInput(FGameState* gameState, FGameInput*
         level->timer -= input->deltaTime;
     }
 
+    FAssetsHandles* assets = &gameState->shared->assets;
+    local_presist b8 playedYayBoo = false;
+    local_presist b8 playedCountdown = false;
+
     switch (level->miniGameState)
     {
         case MiniGame_Init:
         {
+            playedYayBoo = false;
+            playedCountdown = false;
+
             if (level->mgIndex == EMiniGames_Size)
             {
                 level->mgIndex = 0;
                 ShuffleMiniGames(level->miniGames, EMiniGames_Size);
-                level->timeSpeedMult = Clamp((level->timeSpeedMult + 0.25f), 1.0f, 2.0f);
+                level->timeSpeedMult = Clamp((level->timeSpeedMult + 0.1f), 1.0f, 1.25f);
             }
             TriggerMiniGame(level->miniGames[level->mgIndex], gameState, input, controller);
             level->miniGameState = MiniGame_Countdown;
@@ -1783,14 +1891,20 @@ internal void Level_Countdown_HandleGameInput(FGameState* gameState, FGameInput*
             cc8* text = buffer;
             UIPushText(&gameState->shared->uiBucket, gameState->font, text, textPos, FColor::Red(), 2.0f);
 
+            if (!playedCountdown)
+            {
+                playedCountdown = true;
+                SoundPlay2D(gameState->soundManager, assets->hCountdownSFX, ESoundCategory::Sound_SFX, 0.5f, false);
+            }
+
+            gameState->shared->transforms.positions[level->inputHints] = { -6, 0, 0 };
+            TriggerMiniGame(level->miniGames[level->mgIndex], gameState, input, controller);
+
             if (level->timer <= 0.0f)
             {
                 level->miniGameState = MiniGame_Update;
                 level->timer = 5.0f;
             }
-
-            gameState->shared->transforms.positions[level->inputHints] = { -6, 0, 0 };
-            TriggerMiniGame(level->miniGames[level->mgIndex], gameState, input, controller);
 
         } break;
 
@@ -1815,6 +1929,35 @@ internal void Level_Countdown_HandleGameInput(FGameState* gameState, FGameInput*
             v2 textPos = { w, h };
             cc8* endText = level->wonLastMiniGame ? "YAAAAAY!!!" : "boooooo...";
             UIPushText(&gameState->shared->uiBucket, gameState->font, endText, textPos, FColor::HotPink());
+
+            if (!playedYayBoo)
+            {
+                if (level->wonLastMiniGame)
+                {
+                    SoundPlay2D(gameState->soundManager, assets->hYaySFX, ESoundCategory::Sound_SFX, 0.4f, false);
+
+                    // Particles
+                    u32 handle = MakeFireParticle(&gameState->shared->particles, assets->hBlobTexture);
+                    FParticleEmitter* confetti = &gameState->shared->particles.emitters[handle];
+                    confetti->color.start = { FColor::Pink() , FColor::HotPink() };
+                    confetti->color.end = { FColor::LightGreen() , FColor::LightBlue() };
+                    confetti->position.start = ConstRange(v3{ -7, -7, 0 });  // shared spawn origin
+                    confetti->position.end = { {-10.0f, 3.0f, 0}, {5.0f, 5.0f, 0} };  // each particle rolls its own drift target
+
+                    handle = MakeFireParticle(&gameState->shared->particles, assets->hBlobTexture);
+                    confetti = &gameState->shared->particles.emitters[handle];
+                    confetti->direction = { -1, 1, 0 };
+                    confetti->color.start = { FColor::Pink() , FColor::HotPink() };
+                    confetti->color.end = { FColor::LightGreen() , FColor::LightBlue() };
+                    confetti->position.start = ConstRange(v3{ 7, -7, 0 });  // shared spawn origin
+                    confetti->position.end = { {10.0f, 3.0f, 0}, {-5.0f, 5.0f, 0} };  // each particle rolls its own drift target
+                }
+                else
+                {
+                    SoundPlay2D(gameState->soundManager, assets->hBooSFX, ESoundCategory::Sound_SFX, 0.5f, false);
+                }
+                playedYayBoo = true;
+            }
 
             if (level->timer <= 0.0f)
             {
@@ -1851,6 +1994,11 @@ internal void Level_Countdown_HandleGameInput(FGameState* gameState, FGameInput*
                 }
             }
         } break;
+    }
+
+    for (u32 i = 0; i < gameState->shared->particles.count; ++i)
+    {
+        UpdateParticleEmitter(&gameState->shared->particles.emitters[i], input->deltaTime);
     }
 }
 
@@ -1889,7 +2037,6 @@ internal void Level_Countdown_Update(FGameState* gameState, f32 dt)
 {
     FAssetsHandles* assets = &gameState->shared->assets;
     FSharedStuff* shared = gameState->shared;
-    FTransforms* transforms = &shared->transforms;
     FGameInput* input = gameState->input;
     FLevel_Countdown* level = (FLevel_Countdown*)gameState->currentLevel;
 
@@ -1906,6 +2053,8 @@ internal void Level_Countdown_Update(FGameState* gameState, f32 dt)
     {
         Level_Countdown_Pasue(gameState, input);
     }
+    // Update the laugh sfx.
+    Update3DSoundsPositions(gameState->soundManager->assetBank, shared);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────

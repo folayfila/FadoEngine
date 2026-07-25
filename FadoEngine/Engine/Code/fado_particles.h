@@ -289,22 +289,25 @@ ForceInline HParticle MakeFireParticle(FParticleEmitterTable* pool, HTexture blo
 	fire->texture = blobTexture;
 	fire->lifetime = 1.0f;
 	fire->active = true;
-	fire->spawnRate = 100.0f;
+	fire->spawnRate = 0.0f;
+	fire->count = { ConstRange(400.0f), ConstRange(500.0f) };
+	fire->count.enabled = true;
+	fire->hasBurst = false;
 
 	fire->position.start = ConstRange(V3Zero());  // shared spawn origin
 	fire->position.end = { {-1.0f, 1.0f, -1.0f}, {1.0f, 2.0f, 1.0f} };  // each particle rolls its own drift target
 	fire->position.enabled = true;
 
-	fire->direction = V3Normalize({ 0.0f, 1.0f, 0.0f });
+	fire->direction = V3Normalize({ 1.0f, 1.0f, 0.0f });
 
-	fire->speed.start = { 0.01f, 0.1f };     // each particle rolls its own initial speed
+	fire->speed.start = { 1.0f, 10.0f };     // each particle rolls its own initial speed
 	fire->speed.enabled = false;            // no ramp — constant per-particle speed
 
 	fire->color.start = ConstRange(FColor::Red());
 	fire->color.end = ConstRange(FColor::Orange());
 	fire->color.enabled = true;
 
-	fire->size.start = { 0.1f, 0.2f };  // each particle rolls its own starting size
+	fire->size.start = { 0.2f, 0.5f};  // each particle rolls its own starting size
 	fire->size.enabled = false;
 
 	return handle;
