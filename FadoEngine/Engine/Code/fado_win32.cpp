@@ -482,7 +482,7 @@ internal void Win32HandleKeyboardInput(MSG* msg, WPARAM wParam, LPARAM lParam, F
 		Win32ProcessButtonState(&keyboard->leftShoulder, isDown, deltaTime);
 	}
 
-	if (vKCode == 'P')
+	if (vKCode == 'P' || ((vKCode == VK_ESCAPE)))
 	{
 		Win32ProcessButtonState(&keyboard->start, isDown, deltaTime);
 	}
@@ -493,7 +493,7 @@ internal void Win32HandleKeyboardInput(MSG* msg, WPARAM wParam, LPARAM lParam, F
 		ToggleFullscreen(msg->hwnd);
 	}
 
-	if ((altIsDown && (vKCode == VK_F4)) || ((vKCode == VK_ESCAPE)))
+	if ((altIsDown && (vKCode == VK_F4)))
 	{
 		GlobalRunning = false;
 	}

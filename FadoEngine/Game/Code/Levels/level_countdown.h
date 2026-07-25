@@ -1875,7 +1875,7 @@ internal void Level_Countdown_HandleGameInput(FGameState* gameState, FGameInput*
             {
                 level->mgIndex = 0;
                 ShuffleMiniGames(level->miniGames, EMiniGames_Size);
-                level->timeSpeedMult = Clamp((level->timeSpeedMult + 0.1f), 1.0f, 1.25f);
+                level->timeSpeedMult = Clamp((level->timeSpeedMult + 0.15f), 1.0f, 1.5f);
             }
             TriggerMiniGame(level->miniGames[level->mgIndex], gameState, input, controller);
             level->miniGameState = MiniGame_Countdown;
