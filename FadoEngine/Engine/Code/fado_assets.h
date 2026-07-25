@@ -35,6 +35,23 @@ struct FAssetsHandles
     HSpriteSheet hBasketballSheet_0;
     HSpriteSheet hBasketballSheet_1;
 
+    HTexture hBombTex;
+
+    HTexture hRedLightTex;
+    HSpriteSheet hRedLightSheet;
+
+    HTexture hCameraTex;
+    HSpriteSheet hCameraSheet;
+
+    HTexture hMovieTex;
+    HSpriteSheet hMovieSheet;
+
+    HTexture hBullTex;
+    HSpriteSheet hBullSheet;
+
+    HTexture hInputTex;
+    HSpriteSheet hInputSheet;
+
     ///////////////////////////////////////////////////////////////////////
 
     // Mesh handles

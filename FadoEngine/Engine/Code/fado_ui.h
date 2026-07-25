@@ -61,7 +61,7 @@ inline void UIPushRect(FUICommandsBucket* bucket, v4 rect, v4 coords, v4 color, 
 
 // Pushes text into the ui bucket to draw on the screen using a font.
 // Font glyphs are just rects being drawn on the screen.
-inline void UIPushText(FUICommandsBucket* bucket, FFont* font, cc8* text, v2 pos, v4 color)
+inline void UIPushText(FUICommandsBucket* bucket, FFont* font, cc8* text, v2 pos, v4 color, f32 scale = 1.0f)
 {
 	// Current pen position while laying out glyphs.
 	v2 cursor = pos;
@@ -76,15 +76,15 @@ inline void UIPushText(FUICommandsBucket* bucket, FFont* font, cc8* text, v2 pos
 		FFontGlyph* glyph = &font->glyphs[*p - 32];
 
 		v4 rect = {
-			cursor.x + glyph->offset.x,
-			cursor.y + glyph->offset.y,
-			(f32)glyph->width,
-			(f32)glyph->height
+			cursor.x + glyph->offset.x * scale,
+			cursor.y + glyph->offset.y * scale,
+			(f32)glyph->width * scale,
+			(f32)glyph->height * scale
 		};
 		v4 coords = glyph->coords;
 
 		UIPushRect(bucket, rect, coords, color, font->atlas);
-		cursor.x += glyph->xadvance;
+		cursor.x += glyph->xadvance * scale;
 	}
 }
 

@@ -537,8 +537,8 @@ internal void SetMaterialShaderParameters(FRenderWorld* world, FDrawCall* call)
 	matBuffer->pad = 0.0f;
 	matBuffer->spriteRect = call->spriteRect;
 	matBuffer->noiseScale = { 1.0f, 1.0f };
-	matBuffer->squiggleStrength = 1.0f;
-	matBuffer->squiggleFPS = 6.0f;
+	matBuffer->squiggleStrength = 0.5f;
+	matBuffer->squiggleFPS = 10.0f;
 
 	deviceContext->Unmap(shader->materialBuffer, 0);
 	deviceContext->PSSetConstantBuffers(1, 1, &shader->materialBuffer);

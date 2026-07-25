@@ -667,7 +667,7 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 
 	// GMTK Assets:
 
-	LoadFFont(world, "Assets/Fonts/Schoolbell-Regular.ffont", 100.0f, gameState->font);
+	LoadFFont(world, "Assets/Fonts/BubblegumSans-Regular.ffont", 99.0f, gameState->font);
 
 	assets->hNoiseTexture = LoadFImage(world, "Assets/Textures/noise.fimage");
 	assets->hLinesBGTexture = LoadFImage(world, "Assets/Textures/lines_bg.fimage");
@@ -678,7 +678,7 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 	assets->hBookTex = LoadFImage(world, "Assets/Textures/book_sheet.fimage");
 	assets->hEvilGuyTex = LoadFImage(world, "Assets/Textures/evil_guy_sheet.fimage");
 	assets->hCoffeeTex = LoadFImage(world, "Assets/Textures/coffee_sheet.fimage");
-	assets->hCoffeeSheet = RegisterSpriteSheet(world, assets->hCoffeeTex, 256, 450);
+	assets->hCoffeeSheet = RegisterSpriteSheet(world, assets->hCoffeeTex, 512, 512);
 
 	assets->hBuildingTex = LoadFImage(world, "Assets/Textures/building_sheet.fimage");
 	assets->hParachuteTex = LoadFImage(world, "Assets/Textures/parachute_sheet.fimage");
@@ -689,8 +689,25 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 
 	assets->hBallTex = LoadFImage(world, "Assets/Textures/ball_sheet.fimage");
 	assets->hBasketballTex = LoadFImage(world, "Assets/Textures/basket_sheet.fimage");
-	assets->hBasketballSheet_0 = RegisterSpriteSheet(world, assets->hBasketballTex, 200, 480);
-	assets->hBasketballSheet_1 = RegisterSpriteSheet(world, assets->hBasketballTex, 200, 480);
+	assets->hBasketballSheet_0 = RegisterSpriteSheet(world, assets->hBasketballTex, 512, 512);
+	assets->hBasketballSheet_1 = RegisterSpriteSheet(world, assets->hBasketballTex, 512, 512);
+
+	assets->hBombTex = LoadFImage(world, "Assets/Textures/bomb_sheet.fimage");
+
+	assets->hRedLightTex = LoadFImage(world, "Assets/Textures/red_light_sheet.fimage");
+	assets->hRedLightSheet = RegisterSpriteSheet(world, assets->hRedLightTex, 512, 512);
+
+	assets->hCameraTex = LoadFImage(world, "Assets/Textures/camera_sheet.fimage");
+	assets->hCameraSheet = RegisterSpriteSheet(world, assets->hCameraTex, 512, 512);
+
+	assets->hMovieTex = LoadFImage(world, "Assets/Textures/movie_sheet.fimage");
+	assets->hMovieSheet = RegisterSpriteSheet(world, assets->hMovieTex, 512, 512);
+
+	assets->hBullTex = LoadFImage(world, "Assets/Textures/bull_sheet.fimage");
+	assets->hBullSheet = RegisterSpriteSheet(world, assets->hBullTex, 512, 512);
+
+	assets->hInputTex = LoadFImage(world, "Assets/Textures/input_sheet.fimage");
+	assets->hInputSheet = RegisterSpriteSheet(world, assets->hInputTex, 256, 256);
 }
 
 // ────────────────────────────────────────────────────────────────────────
