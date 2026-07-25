@@ -888,6 +888,11 @@ int WINAPI wWinMain(
 					continue;
 				}
 
+				if (gameState->paused && (instance->category != Sound_Music))
+				{
+					continue;
+				}
+
 				if (instance->is3D)
 				{
 					// Udpate each 3D sound individually.

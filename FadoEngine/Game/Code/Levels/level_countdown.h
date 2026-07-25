@@ -383,7 +383,7 @@ internal void Level_Countdown_Pasue(FGameState* gameState, FGameInput* input)
     FUICommandsBucket* uiBucket = &gameState->shared->uiBucket;
     f32 buttonsYOffset = 20.0f;
 
-    f32 buttonWidth = 200.0f + gameState->font->size;
+    f32 buttonWidth = 200.0f + gameState->font->size * 2.0f;
     f32 buttonHeight = 65.0f + gameState->font->size;
 
     f32 screenWidth = gameState->shared->viewport.width;
@@ -395,10 +395,10 @@ internal void Level_Countdown_Pasue(FGameState* gameState, FGameInput* input)
     v4 rect = { rectPosX, rectPosY, buttonWidth, buttonHeight };
 
     FUIButtonStyle buttonStyle = {
-        /*idle*/    FColor::Cyan(),
-        /*hover*/   FColor::LightRed(),
-        /*pressed*/ FColor::Green(),
-        /*text*/    FColor::DarkBlue(),
+        /*idle*/    FColor::LightRed(),
+        /*hover*/   FColor::Orange(),
+        /*pressed*/ FColor::Gold(),
+        /*text*/    FColor::Brown(),
         gameState->shared->assets.hWhiteTexture
     };
 
@@ -437,26 +437,27 @@ internal void Level_Countdown_MainMenu(FGameState* gameState, FGameInput* input)
     f32 screenHeight = gameState->shared->viewport.height;
 
     f32 rectPosX = (screenWidth / 2.0f) - (buttonWidth / 2.0f);
-    f32 rectPosY = (screenHeight / 2.0f) - (buttonHeight);
+    f32 rectPosY = (screenHeight / 2.0f) - (buttonHeight)/1.5f;
 
     v4 rect = { rectPosX, rectPosY, buttonWidth, buttonHeight };
 
     FUIButtonStyle buttonStyle = {
-        /*idle*/    FColor::Cyan(),
-        /*hover*/   FColor::LightRed(),
-        /*pressed*/ FColor::Green(),
-        /*text*/    FColor::DarkBlue(),
+        /*idle*/    FColor::LightRed(),
+        /*hover*/   FColor::Orange(),
+        /*pressed*/ FColor::Gold(),
+        /*text*/    FColor::Brown(),
         gameState->shared->assets.hWhiteTexture
     };
 
-    v2 titlePos = { screenWidth / 2.7f, screenHeight / 5.0f };
-    UIPushText(uiBucket, gameState->font, "3-2-1 Mayhem!!", titlePos, FColor::DarkBlue());
+    v2 titlePos = { screenWidth / 2.8f, screenHeight / 4.0f };
+    UIPushText(uiBucket, gameState->font, "3-2-1 Mayhem!!", titlePos, { 1, 0.3f, 0.3f, 1 });
 
+    titlePos.x += 50.0f;
     c8 scoreBuf[64];
     sprintf(scoreBuf, "High Score: %d", (u32)gameState->shared->transforms.positions[level->highScore].y);
     cc8* scoreText = scoreBuf;
     titlePos.y += 100.0f;
-    UIPushText(&gameState->shared->uiBucket, gameState->font, scoreText, titlePos, FColor::HotPink());
+    UIPushText(&gameState->shared->uiBucket, gameState->font, scoreText, titlePos, FColor::Orange());
 
     if (UIButton(gameState, input, rect, "Play", &buttonStyle))
     {
