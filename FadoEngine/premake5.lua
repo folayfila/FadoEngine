@@ -13,7 +13,7 @@ project "Engine"
     kind "WindowedApp"
     language "C++"
     cppdialect "C++17"
-    targetname "FadoEngine"
+    targetname "3-2-1 Mayhem"
 
     targetdir "%{wks.location}%{cfg.platform}/%{cfg.buildcfg}/"
     objdir    "%{prj.name}/%{cfg.platform}/%{cfg.buildcfg}/"

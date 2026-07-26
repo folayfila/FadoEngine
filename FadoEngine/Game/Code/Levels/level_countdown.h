@@ -1875,7 +1875,7 @@ internal void Level_Countdown_HandleGameInput(FGameState* gameState, FGameInput*
             {
                 level->mgIndex = 0;
                 ShuffleMiniGames(level->miniGames, EMiniGames_Size);
-                level->timeSpeedMult = Clamp((level->timeSpeedMult + 0.15f), 1.0f, 1.5f);
+                level->timeSpeedMult = Clamp((level->timeSpeedMult + 0.15f), 1.0f, 2.0f);
             }
             TriggerMiniGame(level->miniGames[level->mgIndex], gameState, input, controller);
             level->miniGameState = MiniGame_Countdown;
@@ -1928,8 +1928,9 @@ internal void Level_Countdown_HandleGameInput(FGameState* gameState, FGameInput*
             f32 w = gameState->shared->viewport.width / 2.75f;
             f32 h = gameState->shared->viewport.height / 2.0f;
             v2 textPos = { w, h };
-            cc8* endText = level->wonLastMiniGame ? "YAAAAAY!!!" : "boooooo...";
-            UIPushText(&gameState->shared->uiBucket, gameState->font, endText, textPos, FColor::HotPink());
+            cc8* endText = level->wonLastMiniGame ? "YAAAAAY!!!" : "BOOOOOO...";
+            v4 color = level->wonLastMiniGame ? FColor::HotPink() : FColor::Brown();
+            UIPushText(&gameState->shared->uiBucket, gameState->font, endText, textPos, color);
 
             if (!playedYayBoo)
             {
@@ -1972,7 +1973,7 @@ internal void Level_Countdown_HandleGameInput(FGameState* gameState, FGameInput*
                     }
                     score->x = 0.0f;
 
-                    //SaveCurrentLevel(gameState);
+                    SaveCurrentLevel(gameState);
                     // return to main menu
                     gameState->input->mode = Input_UI;
 
