@@ -413,6 +413,11 @@ internal void Level_Countdown_Pasue(FGameState* gameState, FGameInput* input)
         level->mgIndex = EMiniGames_Size;   // start from last so we shuffle
         level->timer = 3.0f;
 
+        for (u32 i = 3; i < gameState->shared->entityTable.count; ++i)
+        {
+            gameState->shared->transforms.positions[i] = { 0 , 0, -100 };
+        }
+
         SetGamePaused(gameState, false);
     }
     rect.y += rect.height + buttonsYOffset;
@@ -782,7 +787,7 @@ internal void RocketMiniGame(FGameState* gameState, FGameInput* input, FGameCont
     FLevel_Countdown* level = (FLevel_Countdown*)gameState->currentLevel;
     FSharedStuff* shared = gameState->shared;
     FAssetsHandles* assets = &shared->assets;
-    FAnimState* anim = &shared->entityTable.entities[level->coffee].animState;
+    FAnimState* anim = &shared->entityTable.entities[level->rocket].animState;
 
     local_presist f32 tilt = 0.0f;
     local_presist f32 sign = -1.0f;
@@ -1068,7 +1073,7 @@ internal void RedLightMiniGame(FGameState* gameState, FGameInput* input, FGameCo
 
                 if (Down(&controller->actionDown) || (goalValue <= 0.0f))
                 {
-                    if ((redTime - level->timer) >= 0.5f)
+                    if ((redTime - level->timer) >= 1.0f)
                     {
                         level->wonLastMiniGame = false;
                         level->timer = 0.0f;
@@ -1080,10 +1085,6 @@ internal void RedLightMiniGame(FGameState* gameState, FGameInput* input, FGameCo
                 if (Pressed(&controller->actionDown))
                 {
                     goalValue += 10.0f * input->deltaTime;
-                }
-                else
-                {
-                    goalValue -= 1.0f * input->deltaTime;
                 }
 
                 shared->transforms.positions[level->redGreenBar] = { -5, -3, 0 };
@@ -1534,7 +1535,7 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
             }
         }
 
-        f32 w = gameState->shared->viewport.width / 8.0f;
+        f32 w = gameState->shared->viewport.width / 1.5f;
         f32 h = gameState->shared->viewport.height / 2.0f;
         v2 textPos = { w, h };
 
@@ -1589,7 +1590,7 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
                     passed = true;
                 }
             }
-            cc8* windText = "FRONT!";
+            cc8* windText = "UP!";
             UIPushText(&gameState->shared->uiBucket, gameState->font, windText, textPos, color);
         } break;
 
@@ -1606,7 +1607,7 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
                     passed = true;
                 }
             }
-            cc8* windText = "BACK!";
+            cc8* windText = "DOWN!";
             UIPushText(&gameState->shared->uiBucket, gameState->font, windText, textPos, color);
         } break;
 
@@ -1696,6 +1697,7 @@ internal void BombMiniGame(FGameState* gameState, FGameInput* input, FGameContro
                 {
                     currentNum += 10;
                 }
+                currentNum = Clamp(currentNum, 0, 99);
             }
             else
             {
@@ -1871,11 +1873,11 @@ internal void Level_Countdown_HandleGameInput(FGameState* gameState, FGameInput*
             playedYayBoo = false;
             playedCountdown = false;
 
-            if (level->mgIndex == EMiniGames_Size)
+            if (level->mgIndex >= EMiniGames_Size)
             {
                 level->mgIndex = 0;
                 ShuffleMiniGames(level->miniGames, EMiniGames_Size);
-                level->timeSpeedMult = Clamp((level->timeSpeedMult + 0.15f), 1.0f, 2.0f);
+                level->timeSpeedMult = Clamp((level->timeSpeedMult + 0.2f), 1.0f, 2.0f);
             }
             TriggerMiniGame(level->miniGames[level->mgIndex], gameState, input, controller);
             level->miniGameState = MiniGame_Countdown;
