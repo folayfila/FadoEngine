@@ -289,10 +289,9 @@ ForceInline HParticle MakeFireParticle(FParticleEmitterTable* pool, HTexture blo
 	fire->texture = blobTexture;
 	fire->lifetime = 1.0f;
 	fire->active = true;
-	fire->spawnRate = 0.0f;
+	fire->spawnRate = 50.0f;
 	fire->count = { ConstRange(400.0f), ConstRange(500.0f) };
 	fire->count.enabled = true;
-	fire->hasBurst = false;
 
 	fire->position.start = ConstRange(V3Zero());  // shared spawn origin
 	fire->position.end = { {-1.0f, 1.0f, -1.0f}, {1.0f, 2.0f, 1.0f} };  // each particle rolls its own drift target

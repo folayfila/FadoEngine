@@ -13,10 +13,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-
-#pragma warning(push)
-#pragma warning(disable : 26437)
-
 // ────────────────────────────────────────
 // -- Level_Countdown --
 
@@ -159,6 +155,11 @@ struct FLevel_Countdown : FLevel
     //--------------------
     // Input Hints
     HEntity inputHints;
+
+    //--------------------
+    // Particles
+    HEntity particle_01;
+    HEntity particle_02;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -340,6 +341,22 @@ internal void Level_Countdown_Init(FGameState* gameState)
     AddClip(&shared->spriteSheetTable.sheets[assets->hInputSheet], 0, 2, 2.0f, false);
     AddClip(&shared->spriteSheetTable.sheets[assets->hInputSheet], 2, 2, 2.0f, true);
     AddClip(&shared->spriteSheetTable.sheets[assets->hInputSheet], 4, 2, 2.0f, true);
+
+    // Particles
+    level->particle_01 = MakeFireParticle(&gameState->shared->particles, assets->hBlobTexture);
+    FParticleEmitter* confetti = &gameState->shared->particles.emitters[level->particle_01];
+    confetti->color.start = { FColor::Pink() , FColor::HotPink() };
+    confetti->color.end = { FColor::LightGreen() , FColor::LightBlue() };
+    confetti->position.start = ConstRange(v3{ -7, -7, 0 });  // shared spawn origin
+    confetti->position.end = { {-10.0f, 3.0f, 0}, {5.0f, 5.0f, 0} };  // each particle rolls its own drift target
+
+    level->particle_02 = MakeFireParticle(&gameState->shared->particles, assets->hBlobTexture);
+    confetti = &gameState->shared->particles.emitters[level->particle_02];
+    confetti->direction = { -1, 1, 0 };
+    confetti->color.start = { FColor::Pink() , FColor::HotPink() };
+    confetti->color.end = { FColor::LightGreen() , FColor::LightBlue() };
+    confetti->position.start = ConstRange(v3{ 7, -7, 0 });  // shared spawn origin
+    confetti->position.end = { {10.0f, 3.0f, 0}, {-5.0f, 5.0f, 0} };  // each particle rolls its own drift target
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -1881,6 +1898,11 @@ internal void Level_Countdown_HandleGameInput(FGameState* gameState, FGameInput*
             }
             TriggerMiniGame(level->miniGames[level->mgIndex], gameState, input, controller);
             level->miniGameState = MiniGame_Countdown;
+
+            FParticleEmitter* confetti = &gameState->shared->particles.emitters[level->particle_01];
+            confetti->position.start = ConstRange(v3{ 0, 0, -100 });  // shared spawn origin
+            confetti = &gameState->shared->particles.emitters[level->particle_02];
+            confetti->position.start = ConstRange(v3{ 0, 0, -100 });  // shared spawn origin
         } break;
 
         case MiniGame_Countdown:
@@ -1940,21 +1962,10 @@ internal void Level_Countdown_HandleGameInput(FGameState* gameState, FGameInput*
                 {
                     SoundPlay2D(gameState->soundManager, assets->hYaySFX, ESoundCategory::Sound_SFX, 0.4f, false);
 
-                    // Particles
-                    u32 handle = MakeFireParticle(&gameState->shared->particles, assets->hBlobTexture);
-                    FParticleEmitter* confetti = &gameState->shared->particles.emitters[handle];
-                    confetti->color.start = { FColor::Pink() , FColor::HotPink() };
-                    confetti->color.end = { FColor::LightGreen() , FColor::LightBlue() };
+                    FParticleEmitter* confetti = &gameState->shared->particles.emitters[level->particle_01];
                     confetti->position.start = ConstRange(v3{ -7, -7, 0 });  // shared spawn origin
-                    confetti->position.end = { {-10.0f, 3.0f, 0}, {5.0f, 5.0f, 0} };  // each particle rolls its own drift target
-
-                    handle = MakeFireParticle(&gameState->shared->particles, assets->hBlobTexture);
-                    confetti = &gameState->shared->particles.emitters[handle];
-                    confetti->direction = { -1, 1, 0 };
-                    confetti->color.start = { FColor::Pink() , FColor::HotPink() };
-                    confetti->color.end = { FColor::LightGreen() , FColor::LightBlue() };
+                    confetti = &gameState->shared->particles.emitters[level->particle_02];
                     confetti->position.start = ConstRange(v3{ 7, -7, 0 });  // shared spawn origin
-                    confetti->position.end = { {10.0f, 3.0f, 0}, {-5.0f, 5.0f, 0} };  // each particle rolls its own drift target
                 }
                 else
                 {
@@ -2074,7 +2085,5 @@ inline FLevel SetupLevel_Countdown()
 };
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
-
-#pragma warning(pop)
 
 #endif // LEVEL_COUNTDOWN
