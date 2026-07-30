@@ -1637,7 +1637,7 @@ HSound LoadFSound(FSoundManager* SoundManager, FEngineMemory* arena, cc8* filena
 	fread(compressed, 1, sndHeader.dataSize, file);
 	fclose(file);
 
-	// decompress into permanent arena (sound stays alive)
+	// Decompress into permanent arena(sound stays alive).
 	i16* pcm = ArenaPushSize(&arena->permanent, i16, sndHeader.uncompressedSize);
 	LZ4_decompress_safe((cc8*)compressed,
 		(c8*)pcm,
@@ -1647,9 +1647,25 @@ HSound LoadFSound(FSoundManager* SoundManager, FEngineMemory* arena, cc8* filena
 	Assert(SoundManager->assetBank->assetsCount < FMAX_SOUND_ASSETS);
 	HSound handle = SoundManager->assetBank->assetsCount++;
 	FSoundBuffer* soundBuf = &SoundManager->assetBank->assets[handle];
+
+	// 3D voices are mono-only; downmix stereo sources in-place.
+	if (sndHeader.channels == 2)
+	{
+		for (u32 i = 0; i < sndHeader.sampleCount; ++i)
+		{
+			i32 left = pcm[i * 2];
+			i32 right = pcm[i * 2 + 1];
+			pcm[i] = (i16)((left + right) / 2); // overwrite in-place, mono data is always <= half the size
+		}
+		soundBuf->channels = 1;
+	}
+	else
+	{
+		soundBuf->channels = sndHeader.channels;
+	}
+
 	soundBuf->samples = pcm;
 	soundBuf->sampleCount = sndHeader.sampleCount;
-	soundBuf->channels = sndHeader.channels;
 	soundBuf->sampleRate = sndHeader.sampleRate;
 
 	ArenaReset(&arena->scratch);

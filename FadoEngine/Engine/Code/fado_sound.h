@@ -63,7 +63,7 @@ struct FSoundInstance
     v3 position;
     f32 minDistance;
     f32 maxDistance;
-    i32 voiceSlot;              // index into platform voice pool, -1 if unassigned.
+    i32 voiceSlot;              // index into platform voice pool, INVALID_HANDLE if unassigned.
 };
 
 // What the sound manager produces each frame for the platform layer (2D).
@@ -106,7 +106,7 @@ struct FSoundManager
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
-// Returns the first valid instance slot, -1 on failure.
+// Returns the first valid instance slot, INVALID_HANDLE on failure.
 inline i32 GetFirstFreeInstanceSlot(FSoundManager* manager)
 {
     for (i32 i = 0; i < FMAX_SOUND_INSTANCES; ++i)
@@ -117,7 +117,7 @@ inline i32 GetFirstFreeInstanceSlot(FSoundManager* manager)
             return i;
         }
     }
-    return -1;
+    return INVALID_HANDLE;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -167,18 +167,18 @@ inline void SoundCalculateStereoMatrix(f32 pan, f32 volume, f32* outMatrix /* [2
 // Public API
 
 // Starts playing a 2D sound by its handle. Assuming the buffer has been already filled.
-inline void SoundPlay2D(FSoundManager* manager, HSound bufferIndex, ESoundCategory category, f32 volume, b8 loop)
+inline HSound SoundPlay2D(FSoundManager* manager, HSound bufferIndex, ESoundCategory category, f32 volume, b8 loop)
 {
     FSoundAssetBank* bank = manager->assetBank;
     if (bank->assetInstanceCount[bufferIndex] >= FMAX_SOUND_ASSET_INSTANCES_AT_ONCE)
     {
-        return; // This sound asset has maximum simultaneous playing instances.
+        return INVALID_HANDLE; // This sound asset has maximum simultaneous playing instances.
     }
 
     i32 instanceSlot = GetFirstFreeInstanceSlot(manager);
-    if (instanceSlot == -1)
+    if (instanceSlot == INVALID_HANDLE)
     {
-        return;
+        return INVALID_HANDLE;
     }
 
     FSoundInstance* instance = &bank->instances[instanceSlot];
@@ -193,6 +193,8 @@ inline void SoundPlay2D(FSoundManager* manager, HSound bufferIndex, ESoundCatego
     // we don't care about the rest, they are 0 by default.
 
     bank->assetInstanceCount[bufferIndex]++;
+
+    return instanceSlot;
 }
 
 // Starts playing a 3D sound by its handle. Assuming the buffer has been already filled.
@@ -202,13 +204,13 @@ inline i32 SoundPlay3D(FSoundManager* manager, HEntity attachTo, HSound bufferIn
     FSoundAssetBank* bank = manager->assetBank;
     if (bank->assetInstanceCount[bufferIndex] >= FMAX_SOUND_ASSET_INSTANCES_AT_ONCE)
     {
-        return -1; // This sound asset has maximum simultaneous playing instances.
+        return INVALID_HANDLE; // This sound asset has maximum simultaneous playing instances.
     }
 
     i32 instanceSlot = GetFirstFreeInstanceSlot(manager);
-    if (instanceSlot == -1)
+    if (instanceSlot == INVALID_HANDLE)
     {
-        return -1;
+        return INVALID_HANDLE;
     }
 
     FSoundInstance* instance = &bank->instances[instanceSlot];
@@ -224,7 +226,7 @@ inline i32 SoundPlay3D(FSoundManager* manager, HEntity attachTo, HSound bufferIn
     instance->position = position;
     instance->minDistance = minDist;
     instance->maxDistance = maxDist;
-    instance->voiceSlot = -1;   // assigned lazily on first update
+    instance->voiceSlot = INVALID_HANDLE;   // assigned lazily on first update
 
     bank->assetInstanceCount[bufferIndex]++;
 
@@ -241,7 +243,7 @@ inline void SoundStop(FSoundManager* manager, HSound handle)
     FSoundInstance* instance = &manager->assetBank->instances[handle];
     instance->active = false;
     instance->playing = false;
-    instance->voiceSlot = -1;
+    instance->voiceSlot = INVALID_HANDLE;
     manager->assetBank->assetInstanceCount[instance->bufferIndex]--;
 }
 
