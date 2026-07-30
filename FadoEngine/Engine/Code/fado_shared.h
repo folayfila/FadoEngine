@@ -31,7 +31,7 @@ struct FSharedStuff
 	FTransforms transforms;
 	FCollisionWorld collisionWorld;
 	FSpriteSheetTable spriteSheetTable;
-	FParticleEmitterTable particles;
+	FParticleEmitter particles[FMAX_PARTICLE_EMITTERS];
 	FUICommandsBucket uiBucket;
 
 	FEngineMemory* arena;

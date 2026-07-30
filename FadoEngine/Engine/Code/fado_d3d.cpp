@@ -1115,9 +1115,9 @@ internal void FlushBuckets(FRenderWorld* world)
 	FlushRenderBucket(world, &world->transparentBucket, world->d3d.noCullRasterState);
 
 	// 3. Particles
-	for (u32 i = 0; i < world->shared->particles.count; ++i)
+	for (u32 i = 0; i < ArrayCount(world->shared->particles); ++i)
 	{
-		DrawParticleEmitter(world, &world->shared->particles.emitters[i]);
+		DrawParticleEmitter(world, &world->shared->particles[i]);
 	}
 
 	// 4. UI
