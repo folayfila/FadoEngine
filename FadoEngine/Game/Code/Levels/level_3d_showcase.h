@@ -95,17 +95,17 @@ internal void Level_3DShowcase_Begin(FGameState* gameState)
     CollisionAddCollider(&shared->collisionWorld, level->fire, extents, Collision_Physics);
 
     // Particles
-    level->hFireParticle = MakeFireParticle(&shared->particles, assets->hBlobTexture);
+    level->hFireParticle = MakeFireParticle(shared->particles, assets->hBlobTexture);
 
-    HParticle rParticle = MakeFireParticle(&shared->particles, assets->hBlobTexture);
-    shared->particles.emitters[rParticle].position.start = ConstRange(v3{ 5.0, 0, 0 });
-    shared->particles.emitters[rParticle].color.start = FRangeV4{ FColor::Random(), FColor::Random() };
-    shared->particles.emitters[rParticle].color.end = FRangeV4{ FColor::Random(), FColor::Random() };
+    HParticle rParticle = MakeFireParticle(shared->particles, assets->hBlobTexture);
+    shared->particles[rParticle].position.start = ConstRange(v3{ 5.0, 0, 0 });
+    shared->particles[rParticle].color.start = FRangeV4{ FColor::Random(), FColor::Random() };
+    shared->particles[rParticle].color.end = FRangeV4{ FColor::Random(), FColor::Random() };
 
-    HParticle lParticle = MakeFireParticle(&shared->particles, assets->hBlobTexture);
-    shared->particles.emitters[lParticle].position.start = ConstRange(v3{ -5.0, 0, 0 });
-    shared->particles.emitters[lParticle].color.start = FRangeV4{ FColor::Random(), FColor::Random() };
-    shared->particles.emitters[lParticle].color.end = FRangeV4{ FColor::Random(), FColor::Random() };
+    HParticle lParticle = MakeFireParticle(shared->particles, assets->hBlobTexture);
+    shared->particles[lParticle].position.start = ConstRange(v3{ -5.0, 0, 0 });
+    shared->particles[lParticle].color.start = FRangeV4{ FColor::Random(), FColor::Random() };
+    shared->particles[lParticle].color.end = FRangeV4{ FColor::Random(), FColor::Random() };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
@@ -294,11 +294,8 @@ internal void Level_3DShowcase_Update(FGameState* gameState, f32 dt)
     Update3DSoundsPositions(gameState->soundManager->assetBank, shared);
 
     // Fire particle should follow fire entity.
-    shared->particles.emitters[level->hFireParticle].position.start = ConstRange(transforms->positions[level->fire]);
-    for (u32 i = 0; i < shared->particles.count; ++i)
-    {
-        UpdateParticleEmitter(&shared->particles.emitters[i], dt);
-    }
+    shared->particles[level->hFireParticle].position.start = ConstRange(transforms->positions[level->fire]);
+    UpdateAllEmitters(shared->particles, dt);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────

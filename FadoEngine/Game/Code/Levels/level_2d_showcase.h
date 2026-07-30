@@ -135,8 +135,8 @@ internal void Level_2DShowcase_Begin(FGameState* gameState)
     CollisionAddCollider(&shared->collisionWorld, level->fire, extents, Collision_Physics | Collision_Is2D);
 
     // Particles
-    level->hFireParticle = MakeFireParticle(&shared->particles, assets->hBlobTexture);
-    FParticleEmitter* fire = &shared->particles.emitters[level->hFireParticle];
+    level->hFireParticle = MakeFireParticle(shared->particles, assets->hBlobTexture);
+    FParticleEmitter* fire = &shared->particles[level->hFireParticle];
     fire->color.start = ConstRange(FColor::Blue());
 }
 
@@ -281,11 +281,11 @@ internal void Level_2DShowcase_Update(FGameState* gameState, f32 dt)
     UpdateAnimState(&shared->entityTable.entities[level->folayfila], &shared->spriteSheetTable.sheets[assets->hFolayfilaSheet], dt);
 
     // Fire particle should follow fire entity.
-    shared->particles.emitters[level->hFireParticle].position.start = ConstRange(transforms->positions[level->fire]);
+    shared->particles[level->hFireParticle].position.start = ConstRange(transforms->positions[level->fire]);
 
-    for (u32 i = 0; i < shared->particles.count; ++i)
+    for (u32 i = 0; i < ArrayCount(shared->particles); ++i)
     {
-        UpdateParticleEmitter(&shared->particles.emitters[i], dt);
+        UpdateParticleEmitter(&shared->particles[i], dt);
     }
 }
 

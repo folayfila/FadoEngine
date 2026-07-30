@@ -122,11 +122,6 @@ struct FParticleEmitter
 // -- Particle Emitter Pool --
 #define FMAX_PARTICLE_EMITTERS 64
 
-struct FParticleEmitterTable
-{
-	FParticleEmitter emitters[FMAX_PARTICLE_EMITTERS];
-	u32 count;
-};
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 
@@ -199,50 +194,59 @@ internal u32 BuildParticleInstances(FParticleEmitter* emitter, FParticleInstance
 // -- Public API --
 
 // Returns particle handle into a pool, and zero-initializes the particle.
-inline HParticle CreateParticleEmitter(FParticleEmitterTable* pool, FParticleEmitter** outParticle)
+inline HParticle CreateParticleEmitter(FParticleEmitter* emitters, FParticleEmitter** outParticle)
 {
-	Assert(pool->count < FMAX_PARTICLE_EMITTERS);
+	// Get the first available particle emitter slot
+	for (u32 i = 0; i < FMAX_PARTICLE_EMITTERS; ++i)
+	{
+		if (!emitters[i].active)
+		{
+			*outParticle = &emitters[i];
+			**outParticle = {};
+			return i;
+		}
+	}
 
-	HParticle handle = pool->count++;
-	*outParticle = &pool->emitters[handle];
-	**outParticle = {};
-	return handle;
+	// No available slots
+	return INVALID_HANDLE;
 }
 
 inline void UpdateParticleEmitter(FParticleEmitter* emitter, f32 dt)
 {
+	if (!emitter->active)
+	{
+		return;
+	}
+
 	emitter->emitterAge += dt;
 
 	// ---- Spawning ----
-	if (emitter->active)
+	if (emitter->spawnRate > 0.0f)
 	{
-		if (emitter->spawnRate > 0.0f)
+		// Continuous emission. count optionally ramps the effective rate
+		// using emitterAge as a 0..1 window over the emitter's own 'lifetime' field
+		// (reused as a ramp duration when count.enabled).
+		f32 rate = emitter->spawnRate;
+		if (emitter->count.enabled)
 		{
-			// Continuous emission. count optionally ramps the effective rate
-			// using emitterAge as a 0..1 window over the emitter's own 'lifetime' field
-			// (reused as a ramp duration when count.enabled).
-			f32 rate = emitter->spawnRate;
-			if (emitter->count.enabled)
-			{
-				f32 t = (emitter->lifetime > 0.0f) ? Saturate(emitter->emitterAge / emitter->lifetime) : 1.0f;
-				rate = EvaluateCurveF32(emitter->count, t);
-			}
+			f32 t = (emitter->lifetime > 0.0f) ? Saturate(emitter->emitterAge / emitter->lifetime) : 1.0f;
+			rate = EvaluateCurveF32(emitter->count, t);
+		}
 
-			emitter->spawnAccumulator += dt * rate;
-			while (emitter->spawnAccumulator >= 1.0f)
-			{
-				SpawnParticle(emitter);
-				emitter->spawnAccumulator -= 1.0f;
-			}
-		}
-		else if (!emitter->hasBurst) // first frame only — one-shot burst
+		emitter->spawnAccumulator += dt * rate;
+		while (emitter->spawnAccumulator >= 1.0f)
 		{
-			for (u32 i = 0; i < emitter->count.start.min; ++i)
-			{
-				SpawnParticle(emitter);
-			}
-			emitter->hasBurst = true;
+			SpawnParticle(emitter);
+			emitter->spawnAccumulator -= 1.0f;
 		}
+	}
+	else if (!emitter->hasBurst) // first frame only — one-shot burst
+	{
+		for (u32 i = 0; i < emitter->count.start.min; ++i)
+		{
+			SpawnParticle(emitter);
+		}
+		emitter->hasBurst = true;
 	}
 
 	// ---- Update + kill (compact in place, swap-remove) ----
@@ -278,14 +282,33 @@ inline void UpdateParticleEmitter(FParticleEmitter* emitter, f32 dt)
 
 		++i;
 	}
+
+	// Kill the one bursts
+	if (emitter->aliveCount <= 0 && emitter->hasBurst)
+	{
+		emitter->active = false;
+	}
+}
+
+inline void UpdateAllEmitters(FParticleEmitter* emitters, f32 dt)
+{
+	for (u32 i = 0; i < FMAX_PARTICLE_EMITTERS; ++i)
+	{
+		UpdateParticleEmitter(&emitters[i], dt);
+	}
 }
 
 // ──────────────────────────────────────────────────────────────────────────────────────────
 // -- Presets --
-ForceInline HParticle MakeFireParticle(FParticleEmitterTable* pool, HTexture blobTexture)
+ForceInline HParticle MakeFireParticle(FParticleEmitter* pool, HTexture blobTexture)
 {
 	FParticleEmitter* fire = nullptr;
 	HParticle handle = CreateParticleEmitter(pool, &fire);
+	if (handle == -1)
+	{
+		return -1;
+	}
+
 	fire->texture = blobTexture;
 	fire->lifetime = 1.0f;
 	fire->active = true;
