@@ -602,10 +602,10 @@ internal void RaceMiniGame(FGameState* gameState, FGameInput* input, FGameContro
 
         case MiniGame_Countdown:
         {
-            f32 w = gameState->shared->viewport.width / 2.75f;
+            f32 w = gameState->shared->viewport.width / 4.75f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "RUUUUUNNN!!", textPos, {1, 0.3f, 0.3f, 1});
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "SPAM THE SPACE BAR TO RUN!!", textPos, {1, 0.3f, 0.3f, 1});
             
             FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
             SetClip(inputAnim, InputHints_SpaceClick);
@@ -724,7 +724,7 @@ internal void ParachuteMiniGame(FGameState* gameState, FGameInput* input, FGameC
 
         case MiniGame_Update:
         {
-            shared->transforms.positions[level->parachute].y -= 2.0f * input->deltaTime;
+            shared->transforms.positions[level->parachute].y -= 5.0f * input->deltaTime;
             f32 playerPosY = shared->transforms.positions[level->parachute].y;
 
             shared->transforms.positions[level->parachuteQuad].z = 0;
@@ -810,10 +810,10 @@ internal void RocketMiniGame(FGameState* gameState, FGameInput* input, FGameCont
 
         case MiniGame_Countdown:
         {
-            f32 w = gameState->shared->viewport.width / 3.50f;
+            f32 w = gameState->shared->viewport.width / 7.50f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "LAUNCH THE ROCKET!!", textPos, { 0.3f, 0.6f, 1.0f, 1.0f });
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "USE A-D TO KEEP THE ROCKET STRAIGHT!!", textPos, { 0.3f, 0.6f, 1.0f, 1.0f });
 
             FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
             SetClip(inputAnim, InputHints_AD);
@@ -912,10 +912,10 @@ internal void CoffeeMiniGame(FGameState* gameState, FGameInput* input, FGameCont
 
         case MiniGame_Countdown:
         {
-            f32 w = gameState->shared->viewport.width / 4.0f;
+            f32 w = gameState->shared->viewport.width / 5.75f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "KEEP THE COFFEE WARM!!", textPos, FColor::SaddleBrown());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "A-D TO KEEP THE COFFEE WARM!!", textPos, FColor::SaddleBrown());
 
             FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
             SetClip(inputAnim, InputHints_AD);
@@ -931,11 +931,12 @@ internal void CoffeeMiniGame(FGameState* gameState, FGameInput* input, FGameCont
                 windTimer = 1.0f;
             }
 
+            f32 windPower = 0.625f;
             if (wind == WindDir_Left)
             {
                 if (!Down(&controller->dpadLeft) || Down(&controller->dpadRight))
                 {
-                    warmth -= 0.5f * input->deltaTime;
+                    warmth -= windPower * input->deltaTime;
                 }
                 shared->transforms.positions[level->evilGuy] = { -8.0f , 0 ,0 };
                 shared->transforms.scales[level->evilGuy].x = -4.0f;
@@ -944,7 +945,7 @@ internal void CoffeeMiniGame(FGameState* gameState, FGameInput* input, FGameCont
             {
                 if (!Down(&controller->dpadRight) || Down(&controller->dpadLeft))
                 {
-                    warmth -= 0.5f * input->deltaTime;
+                    warmth -= windPower * input->deltaTime;
                 }
                 shared->transforms.positions[level->evilGuy] = { 8.0f , 0 ,0 };
                 shared->transforms.scales[level->evilGuy].x = 4.0f;
@@ -1034,10 +1035,13 @@ internal void RedLightMiniGame(FGameState* gameState, FGameInput* input, FGameCo
 
         case MiniGame_Countdown:
         {
-            f32 w = gameState->shared->viewport.width / 4.0f;
+            f32 w = gameState->shared->viewport.width / 5.0f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "RED LIGHT GREEN LIGHT!!", textPos, FColor::Orange());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "GREEN LIGHT = SPAM SPACE!!", textPos, FColor::OtherLightGreen());
+            textPos.x += 200.0f;
+            textPos.y += 100.0f;
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "RED LIGHT = STOP!!", textPos, FColor::OtherLightRed());
 
             shared->transforms.positions[level->redLight] = { 0, 0, 0};
             SetClip(anim, 0);
@@ -1072,7 +1076,7 @@ internal void RedLightMiniGame(FGameState* gameState, FGameInput* input, FGameCo
 
                 shared->transforms.positions[level->redGreenBar] = { 0, 0, -100 };
 
-                if (Down(&controller->actionDown) || (goalValue <= 0.0f))
+                if (Down(&controller->actionDown) || (goalValue <= 1.0f))
                 {
                     if ((redTime - level->timer) >= 1.0f)
                     {
@@ -1083,14 +1087,19 @@ internal void RedLightMiniGame(FGameState* gameState, FGameInput* input, FGameCo
             }
             else
             {
-                if (Pressed(&controller->actionDown))
+                if (Pressed(&controller->actionDown) || Released(&controller->actionDown))
                 {
                     goalValue += 10.0f * input->deltaTime;
                 }
+                else
+                {
+                    goalValue -= 1.0f * input->deltaTime;
+                    goalValue = Clamp(goalValue, 0.0f, 100.0f);
+                }
 
                 shared->transforms.positions[level->redGreenBar] = { -5, -3, 0 };
-                shared->transforms.scales[level->redGreenBar].y = 1.0f + goalValue;
-                if (goalValue > 0.0f)
+                shared->transforms.scales[level->redGreenBar].y = goalValue;
+                if (goalValue > 1.0f)
                 {
                     shared->entityTable.entities[level->redGreenBar].material.color = { 0,1,0,0.75f };
                 }
@@ -1158,10 +1167,10 @@ internal void BasketballMiniGame(FGameState* gameState, FGameInput* input, FGame
     case MiniGame_Countdown:
     {
         Rotate(&shared->transforms, level->ball, { 0, 0, 100.0f * input->deltaTime });
-        f32 w = gameState->shared->viewport.width / 2.95f;
+        f32 w = gameState->shared->viewport.width / 6.25f;
         f32 h = gameState->shared->viewport.height / 4.0f;
         v2 textPos = { w, h };
-        UIPushText(&gameState->shared->uiBucket, gameState->font, "GRAB THE BALL!!", textPos, { 1.0f, 0.4f, 0.0f, 1.0f });
+        UIPushText(&gameState->shared->uiBucket, gameState->font, "SPAM SPACE TO CHARGE YOUR JUMP!!", textPos, { 1.0f, 0.4f, 0.0f, 1.0f });
 
         FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
         SetClip(inputAnim, InputHints_SpaceClick);
@@ -1187,9 +1196,9 @@ internal void BasketballMiniGame(FGameState* gameState, FGameInput* input, FGame
             SetClip(anim_0, 1);
             SetClip(anim_1, 1);
 
-            if (Pressed(&controller->actionDown))
+            if (Pressed(&controller->actionDown) || Released(&controller->actionDown))
             {
-                jumpStrength += 0.25f;
+                jumpStrength += 10.0f * input->deltaTime;
             }
             else
             {
@@ -1198,12 +1207,8 @@ internal void BasketballMiniGame(FGameState* gameState, FGameInput* input, FGame
             jumpStrength = Clamp(jumpStrength, 0.0f, 100.0f);
 
             shared->transforms.positions[level->jumpBar] = {-5, -3, 0};
-            shared->transforms.scales[level->jumpBar].y = 1.0f + jumpStrength;
-            if (jumpStrength <= jumpGoal)
-            {
-                shared->entityTable.entities[level->jumpBar].material.color = { 0,0,0,0.75f };
-            }
-            else if ((jumpStrength >= jumpGoal) && (jumpStrength <= (jumpGoal + 0.75f)))
+            shared->transforms.scales[level->jumpBar].y = jumpStrength;
+            if ((jumpStrength >= jumpGoal) && (jumpStrength <= (jumpGoal + 0.75f)))
             {
                 shared->entityTable.entities[level->jumpBar].material.color = { 0,1,0,0.75f };
             }
@@ -1219,7 +1224,7 @@ internal void BasketballMiniGame(FGameState* gameState, FGameInput* input, FGame
             shared->transforms.positions[level->basketMan_1] = { 3, -3, 0 };
             shared->transforms.positions[level->jumpBar] = { 0, 0, -100.0f };
 
-            if ((jumpStrength >= jumpGoal) && (jumpStrength <= (jumpGoal + 0.75f)))
+            if ((jumpStrength >= jumpGoal) && (jumpStrength <= (jumpGoal + 1.0f)))
             {
                 SetClip(anim_0, 2);
                 SetClip(anim_1, 0);
@@ -1313,7 +1318,7 @@ internal void BullMiniGame(FGameState* gameState, FGameInput* input, FGameContro
             f32 w = gameState->shared->viewport.width / 4.5f;
             f32 h = gameState->shared->viewport.height / 4.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "YEEHAW OOPOSITE THE BULL!!", textPos, FColor::SaddleBrown());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "MOVE OOPOSITE THE BULL!!", textPos, FColor::SaddleBrown());
 
             shared->transforms.positions[level->inputHints].x = -6.5f;
 
@@ -1494,10 +1499,10 @@ internal void MovieMiniGame(FGameState* gameState, FGameInput* input, FGameContr
 
     case MiniGame_Countdown:
     {
-        f32 w = gameState->shared->viewport.width / 4.0f;
+        f32 w = gameState->shared->viewport.width / 5.75f;
         f32 h = gameState->shared->viewport.height / 4.0f;
         v2 textPos = { w, h };
-        UIPushText(&gameState->shared->uiBucket, gameState->font, "FOLLOW THE DIRECTOR!!", textPos, { 1, 0.3f, 0.3f, 1 });
+        UIPushText(&gameState->shared->uiBucket, gameState->font, "FOLLOW THE DIRECTOR'S ORDERS!!", textPos, { 1, 0.3f, 0.3f, 1 });
 
         shared->transforms.positions[level->inputHints].x = -6.5f;
         FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
@@ -1762,10 +1767,10 @@ internal void CameraMiniGame(FGameState* gameState, FGameInput* input, FGameCont
 
         case MiniGame_Countdown:
         {
-            f32 w = gameState->shared->viewport.width / 3.75f;
+            f32 w = gameState->shared->viewport.width / 7.75f;
             f32 h = gameState->shared->viewport.height / 5.0f;
             v2 textPos = { w, h };
-            UIPushText(&gameState->shared->uiBucket, gameState->font, "SMILE ON THE FLASH!!", textPos, FColor::Violet());
+            UIPushText(&gameState->shared->uiBucket, gameState->font, "KEEP HOLDING SPCAE ON THE FLASH!!", textPos, FColor::Violet());
 
             FAnimState* inputAnim = &shared->entityTable.entities[level->inputHints].animState;
             SetClip(inputAnim, InputHints_SpaceHold);
@@ -2017,7 +2022,7 @@ internal void Level_Countdown_HandleGameInput(FGameState* gameState, FGameInput*
 // -- Game --
 internal void Level_Countdown_Game(FGameState* gameState, FGameInput* input)
 {
-    FGameControllerInput* controller = &input->controllers[0];
+    FGameControllerInput* controller = input->controllers[1].isConnected ? &input->controllers[1] : &input->controllers[0];
     if (!controller->isConnected)
     {
         return;

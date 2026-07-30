@@ -650,10 +650,12 @@ namespace FColor
 	ForceInline v4 Red() { return { 1.0f, 0.0f, 0.0f, 1.0f }; }
 	ForceInline v4 DarkRed() { return { 0.55f, 0.0f, 0.0f, 1.0f }; }
 	ForceInline v4 LightRed() { return { 1.0f, 0.5f, 0.5f, 1.0f }; }
+	ForceInline v4 OtherLightRed() { return { 1, 0.3f, 0.3f, 1 }; }
 
 	ForceInline v4 Green() { return { 0.0f, 1.0f, 0.0f, 1.0f }; }
 	ForceInline v4 DarkGreen() { return { 0.0f, 0.39f, 0.0f, 1.0f }; }
 	ForceInline v4 LightGreen() { return { 0.56f, 0.93f, 0.56f, 1.0f }; }
+	ForceInline v4 OtherLightGreen() { return { 0.4f, 1.0f, 0.4f, 1.0f }; }
 
 	ForceInline v4 Blue() { return { 0.0f, 0.0f, 1.0f, 1.0f }; }
 	ForceInline v4 DarkBlue() { return { 0.0f, 0.0f, 0.55f, 1.0f }; }
