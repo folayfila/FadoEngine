@@ -32,7 +32,7 @@ struct FSharedStuff
 	FCollisionWorld collisionWorld;
 	FSpriteSheetTable spriteSheetTable;
 	FParticleEmitter particles[FMAX_PARTICLE_EMITTERS];
-	FUICommandsBucket uiBucket;
+	FUI ui;
 
 	FEngineMemory* arena;
 

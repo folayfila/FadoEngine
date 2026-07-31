@@ -66,9 +66,14 @@ internal Win32GameCode Win32LoadGameCode(char* sourceDLLName, char* tempDLLName)
 	Win32GameCode gameCode = {};
 
 	gameCode.dllLastWriteTime = Win32GetLastWriteTime(sourceDLLName);
-	CopyFileA(sourceDLLName, tempDLLName, FALSE);
 
+#if FADO_DEBUG
+	CopyFileA(sourceDLLName, tempDLLName, FALSE);
 	gameCode.gameCodeDLL = LoadLibraryA(tempDLLName);
+#else
+	gameCode.gameCodeDLL = LoadLibraryA(sourceDLLName);
+#endif	// FADO_DEBUG
+
 	if (gameCode.gameCodeDLL)
 	{
 		gameCode.gameUpdate = (FGameUpdate*)GetProcAddress(gameCode.gameCodeDLL, "GameUpdate");
@@ -671,7 +676,7 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 	assets->hFolayfilaTex = LoadFImage(world, "Assets/Textures/folayfila_64_sheet.fimage");
 	assets->hFolayfilaSheet = RegisterSpriteSheet(world, assets->hFolayfilaTex, 64, 64);
 
-	LoadFFont(world, "Assets/Fonts/arialbd.ffont", 25.0f, gameState->font);
+	LoadFFont(world, "Assets/Fonts/arialbd.ffont", 25, gameState->font);
 
 	// Royalty free sounds:
 	// https://pixabay.com/music/video-games-sinnesl%C3%B6schen-beam-117362/
@@ -770,6 +775,7 @@ int WINAPI wWinMain(
 		}
 		input->deltaTime = deltaTime;
 
+#if FADO_DEBUG
 		// Check if we need to reload the game code (hot reload).
 		FILETIME newDLLWriteTime = Win32GetLastWriteTime(sourceGameCodeDLLFullPath);
 		if (CompareFileTime(&newDLLWriteTime, &gameCode.dllLastWriteTime) != 0)
@@ -778,7 +784,6 @@ int WINAPI wWinMain(
 			gameCode = Win32LoadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
 		}
 
-#if FADO_DEBUG
 		ImGui_ImplDX11_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();

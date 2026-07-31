@@ -88,7 +88,8 @@ internal void UnloadCurrentLevel(FGameState* gameState)
 
     FadoZeroStruct(&gameState->shared->entityTable);
     FadoZeroStruct(&gameState->shared->transforms);
-    FadoZeroStruct(&gameState->shared->uiBucket);
+    FadoZeroStruct(&gameState->shared->ui.commands);
+    gameState->shared->ui.count = 0;
     FadoZeroStruct(&gameState->shared->particles);
     FadoZeroStruct(&gameState->shared->collisionWorld);
 

@@ -44,6 +44,8 @@ struct FGameState
 
 void SetGamePaused(FGameState* gameState, b8 pause);
 
+u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* text, FUIButtonStyle* style);
+
 // ──────────────────────────────────────────────────────────────────────────────────────────
 // The only function that's exposed to the engine/platform layer.
 #define GAME_UPDATE(name) void name(FGameState* gameState, struct FGameInput* input)

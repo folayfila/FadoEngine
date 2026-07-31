@@ -14,8 +14,10 @@
 
 // Creates a stylized button and pushes it to ui bucket.
 // Returns if the button was clicked.
-internal u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* text, FUIButtonStyle* style)
+u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* text, FUIButtonStyle* style)
 {
+    FUI* ui = &gameState->shared->ui;
+
     FUINavState* nav = &gameState->uiNavState;
     i32 myIndex = nav->buttonCount++;
 
@@ -30,12 +32,12 @@ internal u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* te
     else
     {
         v2 mousePos = { (f32)input->mouse.x, (f32)input->mouse.y };
-        hovered = UIPointInRect(mousePos, rect);
+        v4 scaledRect = UIScaleRect(rect, ui->scale); // screen space
+        hovered = UIPointInRect(mousePos, scaledRect);
         clicked = hovered && input->mouse.buttons[0].isDown && !input->mouse.buttons[0].wasDown;
     }
 
-    FUICommandsBucket* bucket = &gameState->shared->uiBucket;
-    UIPushButton(rect, text, bucket, style, gameState->font, clicked, hovered);
+    UIPushButton(rect, text, ui, style, gameState->font, clicked, hovered);
 
     if (clicked)
     {
@@ -49,10 +51,17 @@ internal void UpdateUI(FGameState* gameState, FGameInput* input)
 {
     gameState->uiNavState.buttonCount = 0;
 
-    FUICommandsBucket* uiBucket = &gameState->shared->uiBucket;
+    FUI* uiBucket = &gameState->shared->ui;
+
+    f32 buttonWidth = 200.0f;
+    f32 buttonHeight = 75.0f;
+
+    f32 rectPosX = 855.0f;
+    f32 rectPosY = 300.0f;
+
+    v4 rect = { rectPosX, rectPosY, buttonWidth, buttonHeight };
 
     f32 buttonsYOffset = 20.0f;
-    v4 rect = { 800, 300, 200, 65 };
     FUIButtonStyle buttonStyle = {
         /*idle*/    FColor::Cyan(),
         /*hover*/   FColor::LightRed(),
