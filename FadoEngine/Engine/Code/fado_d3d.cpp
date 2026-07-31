@@ -366,6 +366,10 @@ internal void InitializeDX11(FD3DInitParams* d3dInitParams, FRenderWorld* world)
 		shared->viewport.maxDepth
 	};
 
+	// Setup uiScale
+	const v2 kRefResolution = { 1920.0f, 1080.0f };
+	world->shared->ui.scale = ComputeUIScale({ d3d11Viewport.Width, d3d11Viewport.Height }, kRefResolution);
+
 	// Create the viewport.
 	d3d->deviceContext->RSSetViewports(1, &d3d11Viewport);
 
@@ -1004,7 +1008,7 @@ internal void FlushRenderBucket(FRenderWorld* world, FRenderBucket* bucket, ID3D
 // ────────────────────────────────────────────────────────────────────────
 internal void FlushUIBucket(FRenderWorld* world)
 {
-	FUICommandsBucket* bucket = &world->shared->uiBucket;
+	FUI* bucket = &world->shared->ui;
 	if (bucket->count == 0)
 	{
 		return;
@@ -1348,6 +1352,10 @@ void D3DResize(FRenderWorld* world, i32 width, i32 height, f32 screenNear, f32 s
 		shared->viewport.minDepth,
 		shared->viewport.maxDepth
 	};
+
+	// Update uiScale
+	const v2 kRefResolution = { 1920.0f, 1080.0f };
+	world->shared->ui.scale = ComputeUIScale({ d3d11Viewport.Width, d3d11Viewport.Height }, kRefResolution);
 
 	// Create the viewport.
 	d3d->deviceContext->RSSetViewports(1, &d3d11Viewport);

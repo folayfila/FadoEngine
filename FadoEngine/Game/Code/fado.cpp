@@ -15,6 +15,8 @@
 // Returns if the button was clicked.
 u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* text, FUIButtonStyle* style)
 {
+    FUI* ui = &gameState->shared->ui;
+
     FUINavState* nav = &gameState->uiNavState;
     i32 myIndex = nav->buttonCount++;
 
@@ -29,12 +31,12 @@ u32 UIButton(FGameState* gameState, FGameInput* input, v4 rect, cc8* text, FUIBu
     else
     {
         v2 mousePos = { (f32)input->mouse.x, (f32)input->mouse.y };
-        hovered = UIPointInRect(mousePos, rect);
+        v4 scaledRect = UIScaleRect(rect, ui->scale); // screen space
+        hovered = UIPointInRect(mousePos, scaledRect);
         clicked = hovered && input->mouse.buttons[0].isDown && !input->mouse.buttons[0].wasDown;
     }
 
-    FUICommandsBucket* bucket = &gameState->shared->uiBucket;
-    UIPushButton(rect, text, bucket, style, gameState->font, clicked, hovered);
+    UIPushButton(rect, text, ui, style, gameState->font, clicked, hovered);
 
     if (clicked)
     {

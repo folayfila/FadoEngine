@@ -8,6 +8,15 @@
 
 // ─────────────────────────────────────────────
 
+// Updated whenever the screen is resized into your UI context each frame.
+// Used to correctly scale/position UI elements relative to the size of the window.
+struct FUIScale
+{
+	f32 x;
+	f32 y;
+	f32 uniform; // min(x,y), used to avoid stretching.
+};
+
 // ────────────────
 // UICommand to add a rect.
 // Rects use the texture they have as a base and apply a color on it,
@@ -24,10 +33,12 @@ struct FUICommand
 
 #define FMAX_UI_COMMANDS 256
 
-struct FUICommandsBucket
+struct FUI
 {
 	FUICommand commands[FMAX_UI_COMMANDS];
 	u32 count;
+
+	FUIScale scale;
 };
 
 // A stylized button with idle, hover and click colors.
@@ -51,24 +62,33 @@ struct FUINavState
 //  Public API
 // ────────────────────────────────────────────
 
-// Pushes a rect into the ui bucket to draw on the screen.
-inline void UIPushRect(FUICommandsBucket* bucket, v4 rect, v4 coords, v4 color, HTexture hTexture)
+inline FUIScale ComputeUIScale(v2 currentWindowSize, v2 refResolution = { 1920.0f, 1080.0f })
 {
-	Assert(bucket->count < FMAX_UI_COMMANDS);
-	FUICommand* cmd = &bucket->commands[bucket->count++];
+	FUIScale s;
+	s.x = currentWindowSize.x / refResolution.x;
+	s.y = currentWindowSize.y / refResolution.y;
+	s.uniform = Min(s.x, s.y);
+	return s;
+}
+
+// Pushes a rect into the ui bucket to draw on the screen.
+inline void UIPushRect(FUI* ui, v4 rect, v4 coords, v4 color, HTexture hTexture)
+{
+	Assert(ui->count < FMAX_UI_COMMANDS);
+	FUICommand* cmd = &ui->commands[ui->count++];
 	*cmd = { rect, coords, color, hTexture };
 }
 
 // Pushes text into the ui bucket to draw on the screen using a font.
 // Font glyphs are just rects being drawn on the screen.
-inline void UIPushText(FUICommandsBucket* bucket, FFont* font, cc8* text, v2 pos, v4 color, f32 scale = 1.0f)
+inline void UIPushText(FUI* ui, FFont* font, cc8* text, v2 pos, v4 color, f32 scale = 1.0f)
 {
-	// Current pen position while laying out glyphs.
-	v2 cursor = pos;
+	FUIScale uiScale = ui->scale;
+	f32 finalScale = scale * uiScale.uniform;
+	v2 cursor = { pos.x * uiScale.x, pos.y * uiScale.y };
 
 	for (cc8* p = text; *p; ++p)
 	{
-		// Skip unsupported characters (currently we only support ASCII).
 		if (*p < 32 || *p > 127)
 		{
 			continue;
@@ -76,15 +96,15 @@ inline void UIPushText(FUICommandsBucket* bucket, FFont* font, cc8* text, v2 pos
 		FFontGlyph* glyph = &font->glyphs[*p - 32];
 
 		v4 rect = {
-			cursor.x + glyph->offset.x * scale,
-			cursor.y + glyph->offset.y * scale,
-			(f32)glyph->width * scale,
-			(f32)glyph->height * scale
+			cursor.x + glyph->offset.x * finalScale,
+			cursor.y + glyph->offset.y * finalScale,
+			(f32)glyph->width * finalScale,
+			(f32)glyph->height * finalScale
 		};
 		v4 coords = glyph->coords;
 
-		UIPushRect(bucket, rect, coords, color, font->atlas);
-		cursor.x += glyph->xadvance * scale;
+		UIPushRect(ui, rect, coords, color, font->atlas);
+		cursor.x += glyph->xadvance * finalScale;
 	}
 }
 
@@ -110,7 +130,7 @@ inline v2 UIMeasureTextWidth(FFont* font, cc8* text)
 }
 
 // Pushes a stylized button into the ui commads bucket.
-inline void UIPushButton(v4 rect, cc8* text, FUICommandsBucket* bucket, FUIButtonStyle* style, FFont* font, b8 clicked, b8 hovered)
+inline void UIPushButton(v4 rect, cc8* text, FUI* ui, FUIButtonStyle* style, FFont* font, b8 clicked, b8 hovered)
 {
 	v4 color = style->idleColor;
 	if (clicked)
@@ -122,13 +142,20 @@ inline void UIPushButton(v4 rect, cc8* text, FUICommandsBucket* bucket, FUIButto
 		color = style->hoverColor;
 	}
 
-	UIPushRect(bucket, rect, { 0, 0, 1, 1 }, color, style->texture);
+	FUIScale uiScale = ui->scale;
+	v4 buttonRect = {};
+	buttonRect.x = rect.x * uiScale.x;
+	buttonRect.y = rect.y * uiScale.y;
+	buttonRect.width = rect.width * uiScale.uniform;
+	buttonRect.height = rect.height * uiScale.uniform;
+
+	UIPushRect(ui, buttonRect, { 0, 0, 1, 1 }, color, style->texture);
 
 	// Plcae the text in the center of the rect.
 	v2 textSize = UIMeasureTextWidth(font, text);
-	f32 textX = rect.x + (rect.width - textSize.x) * 0.5f;
-	f32 textY = rect.y + (rect.height * 0.5f) + /*yoffset*/4.0f;
-	UIPushText(bucket, font, text, { textX, textY }, style->textColor);
+	f32 textX = rect.x +(rect.width - textSize.x) * 0.5f;
+	f32 textY = rect.y +(rect.height * 0.5f) + /*yoffset*/4.0f;
+	UIPushText(ui, font, text, { textX, textY }, style->textColor, 1.0f);
 }
 
 // Returns true if the mouse position is withing the rect bounds.
@@ -137,6 +164,17 @@ inline b8 UIPointInRect(v2 mPos, v4 rect)
 	b8 result = (mPos.x >= rect.x) && (mPos.x <= rect.x + rect.width) &&
 				(mPos.y >= rect.y) && (mPos.y <= rect.y + rect.height);
 	return result;
+}
+
+inline v4 UIScaleRect(v4 rect, FUIScale uiScale)
+{
+	v4 scaledRect = {
+		rect.x * uiScale.x,
+		rect.y * uiScale.y,
+		rect.width * uiScale.uniform,
+		rect.height * uiScale.uniform
+	};
+	return scaledRect;
 }
 
 // Moves focus to the next index.

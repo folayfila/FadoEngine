@@ -667,7 +667,7 @@ internal void LoadAssets(FRenderWorld* world, FGameState* gameState)
 
 	// GMTK Assets:
 
-	LoadFFont(world, "Assets/Fonts/BubblegumSans-Regular.ffont", 99.0f, gameState->font);
+	LoadFFont(world, "Assets/Fonts/BubblegumSans-Regular.ffont", 90.0f, gameState->font);
 
 	assets->hNoiseTexture = LoadFImage(world, "Assets/Textures/noise.fimage");
 	assets->hLinesBGTexture = LoadFImage(world, "Assets/Textures/lines_bg.fimage");
